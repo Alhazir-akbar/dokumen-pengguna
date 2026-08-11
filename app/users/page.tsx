@@ -6,55 +6,58 @@ import { mockUserTypes } from '@/features/users/data/mock-users';
 import UsersSidebar from '@/features/users/components/userSidebar';
 import EmptyUserPanel from '@/features/users/components/emptyUserPanel';
 import UserDetailPanel from '@/features/users/components/userDetailPanel';
-import UserFormModal from '@/features/users/components/userFormPanel'; 
+import UserFormPanel from '@/features/users/components/userFormPanel'; // Ganti dari Modal ke Panel Inline
 import AppSidebar from '@/features/common/components/AppSidebar';
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserType[]>(mockUserTypes);
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
   
-  // State untuk Modal Tambah/Edit
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // State untuk mode tampilan panel kanan ('detail', 'add', atau 'edit')
+  const [mode, setMode] = useState<'detail' | 'add' | 'edit'>('detail');
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
 
   // Handler saat kartu user diklik di sidebar
   const handleSelectUser = (user: UserType) => {
     setSelectedUser(user);
+    setMode('detail');
   };
 
-  // Handler buka modal tambah
+  // Handler buka form tambah
   const handleOpenAdd = () => {
     setEditingUser(null);
-    setIsModalOpen(true);
+    setMode('add');
   };
 
-  // Handler buka modal edit
+  // Handler buka form edit
   const handleOpenEdit = (user: UserType) => {
     setEditingUser(user);
-    setIsModalOpen(true);
+    setMode('edit');
   };
 
   // Handler Simpan Data (Create / Update)
   const handleSaveUser = (data: Omit<UserType, 'id'> & { id?: string }) => {
-    if (editingUser) {
+    if (mode === 'edit' && editingUser) {
       // Proses Update
       const updatedList = users.map((u) => (u.id === editingUser.id ? ({ ...u, ...data } as UserType) : u));
       setUsers(updatedList);
-      if (selectedUser?.id === editingUser.id) {
-        setSelectedUser({ ...selectedUser, ...data } as UserType);
-      }
+      const updatedUser = { ...editingUser, ...data } as UserType;
+      setSelectedUser(updatedUser);
     } else {
       // Proses Create Baru
       const newUser: UserType = {
         id: data.id || Date.now().toString(),
         name: data.name,
         description: data.description,
-        storiesCount: data.storiesCount,
-        personasCount: data.personasCount,
+        storiesCount: data.storiesCount || 0,
+        personasCount: data.personasCount || 0,
+        personas: data.personas || [],
       };
       setUsers([...users, newUser]);
       setSelectedUser(newUser);
     }
+    setMode('detail');
+    setEditingUser(null);
   };
 
   // Handler Hapus User
@@ -64,13 +67,14 @@ export default function UsersPage() {
     if (selectedUser?.id === id) {
       setSelectedUser(null);
     }
+    setMode('detail');
   };
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       
-      {/* 1. AppSidebar Utama (Menu navigasi kiri luar) */}
-      <AppSidebar />
+      {/* 1. AppSidebar Utama (Ditambahkan activeMenu="user-types" agar tidak error TypeScript) */}
+      <AppSidebar activeMenu="users" />
 
       {/* 2. UsersSidebar / Sub-Sidebar (Daftar User Types) */}
       <div className="w-80 shrink-0 border-r border-slate-200 bg-white">
@@ -82,9 +86,15 @@ export default function UsersPage() {
         />
       </div>
 
-      {/* 3. Sisi Kanan: Panel Utama (Detail atau Empty State) */}
+      {/* 3. Sisi Kanan: Panel Utama yang Dinamis (Bisa Detail, Form Add/Edit, atau Empty State) */}
       <main className="flex-1 overflow-y-auto p-8">
-        {selectedUser ? (
+        {mode === 'add' || mode === 'edit' ? (
+          <UserFormPanel
+            initialData={editingUser}
+            onSubmit={handleSaveUser}
+            onCancel={() => setMode(selectedUser ? 'detail' : 'detail')}
+          />
+        ) : selectedUser ? (
           <UserDetailPanel
             user={selectedUser}
             onEdit={handleOpenEdit}
@@ -95,13 +105,6 @@ export default function UsersPage() {
         )}
       </main>
 
-      {/* Modal Form Tambah / Edit */}
-      <UserFormModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSubmit={handleSaveUser}
-        initialData={editingUser}
-      />
     </div>
   );
 }
