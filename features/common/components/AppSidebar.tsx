@@ -24,7 +24,7 @@ export default function AppSidebar({ activeMenu }: AppSidebarProps) {
       <LogoUserdoc />
       
       {/* Jarak antar menu diperdekat menggunakan gap-2 */}
-      <div className="flex flex-col gap-8 w-full px-2">
+      <div className="flex flex-col gap-2 w-full px-2">
         {/* Menu Stories */}
         <Link href="/stories" className={getButtonStyle('stories')}>
           <FileText className="w-5 h-5 mb-1" />
