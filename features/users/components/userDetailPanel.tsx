@@ -1,119 +1,89 @@
+// features/users/components/userDetailPanel.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
 import { UserType } from '../types';
+import { Sparkles } from 'lucide-react';
 
 interface UserDetailPanelProps {
-  user: UserType;
-  onEdit: (user: UserType) => void;
-  onDelete: (id: string) => void;
+  userType: UserType;
 }
 
-export default function UserDetailPanel({ user, onEdit, onDelete }: UserDetailPanelProps) {
-  const [detailData, setDetailData] = useState<UserType | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  useEffect(() => {
-    setIsLoading(true);
-    const fetchDetailFromAPI = async () => {
-      setTimeout(() => {
-        setDetailData(user);
-        setIsLoading(false);
-      }, 300);
-    };
-
-    fetchDetailFromAPI();
-  }, [user]);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full text-slate-400 text-xs">
-        <p className="animate-pulse">Loading user details...</p>
-      </div>
-    );
-  }
-
-  if (!detailData) return null;
-
+export default function UserDetailPanel({ userType }: UserDetailPanelProps) {
   return (
-    <div className="max-w-3xl mx-auto bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-6">
-      
-      {/* Header Profile */}
-      <div className="flex items-start justify-between border-b border-slate-100 pb-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-600 text-white font-bold text-base flex items-center justify-center shadow-sm">
-            {detailData.name.charAt(0)}
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">{detailData.name}</h2>
-            <p className="text-xs text-slate-500 mt-0.5">{detailData.description}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => onEdit(detailData)}
-            className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors cursor-pointer"
-          >
-            Edit
-          </button>
-          <button
-            onClick={() => onDelete(detailData.id)}
-            className="px-3 py-1.5 text-xs font-medium bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors cursor-pointer"
-          >
-            Delete
-          </button>
+    <div className="flex-1 bg-white p-8 overflow-y-auto h-full flex flex-col">
+      {/* Header Info User Type */}
+      <div className="pb-6 border-b border-gray-200 mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">{userType.name}</h2>
+        <p className="text-sm text-gray-600 leading-relaxed">{userType.description}</p>
+        <div className="flex items-center gap-4 mt-4 text-xs font-medium text-gray-500">
+          <span>{userType.storiesCount || 0} Stories</span>
+          <span>•</span>
+          <span>{userType.personasCount || userType.personas?.length || 0} Personas</span>
         </div>
       </div>
 
-      {/* Statistik Ringkas */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-          <span className="text-xs text-slate-400 block mb-1">Total Stories</span>
-          <span className="text-xl font-bold text-slate-800">{detailData.storiesCount}</span>
-        </div>
-        <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-          <span className="text-xs text-slate-400 block mb-1">Total Personas</span>
-          <span className="text-xl font-bold text-slate-800">{detailData.personasCount}</span>
-        </div>
-      </div>
+      {/* Daftar Personas */}
+      <div className="space-y-6">
+        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Personas</h3>
+        {userType.personas && userType.personas.length > 0 ? (
+          <div className="grid grid-cols-1 gap-6">
+            {userType.personas.map((persona, index) => (
+              <div key={index} className="border border-gray-200 rounded-xl p-6 bg-gray-50/30 shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
+                      {persona.name.charAt(0)}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-900">{persona.name}</h4>
+                      <p className="text-xs text-gray-500">{persona.workTitle || 'No Job Title'}</p>
+                    </div>
+                  </div>
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                </div>
 
-      {/* Bagian Daftar Personas (Mengikuti mock data baru) */}
-      <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
-          Associated Personas ({detailData.personas?.length || 0})
-        </h3>
-        
-        <div className="space-y-3">
-          {detailData.personas && detailData.personas.length > 0 ? (
-            detailData.personas.map((persona, index) => (
-              <div key={index} className="p-4 rounded-xl border border-slate-200 bg-white space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-bold text-slate-800">{persona.name}</h4>
-                  <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-md font-medium">
-                    {persona.age} yrs • {persona.location}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-600">
-                  <strong className="text-slate-700">About:</strong> {persona.about}
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
                   <div>
-                    <strong className="text-emerald-600 block mb-0.5">Goals:</strong>
-                    <span className="text-slate-500">{persona.goals}</span>
+                    <span className="text-gray-400 block mb-1">Age</span>
+                    <span className="font-semibold text-gray-800">{persona.age || '-'}</span>
                   </div>
                   <div>
-                    <strong className="text-rose-600 block mb-0.5">Frustrations:</strong>
-                    <span className="text-slate-500">{persona.frustrations}</span>
+                    <span className="text-gray-400 block mb-1">Location</span>
+                    <span className="font-semibold text-gray-800">{persona.location || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block mb-1">Family Status</span>
+                    <span className="font-semibold text-gray-800">{persona.familyStatus || '-'}</span>
                   </div>
                 </div>
+
+                {persona.about && (
+                  <div className="text-xs pt-2">
+                    <span className="font-bold text-gray-700 block mb-1 uppercase">About</span>
+                    <p className="text-gray-600 leading-relaxed">{persona.about}</p>
+                  </div>
+                )}
+
+                {persona.goals && (
+                  <div className="text-xs pt-1">
+                    <span className="font-bold text-gray-700 block mb-1 uppercase">Goals</span>
+                    <p className="text-gray-600 leading-relaxed">{persona.goals}</p>
+                  </div>
+                )}
+
+                {persona.frustrations && (
+                  <div className="text-xs pt-1">
+                    <span className="font-bold text-gray-700 block mb-1 uppercase">Frustrations</span>
+                    <p className="text-gray-600 leading-relaxed">{persona.frustrations}</p>
+                  </div>
+                )}
               </div>
-            ))
-          ) : (
-            <p className="text-xs text-slate-400 italic">No personas available for this user type.</p>
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-gray-400 italic">No personas defined for this user type yet.</p>
+        )}
       </div>
-
     </div>
   );
 }
