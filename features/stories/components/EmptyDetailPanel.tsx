@@ -1,7 +1,11 @@
 // features/stories/components/EmptyDetailPanel.tsx
-import { Plus, Sparkles } from 'lucide-react';
+import { Pencil, ChevronDown, Sparkles } from 'lucide-react';
 
-export default function EmptyDetailPanel() {
+interface EmptyDetailPanelProps {
+  onOpenAddModal?: () => void;
+}
+
+export default function EmptyDetailPanel({ onOpenAddModal }: EmptyDetailPanelProps) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-8 bg-white">
       {/* Ilustrasi Placeholder */}
@@ -19,10 +23,22 @@ export default function EmptyDetailPanel() {
         Capture requirements in a language everyone can understand
       </p>
 
-      <button className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2.5 rounded-lg shadow-sm transition-colors flex items-center gap-2 text-sm">
-        <Plus className="w-4 h-4" />
-        <span>Create New</span>
-      </button>
+      {/* Tombol Create New dengan Pencil dan Dropdown */}
+      <div className="inline-flex rounded-lg shadow-sm">
+        <button
+          onClick={onOpenAddModal}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2.5 rounded-l-lg transition-colors flex items-center gap-2 text-sm cursor-pointer"
+        >
+          <Pencil className="w-4 h-4" />
+          <span>Create New</span>
+        </button>
+        <button
+          onClick={onOpenAddModal}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-2.5 rounded-r-lg border-l border-blue-500 transition-colors flex items-center justify-center cursor-pointer"
+        >
+          <ChevronDown className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 }
