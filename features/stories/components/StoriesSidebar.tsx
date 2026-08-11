@@ -1,28 +1,27 @@
-// features/stories/components/StoriesSidebar.tsx
+'use client';
+
 import { useState, useMemo } from 'react';
 import { Epic, UserStory } from '../types';
 import EpicListItem from './EpicListItem';
-import { Search, Plus, ChevronDown } from 'lucide-react';
+import { Search, Pencil, ChevronDown } from 'lucide-react';
 
 interface StoriesSidebarProps {
   epics: Epic[];
   selectedStoryId?: string;
   onSelectStory: (story: UserStory) => void;
-  onAddNew?: () => void; // Opsional: fungsi untuk tombol tambah baru
+  onSelectEpic?: (epic: Epic) => void;
+  onAddNew?: () => void;
 }
 
-export default function StoriesSidebar({ epics, selectedStoryId, onSelectStory, onAddNew }: StoriesSidebarProps) {
+export default function StoriesSidebar({ epics, selectedStoryId, onSelectStory, onSelectEpic, onAddNew }: StoriesSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Filter epics dan user stories berdasarkan keyword pencarian
   const filteredEpics = useMemo(() => {
     if (!searchQuery.trim()) return epics;
-
     const query = searchQuery.toLowerCase();
 
     return epics
       .map((epic) => {
-        // Cocokkan nama epic atau saring user stories di dalamnya
         const matchesEpicName = epic.name.toLowerCase().includes(query);
         const filteredStories = epic.user_stories?.filter(
           (story) =>
@@ -32,7 +31,6 @@ export default function StoriesSidebar({ epics, selectedStoryId, onSelectStory, 
             story.code?.toLowerCase().includes(query)
         );
 
-        // Jika epic cocok atau ada story di dalamnya yang cocok
         if (matchesEpicName || (filteredStories && filteredStories.length > 0)) {
           return {
             ...epic,
@@ -44,17 +42,14 @@ export default function StoriesSidebar({ epics, selectedStoryId, onSelectStory, 
       .filter(Boolean) as Epic[];
   }, [epics, searchQuery]);
 
-  // Hitung total stories dan epics yang sedang ditampilkan
   const totalStories = useMemo(() => {
-    return filteredEpics.reduce((acc, epic) => acc + (epic.user_stories?.length || 0), 0);
-  }, [filteredEpics]);
+    return epics.reduce((acc, epic) => acc + (epic.user_stories?.length || 0), 0);
+  }, [epics]);
 
   return (
     <aside className="w-80 border-r border-gray-200 bg-white h-full flex flex-col">
-      {/* Header Sidebar dengan Search Bar & Tombol Tambah */}
       <div className="p-4 border-b border-gray-100">
         <div className="flex items-center gap-2 mb-2">
-          {/* Input Search Bar */}
           <div className="relative flex-1">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
               <Search className="w-4 h-4" />
@@ -68,31 +63,30 @@ export default function StoriesSidebar({ epics, selectedStoryId, onSelectStory, 
             />
           </div>
 
-          {/* Tombol Add / Create dengan Dropdown Kecil */}
+          {/* Tombol Create New (Pencil) yang berfungsi */}
           <button
             type="button"
             onClick={onAddNew}
-            className="bg-blue-600 hover:bg-blue-700 text-white p-1.5 rounded-lg transition-colors flex items-center justify-center shadow-sm cursor-pointer"
-            title="Create New"
+            className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg transition-colors flex items-center justify-center shadow-sm cursor-pointer"
+            title="Create New Story/Epic"
           >
-            <Plus className="w-4 h-4" />
+            <Pencil className="w-4 h-4" />
           </button>
+          
           <button
             type="button"
-            className="border border-gray-200 hover:bg-gray-50 text-gray-600 p-1.5 rounded-lg transition-colors flex items-center justify-center cursor-pointer"
+            className="border border-gray-200 hover:bg-gray-50 text-gray-600 p-2 rounded-lg transition-colors flex items-center justify-center cursor-pointer"
             title="More options"
           >
             <ChevronDown className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        {/* Informasi Jumlah (Showing X stories, Y epics) */}
         <div className="text-[11px] text-gray-400 font-medium px-0.5">
-          Showing {totalStories} stories, {filteredEpics.length} epics
+          Showing {totalStories} stories, {epics.length} epics
         </div>
       </div>
 
-      {/* List Content */}
       <div className="flex-1 overflow-y-auto p-3">
         {filteredEpics.length === 0 ? (
           <div className="py-8 text-center text-gray-400 text-xs italic">
@@ -105,6 +99,7 @@ export default function StoriesSidebar({ epics, selectedStoryId, onSelectStory, 
               epic={epic}
               selectedStoryId={selectedStoryId}
               onSelectStory={onSelectStory}
+              onSelectEpic={onSelectEpic}
             />
           ))
         )}
