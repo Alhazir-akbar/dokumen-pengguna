@@ -26,10 +26,10 @@ export default function StoriesSidebar({ epics, selectedStoryId, onSelectStory, 
         const matchesEpicName = epic.name.toLowerCase().includes(query);
         const filteredStories = epic.user_stories?.filter(
           (story) =>
-            story.i_want.toLowerCase().includes(query) ||
-            story.as_a.toLowerCase().includes(query) ||
-            story.so_that.toLowerCase().includes(query) ||
-            story.code.toLowerCase().includes(query)
+            story.i_want?.toLowerCase().includes(query) ||
+            story.as_a?.toLowerCase().includes(query) ||
+            story.so_that?.toLowerCase().includes(query) ||
+            story.code?.toLowerCase().includes(query)
         );
 
         // Jika epic cocok atau ada story di dalamnya yang cocok
