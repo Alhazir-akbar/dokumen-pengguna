@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { UserType, PersonaType } from '../types';
-import { Save, X, Plus, Trash2, Camera } from 'lucide-react';
+import { Save, X, Plus, Trash2, Camera, Sparkles } from 'lucide-react';
 
 interface UserFormPanelProps {
   initialData?: UserType | null;
@@ -53,7 +53,7 @@ export default function UserFormPanel({ initialData, onSubmit, onCancel }: UserF
     setPersonas([
       ...personas,
       {
-        name: 'New Persona',
+        name: `Persona ${personas.length + 1}`,
         age: 25,
         location: '',
         familyStatus: '',
@@ -67,6 +67,7 @@ export default function UserFormPanel({ initialData, onSubmit, onCancel }: UserF
   };
 
   const handleDeletePersona = (index: number) => {
+    if (personas.length === 1) return; // Minimal sisakan 1 persona
     const updated = personas.filter((_, i) => i !== index);
     setPersonas(updated);
     setActivePersonaIndex(Math.max(0, index - 1));
@@ -97,63 +98,64 @@ export default function UserFormPanel({ initialData, onSubmit, onCancel }: UserF
   };
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-6xl mx-auto space-y-6">
+    <form onSubmit={handleSubmit} className="flex-1 bg-white p-8 overflow-y-auto h-full flex flex-col">
       
-      {/* Header Form: Input Nama User Type + Tombol Save & Cancel */}
-      <div className="flex items-center justify-between bg-white px-6 py-3 rounded-xl border border-slate-200 shadow-xs">
+      {/* Top Header: Input Nama User Type + Tombol Save & Cancel */}
+      <div className="flex items-center justify-between gap-4 pb-6 border-b border-gray-200 mb-6">
         <input
           type="text"
           required
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="User Type Name"
-          className="text-base font-bold text-slate-900 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none px-1 py-0.5 w-1/2"
+          className="flex-1 text-xl font-semibold text-gray-800 placeholder-gray-400 bg-gray-50/50 border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500 transition-colors"
         />
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             type="submit"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors cursor-pointer shadow-xs"
+            className="flex items-center gap-1.5 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm cursor-pointer"
           >
-            <Save className="w-3.5 h-3.5" />
-            Save
+            <Save className="w-4 h-4 text-gray-500" /> Save
           </button>
           <button
             type="button"
             onClick={onCancel}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm cursor-pointer"
           >
-            <X className="w-3.5 h-3.5" />
-            Cancel
+            <X className="w-4 h-4 text-gray-500" /> Cancel
           </button>
         </div>
       </div>
 
-      {/* Deskripsi Box */}
-      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs space-y-2">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Description</span>
+      {/* Description Box */}
+      <div className="mb-8 border border-gray-200 rounded-xl p-4 bg-white shadow-sm">
+        <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+          DESCRIPTION
+        </label>
         <textarea
-          rows={2}
+          rows={3}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Description of this User type"
-          className="w-full text-sm text-slate-700 border border-slate-200 rounded-lg p-3 focus:outline-none focus:border-blue-500"
+          className="w-full text-sm text-gray-800 placeholder-gray-400 focus:outline-none resize-none"
         />
       </div>
 
-      {/* Bagian Personas */}
-      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-          {/* Tab List Personas */}
-          <div className="flex gap-6 overflow-x-auto">
+      {/* Bagian Personas Container */}
+      <div className="border border-gray-200 rounded-xl bg-white shadow-sm flex-1 flex flex-col overflow-hidden">
+        
+        {/* Tab Header & Tombol New Persona */}
+        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-3 bg-gray-50/50">
+          <div className="flex items-center gap-2 overflow-x-auto">
             {personas.map((p, idx) => (
               <button
                 key={idx}
                 type="button"
                 onClick={() => setActivePersonaIndex(idx)}
-                className={`pb-1 text-xs font-semibold transition-colors relative cursor-pointer ${
+                className={`px-4 py-2 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
                   activePersonaIndex === idx
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-slate-400 hover:text-slate-600'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-200/60'
                 }`}
               >
                 {p.name || `Persona ${idx + 1}`}
@@ -161,131 +163,145 @@ export default function UserFormPanel({ initialData, onSubmit, onCancel }: UserF
             ))}
           </div>
 
-          {/* Tombol + New Persona */}
           <button
             type="button"
             onClick={handleAddPersona}
-            className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer shrink-0"
+            className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0"
           >
-            <Plus className="w-3.5 h-3.5" />
-            New
+            <Plus className="w-3.5 h-3.5" /> New Persona
           </button>
         </div>
 
-        {/* Form Detail Persona yang Aktif */}
+        {/* Persona Content Body */}
         {personas.length > 0 && activePersona && (
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 pt-2">
-            
-            {/* Kolom Kiri: Foto & Identitas Utama */}
-            <div className="md:col-span-4 space-y-4 border-r border-slate-100 pr-6">
-              <div className="flex flex-col items-center gap-2">
-                <div className="w-20 h-20 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 relative overflow-hidden shadow-xs group">
-                  <Camera className="w-6 h-6" />
+          <div className="p-8 flex-1 overflow-y-auto space-y-6">
+            <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">PERSONAS</div>
+
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+              
+              {/* Kolom Kiri: Foto & Change Photo */}
+              <div className="md:col-span-3 flex flex-col items-center border-r border-gray-100 pr-4">
+                <div className="w-24 h-24 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-400 mb-3 shadow-inner relative overflow-hidden">
+                  <Camera className="w-8 h-8" />
                 </div>
-                <span className="text-[11px] text-blue-600 font-medium cursor-pointer hover:underline">Change photo</span>
+                <span className="text-xs font-medium text-blue-600 hover:underline cursor-pointer">
+                  Change photo
+                </span>
               </div>
 
-              <div className="space-y-3 pt-2">
-                <div>
-                  <label className="text-[10px] text-slate-400 font-semibold block mb-1">Persona Name</label>
+              {/* Kolom Kanan: Atribut & Field Detail Persona */}
+              <div className="md:col-span-9 space-y-5">
+                
+                {/* Persona Name dengan Ikon Sparkle */}
+                <div className="flex items-center gap-2 border-b border-gray-200 pb-2">
                   <input
                     type="text"
                     value={activePersona.name}
                     onChange={(e) => handlePersonaChange('name', e.target.value)}
-                    className="w-full text-xs font-bold text-slate-800 border-b border-slate-200 pb-1 focus:outline-none focus:border-blue-500"
+                    placeholder="Persona Name"
+                    className="text-base font-semibold text-gray-800 focus:outline-none w-full bg-transparent"
                   />
+                  <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[10px] text-slate-400 font-semibold block mb-1">Age</label>
+
+                {/* Garis-garis Atribut (Age, Location, Family status, Work / Job Title) */}
+                <div className="space-y-4 text-sm">
+                  <div className="flex items-center border-b border-gray-100 pb-2">
+                    <span className="w-32 text-xs font-medium text-gray-400">Age</span>
                     <input
                       type="number"
                       value={activePersona.age || ''}
                       onChange={(e) => handlePersonaChange('age', Number(e.target.value))}
-                      className="w-full text-xs text-slate-700 border-b border-slate-200 pb-1 focus:outline-none focus:border-blue-500"
+                      placeholder="e.g. 25"
+                      className="flex-1 text-gray-800 bg-transparent focus:outline-none text-sm"
                     />
                   </div>
-                  <div>
-                    <label className="text-[10px] text-slate-400 font-semibold block mb-1">Location</label>
+
+                  <div className="flex items-center border-b border-gray-100 pb-2">
+                    <span className="w-32 text-xs font-medium text-gray-400">Location</span>
                     <input
                       type="text"
-                      value={activePersona.location}
+                      value={activePersona.location || ''}
                       onChange={(e) => handlePersonaChange('location', e.target.value)}
-                      className="w-full text-xs text-slate-700 border-b border-slate-200 pb-1 focus:outline-none focus:border-blue-500"
+                      placeholder="e.g. Jakarta, Indonesia"
+                      className="flex-1 text-gray-800 bg-transparent focus:outline-none text-sm"
+                    />
+                  </div>
+
+                  <div className="flex items-center border-b border-gray-100 pb-2">
+                    <span className="w-32 text-xs font-medium text-gray-400">Family status</span>
+                    <input
+                      type="text"
+                      value={activePersona.familyStatus || ''}
+                      onChange={(e) => handlePersonaChange('familyStatus', e.target.value)}
+                      placeholder="e.g. Single / Married"
+                      className="flex-1 text-gray-800 bg-transparent focus:outline-none text-sm"
+                    />
+                  </div>
+
+                  <div className="flex items-center border-b border-gray-100 pb-2">
+                    <span className="w-32 text-xs font-medium text-gray-400">Work / Job Title</span>
+                    <input
+                      type="text"
+                      value={activePersona.workTitle || ''}
+                      onChange={(e) => handlePersonaChange('workTitle', e.target.value)}
+                      placeholder="e.g. Software Engineer"
+                      className="flex-1 text-gray-800 bg-transparent focus:outline-none text-sm"
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 font-semibold block mb-1">Family status</label>
-                  <input
-                    type="text"
-                    value={activePersona.familyStatus || ''}
-                    onChange={(e) => handlePersonaChange('familyStatus', e.target.value)}
-                    className="w-full text-xs text-slate-700 border-b border-slate-200 pb-1 focus:outline-none focus:border-blue-500"
-                  />
+
+                {/* Section Textarea: About, Goals, Frustrations */}
+                <div className="space-y-6 pt-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase mb-2">About</label>
+                    <textarea
+                      rows={2}
+                      value={activePersona.about || ''}
+                      onChange={(e) => handlePersonaChange('about', e.target.value)}
+                      placeholder="Write background information about this persona..."
+                      className="w-full text-sm text-gray-700 bg-gray-50/50 border border-gray-200 rounded-lg p-3 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase mb-2">Goals</label>
+                    <textarea
+                      rows={2}
+                      value={activePersona.goals || ''}
+                      onChange={(e) => handlePersonaChange('goals', e.target.value)}
+                      placeholder="What does this persona want to achieve?"
+                      className="w-full text-sm text-gray-700 bg-gray-50/50 border border-gray-200 rounded-lg p-3 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase mb-2">Frustrations</label>
+                    <textarea
+                      rows={2}
+                      value={activePersona.frustrations || ''}
+                      onChange={(e) => handlePersonaChange('frustrations', e.target.value)}
+                      placeholder="What pain points does this persona face?"
+                      className="w-full text-sm text-gray-700 bg-gray-50/50 border border-gray-200 rounded-lg p-3 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 font-semibold block mb-1">Work / Job Title</label>
-                  <input
-                    type="text"
-                    value={activePersona.workTitle || ''}
-                    onChange={(e) => handlePersonaChange('workTitle', e.target.value)}
-                    className="w-full text-xs text-slate-700 border-b border-slate-200 pb-1 focus:outline-none focus:border-blue-500"
-                  />
-                </div>
+
+                {/* Tombol Delete Persona di pojok kanan bawah */}
+                {personas.length > 1 && (
+                  <div className="flex justify-end pt-4">
+                    <button
+                      type="button"
+                      onClick={() => handleDeletePersona(activePersonaIndex)}
+                      className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 font-medium cursor-pointer transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Delete Persona
+                    </button>
+                  </div>
+                )}
+
               </div>
             </div>
-
-            {/* Kolom Kanan: About, Goals, Frustrations */}
-            <div className="md:col-span-8 space-y-6">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-blue-600 block">About</label>
-                <textarea
-                  rows={3}
-                  value={activePersona.about}
-                  onChange={(e) => handlePersonaChange('about', e.target.value)}
-                  placeholder="Write about this persona..."
-                  className="w-full text-xs text-slate-700 border border-slate-200 rounded-lg p-3 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-emerald-600 block">Goals</label>
-                <textarea
-                  rows={3}
-                  value={activePersona.goals}
-                  onChange={(e) => handlePersonaChange('goals', e.target.value)}
-                  placeholder="What are their primary goals?"
-                  className="w-full text-xs text-slate-700 border border-slate-200 rounded-lg p-3 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-rose-600 block">Frustrations</label>
-                <textarea
-                  rows={3}
-                  value={activePersona.frustrations}
-                  onChange={(e) => handlePersonaChange('frustrations', e.target.value)}
-                  placeholder="What challenges or frustrations do they face?"
-                  className="w-full text-xs text-slate-700 border border-slate-200 rounded-lg p-3 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              {/* Tombol Hapus Persona */}
-              {personas.length > 1 && (
-                <div className="flex justify-end pt-2">
-                  <button
-                    type="button"
-                    onClick={() => handleDeletePersona(activePersonaIndex)}
-                    className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 font-medium cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    Delete Persona
-                  </button>
-                </div>
-              )}
-            </div>
-
           </div>
         )}
       </div>

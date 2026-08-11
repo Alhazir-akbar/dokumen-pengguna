@@ -1,92 +1,89 @@
-// app/stories/page.tsx
+// features/users/components/userDetailPanel.tsx
 'use client';
 
-import { useState } from 'react';
-import { UserStory } from '@/features/stories/types';
-import StoriesSidebar from '@/features/stories/components/StoriesSidebar';
-import EmptyDetailPanel from '@/features/stories/components/EmptyDetailPanel';
-import EpicDetailPanel from '@/features/stories/components/EpicDetailPanel';
-import AppSidebar from '@/features/common/components/AppSidebar';
-import { MessageSquare, Upload, Download } from 'lucide-react';
-import { useWizardStore } from '@/features/project-setup/store/wizard-store';
+import { UserType } from '../types';
+import { Sparkles } from 'lucide-react';
 
-export default function StoriesPage() {
-  const { epics, userStories, projectName } = useWizardStore();
+interface UserDetailPanelProps {
+  userType: UserType;
+}
 
-  // Mapping data dari store agar sesuai dengan interface tipe data Stories
-  const formattedEpics = epics.map((epic, index) => ({
-    id: epic.id,
-    code: `EP-${index + 1}`,
-    name: epic.title,
-    title: epic.title,
-    description: epic.description,
-    user_stories: userStories
-      .filter((story) => story.epicId === epic.id)
-      .map((story, sIndex) => ({
-        id: story.id,
-        epicId: story.epicId,
-        code: `US-${index + 1}.${sIndex + 1}`,
-        // Diubah dari story.title ke story.storyName sesuai tipe data wizard store
-        as_a: story.userType || 'User',
-        i_want: story.storyName || 'Melakukan sesuatu',
-        so_that: story.description || 'Sistem berjalan dengan baik',
-        acceptanceCriteria: [],
-        techNotes: [],
-        testCases: [],
-      })),
-  }));
-
-  const [selectedStory, setSelectedStory] = useState<UserStory | null>(null);
-
+export default function UserDetailPanel({ userType }: UserDetailPanelProps) {
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-gray-50 font-sans">
-      {/* 1. AppSidebar Utama */}
-      <AppSidebar activeMenu="stories" />
+    <div className="flex-1 bg-white p-8 overflow-y-auto h-full flex flex-col">
+      {/* Header Info User Type */}
+      <div className="pb-6 border-b border-gray-200 mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">{userType.name}</h2>
+        <p className="text-sm text-gray-600 leading-relaxed">{userType.description}</p>
+        <div className="flex items-center gap-4 mt-4 text-xs font-medium text-gray-500">
+          <span>{userType.storiesCount || 0} Stories</span>
+          <span>•</span>
+          <span>{userType.personasCount || userType.personas?.length || 0} Personas</span>
+        </div>
+      </div>
 
-      {/* 2. StoriesSidebar (Daftar Epic & Stories) */}
-      <StoriesSidebar 
-        epics={formattedEpics as any} 
-        selectedStoryId={selectedStory?.id} 
-        onSelectStory={(story: UserStory) => setSelectedStory(story)} 
-      />
+      {/* Daftar Personas */}
+      <div className="space-y-6">
+        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Personas</h3>
+        {userType.personas && userType.personas.length > 0 ? (
+          <div className="grid grid-cols-1 gap-6">
+            {userType.personas.map((persona, index) => (
+              <div key={index} className="border border-gray-200 rounded-xl p-6 bg-gray-50/30 shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
+                      {persona.name.charAt(0)}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-900">{persona.name}</h4>
+                      <p className="text-xs text-gray-500">{persona.workTitle || 'No Job Title'}</p>
+                    </div>
+                  </div>
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                </div>
 
-      {/* 3. Panel Utama di Kanan */}
-      <main className="flex-1 flex flex-col h-full bg-white overflow-hidden">
-        {/* Top Header Bar */}
-        <div className="h-14 border-b border-gray-200 px-6 flex items-center justify-between bg-white shrink-0">
-          <span className="text-xs font-medium text-gray-600">
-            {projectName ? projectName : 'alalal'} <span className="text-gray-400">/</span>
-          </span>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                  <div>
+                    <span className="text-gray-400 block mb-1">Age</span>
+                    <span className="font-semibold text-gray-800">{persona.age || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block mb-1">Location</span>
+                    <span className="font-semibold text-gray-800">{persona.location || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block mb-1">Family Status</span>
+                    <span className="font-semibold text-gray-800">{persona.familyStatus || '-'}</span>
+                  </div>
+                </div>
 
-          <div className="flex items-center gap-3">
-            <button className="text-xs text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm font-medium cursor-pointer">
-              <MessageSquare className="w-3.5 h-3.5 text-blue-600" /> Chat to Userdoc Assistant
-            </button>
-            
-            <div className="flex items-center gap-1.5 text-gray-500">
-              <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 cursor-pointer" title="Upload">
-                <Upload className="w-4 h-4" />
-              </button>
-              <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 cursor-pointer" title="Download">
-                <Download className="w-4 h-4" />
-              </button>
-            </div>
+                {persona.about && (
+                  <div className="text-xs pt-2">
+                    <span className="font-bold text-gray-700 block mb-1 uppercase">About</span>
+                    <p className="text-gray-600 leading-relaxed">{persona.about}</p>
+                  </div>
+                )}
 
-            <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-sm ml-1">
-              UD
-            </div>
+                {persona.goals && (
+                  <div className="text-xs pt-1">
+                    <span className="font-bold text-gray-700 block mb-1 uppercase">Goals</span>
+                    <p className="text-gray-600 leading-relaxed">{persona.goals}</p>
+                  </div>
+                )}
+
+                {persona.frustrations && (
+                  <div className="text-xs pt-1">
+                    <span className="font-bold text-gray-700 block mb-1 uppercase">Frustrations</span>
+                    <p className="text-gray-600 leading-relaxed">{persona.frustrations}</p>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
-        </div>
-
-        {/* Dynamic Content Area */}
-        <div className="flex-1 flex overflow-hidden">
-          {selectedStory ? (
-            <EpicDetailPanel story={selectedStory} />
-          ) : (
-            <EmptyDetailPanel />
-          )}
-        </div>
-      </main>
+        ) : (
+          <p className="text-xs text-gray-400 italic">No personas defined for this user type yet.</p>
+        )}
+      </div>
     </div>
   );
 }

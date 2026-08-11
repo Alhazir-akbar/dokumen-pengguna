@@ -1,4 +1,4 @@
-// features/users/components/UsersSidebar.tsx
+// features/users/components/userSidebar.tsx
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -15,7 +15,6 @@ interface UsersSidebarProps {
 export default function UsersSidebar({ userTypes, selectedId, onSelectUser, onAddNew }: UsersSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
-  // *(Kode Tambahan)* Memfilter daftar user berdasarkan pencarian nama atau deskripsi
   const filteredUsers = useMemo(() => {
     if (!searchQuery.trim()) return userTypes;
 
@@ -74,7 +73,7 @@ export default function UsersSidebar({ userTypes, selectedId, onSelectUser, onAd
       {/* List Card User Types */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {filteredUsers.length === 0 ? (
-          <div className="py-8 text-center text-gray-400 text-xs italic text-gray-400">
+          <div className="py-8 text-center text-xs italic text-gray-400">
             No users found.
           </div>
         ) : (
@@ -91,7 +90,7 @@ export default function UsersSidebar({ userTypes, selectedId, onSelectUser, onAd
                 }`}
               >
                 <div className="flex items-center gap-3 mb-1.5">
-                  <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-600 font-bold text-xs flex items-center justify-center flex-shrink-0">
+                  <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-600 font-bold text-xs flex items-center justify-center shrink-0">
                     {initialLetter}
                   </div>
                   <h4 className="text-xs font-bold text-gray-900 truncate">{type.name}</h4>
