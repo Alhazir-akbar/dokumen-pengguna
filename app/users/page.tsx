@@ -15,15 +15,23 @@ export default function UsersPage() {
   const [userTypes, setUserTypes] = useState<UserType[]>(mockUserTypes);
   const [selectedUserType, setSelectedUserType] = useState<UserType | null>(mockUserTypes[0] || null);
   const [isCreating, setIsCreating] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const handleSelectUser = (user: UserType) => {
     setSelectedUserType(user);
     setIsCreating(false);
+    setIsEditing(false);
   };
 
   const handleOpenAddModal = () => {
     setSelectedUserType(null);
     setIsCreating(true);
+    setIsEditing(false);
+  };
+
+  const handleOpenEditModal = () => {
+    setIsCreating(false);
+    setIsEditing(true);
   };
 
   const handleSaveUserType = (savedData: UserType) => {
@@ -34,11 +42,23 @@ export default function UsersPage() {
     }
     setSelectedUserType(savedData);
     setIsCreating(false);
+    setIsEditing(false);
+  };
+
+  const handleDeleteUserType = (id: string) => {
+    const updatedList = userTypes.filter((item) => item.id !== id);
+    setUserTypes(updatedList);
+    setSelectedUserType(updatedList[0] || null);
+    setIsCreating(false);
+    setIsEditing(false);
   };
 
   const handleCancel = () => {
     setIsCreating(false);
-    setSelectedUserType(userTypes[0] || null);
+    setIsEditing(false);
+    if (!selectedUserType && userTypes.length > 0) {
+      setSelectedUserType(userTypes[0]);
+    }
   };
 
   return (
@@ -54,7 +74,7 @@ export default function UsersPage() {
         onAddNew={handleOpenAddModal}
       />
 
-      {/* 3. Main Content Panel di Kanan */}
+      {/* 3. Main Content Panel */}
       <main className="flex-1 flex flex-col h-full bg-white overflow-hidden">
         {/* Top Navbar */}
         <div className="h-14 border-b border-gray-200 px-6 flex items-center justify-between bg-white shrink-0">
@@ -69,7 +89,7 @@ export default function UsersPage() {
           </div>
         </div>
 
-        {/* Dynamic Panel: Form Create/Edit, Detail, atau Empty State (Murni untuk Users) */}
+        {/* Dynamic Panel: Form Create/Edit, Detail, atau Empty State */}
         <div className="flex-1 flex overflow-hidden">
           {isCreating ? (
             <UserFormPanel
@@ -77,8 +97,18 @@ export default function UsersPage() {
               onSubmit={handleSaveUserType}
               onCancel={handleCancel}
             />
+          ) : isEditing && selectedUserType ? (
+            <UserFormPanel
+              initialData={selectedUserType}
+              onSubmit={handleSaveUserType}
+              onCancel={handleCancel}
+            />
           ) : selectedUserType ? (
-            <UserDetailPanel userType={selectedUserType} />
+            <UserDetailPanel 
+              userType={selectedUserType} 
+              onEdit={handleOpenEditModal}
+              onDelete={handleDeleteUserType}
+            />
           ) : (
             <EmptyUserPanel onOpenAddModal={handleOpenAddModal} />
           )}

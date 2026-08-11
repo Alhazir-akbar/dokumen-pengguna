@@ -3,7 +3,7 @@
 
 import { useState, useMemo } from 'react';
 import { UserType } from '../types';
-import { Plus, Search, ChevronDown } from 'lucide-react';
+import { Search, UserPlus } from 'lucide-react';
 
 interface UsersSidebarProps {
   userTypes: UserType[];
@@ -28,11 +28,10 @@ export default function UsersSidebar({ userTypes, selectedId, onSelectUser, onAd
 
   return (
     <div className="w-80 bg-white border-r border-gray-200 flex flex-col h-full">
-      
-      {/* Header Sidebar: Search Bar & Tombol Tambah */}
+      {/* Header Sidebar: Search Bar & Tombol Ikon Orang dengan Background */}
       <div className="p-4 border-b border-gray-100">
         <div className="flex items-center gap-2 mb-2">
-          {/* Input Search */}
+          {/* Input Search Biasa */}
           <div className="relative flex-1">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
               <Search className="w-4 h-4" />
@@ -46,21 +45,14 @@ export default function UsersSidebar({ userTypes, selectedId, onSelectUser, onAd
             />
           </div>
 
-          {/* Tombol Add / Create */}
+          {/* Tombol Ikon Orang di Luar Search Bar dengan Background Kotak */}
           <button
             type="button"
             onClick={onAddNew}
-            className="bg-blue-600 hover:bg-blue-700 text-white p-1.5 rounded-lg transition-colors flex items-center justify-center shadow-sm cursor-pointer"
+            className="w-8 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center justify-center transition-colors shadow-sm cursor-pointer shrink-0"
             title="Create New User"
           >
-            <Plus className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            className="border border-gray-200 hover:bg-gray-50 text-gray-600 p-1.5 rounded-lg transition-colors flex items-center justify-center cursor-pointer"
-            title="More options"
-          >
-            <ChevronDown className="w-3.5 h-3.5" />
+            <UserPlus className="w-4 h-4" />
           </button>
         </div>
 
@@ -99,14 +91,13 @@ export default function UsersSidebar({ userTypes, selectedId, onSelectUser, onAd
                 <div className="flex items-center gap-3 text-[10px] text-gray-400 font-medium pl-10">
                   <span>{type.storiesCount ?? 0} Stories</span>
                   <span>•</span>
-                  <span>{type.personasCount ?? 0} Personas</span>
+                  <span>{type.personasCount ?? type.personas?.length ?? 0} Personas</span>
                 </div>
               </div>
             );
           })
         )}
       </div>
-
     </div>
   );
 }
