@@ -6,8 +6,8 @@ import { mockUserTypes } from '@/features/users/data/mock-users';
 import UsersSidebar from '@/features/users/components/userSidebar';
 import EmptyUserPanel from '@/features/users/components/emptyUserPanel';
 import UserDetailPanel from '@/features/users/components/userDetailPanel';
-import UserFormModal from '@/features/users/components/userFormModal'; 
-import AppSidebar from '@/features/app/components/AppSidebar';
+import UserFormModal from '@/features/users/components/userFormPanel'; 
+import AppSidebar from '@/features/common/components/AppSidebar';
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserType[]>(mockUserTypes);
