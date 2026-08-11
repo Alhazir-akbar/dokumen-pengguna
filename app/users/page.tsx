@@ -1,59 +1,107 @@
 'use client';
 
 import { useState } from 'react';
-import AppSidebar from '@/features/common/components/AppSidebar';
-import UsersSidebar from '@/features/users/components/userSidebar';
-import UserDetailPanel from '@/features/users/components/userDetailPanel';
-import EmptyUserPanel from '@/features/users/components/emptyUserPanel';
 import { UserType } from '@/features/users/types';
-import { MessageSquare } from 'lucide-react';
-import { useWizardStore } from '@/features/project-setup/store/wizard-store';
+import { mockUserTypes } from '@/features/users/data/mock-users';
+import UsersSidebar from '@/features/users/components/userSidebar';
+import EmptyUserPanel from '@/features/users/components/emptyUserPanel';
+import UserDetailPanel from '@/features/users/components/userDetailPanel';
+import UserFormModal from '@/features/users/components/userFormModal'; 
+import AppSidebar from '@/features/app/components/AppSidebar';
 
 export default function UsersPage() {
-  const { userTypes, projectName } = useWizardStore();
+  const [users, setUsers] = useState<UserType[]>(mockUserTypes);
+  const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
   
-  const formattedUserTypes: UserType[] = userTypes.map((u) => ({
-    id: u.id,
-    name: u.name,
-    description: u.description,
-    storiesCount: 0,
-    personasCount: 0,
-    personas: [],
-  }));
+  // State untuk Modal Tambah/Edit
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserType | null>(null);
 
-  const [selectedUserType, setSelectedUserType] = useState<UserType | null>(formattedUserTypes[0] || null);
+  // Handler saat kartu user diklik di sidebar
+  const handleSelectUser = (user: UserType) => {
+    setSelectedUser(user);
+  };
+
+  // Handler buka modal tambah
+  const handleOpenAdd = () => {
+    setEditingUser(null);
+    setIsModalOpen(true);
+  };
+
+  // Handler buka modal edit
+  const handleOpenEdit = (user: UserType) => {
+    setEditingUser(user);
+    setIsModalOpen(true);
+  };
+
+  // Handler Simpan Data (Create / Update)
+  const handleSaveUser = (data: Omit<UserType, 'id'> & { id?: string }) => {
+    if (editingUser) {
+      // Proses Update
+      const updatedList = users.map((u) => (u.id === editingUser.id ? ({ ...u, ...data } as UserType) : u));
+      setUsers(updatedList);
+      if (selectedUser?.id === editingUser.id) {
+        setSelectedUser({ ...selectedUser, ...data } as UserType);
+      }
+    } else {
+      // Proses Create Baru
+      const newUser: UserType = {
+        id: data.id || Date.now().toString(),
+        name: data.name,
+        description: data.description,
+        storiesCount: data.storiesCount,
+        personasCount: data.personasCount,
+      };
+      setUsers([...users, newUser]);
+      setSelectedUser(newUser);
+    }
+  };
+
+  // Handler Hapus User
+  const handleDeleteUser = (id: string) => {
+    const filtered = users.filter((u) => u.id !== id);
+    setUsers(filtered);
+    if (selectedUser?.id === id) {
+      setSelectedUser(null);
+    }
+  };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-gray-50 font-sans">
-      <AppSidebar activeMenu="users" />
+    <div className="flex h-screen bg-slate-50 overflow-hidden">
+      
+      {/* 1. AppSidebar Utama (Menu navigasi kiri luar) */}
+      <AppSidebar />
 
-      <UsersSidebar 
-        userTypes={formattedUserTypes} 
-        selectedId={selectedUserType?.id} 
-        onSelectUser={(user: UserType) => setSelectedUserType(user)} 
-      />
+      {/* 2. UsersSidebar / Sub-Sidebar (Daftar User Types) */}
+      <div className="w-80 shrink-0 border-r border-slate-200 bg-white">
+        <UsersSidebar
+          userTypes={users}
+          selectedId={selectedUser?.id}
+          onSelectUser={handleSelectUser}
+          onAddNew={handleOpenAdd}
+        />
+      </div>
 
-      <main className="flex-1 flex flex-col h-full bg-white overflow-hidden">
-        <div className="h-14 border-b border-gray-200 px-6 flex items-center justify-between bg-white">
-          <span className="text-xs font-medium text-gray-500">
-            {projectName ? projectName : 'alalal'} -
-          </span>
-          <div className="flex items-center gap-3">
-            <button className="text-xs text-gray-600 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-gray-100 transition-colors">
-              <MessageSquare className="w-3.5 h-3.5 text-blue-600" /> Chat to Userdoc Assistant
-            </button>
-            <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
-              UD
-            </div>
-          </div>
-        </div>
-
-        {selectedUserType ? (
-          <UserDetailPanel userType={selectedUserType} />
+      {/* 3. Sisi Kanan: Panel Utama (Detail atau Empty State) */}
+      <main className="flex-1 overflow-y-auto p-8">
+        {selectedUser ? (
+          <UserDetailPanel
+            user={selectedUser}
+            onEdit={handleOpenEdit}
+            onDelete={handleDeleteUser}
+          />
         ) : (
-          <EmptyUserPanel />
+          <EmptyUserPanel onOpenAddModal={handleOpenAdd} />
         )}
       </main>
+
+      {/* Modal Form Tambah / Edit */}
+      <UserFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleSaveUser}
+        initialData={editingUser}
+      />
     </div>
   );
 }

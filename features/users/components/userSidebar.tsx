@@ -3,7 +3,7 @@
 
 import { useState, useMemo } from 'react';
 import { UserType } from '../types';
-import { User, Plus, Search, ChevronDown } from 'lucide-react';
+import { Plus, Search, ChevronDown } from 'lucide-react';
 
 interface UsersSidebarProps {
   userTypes: UserType[];
@@ -15,7 +15,7 @@ interface UsersSidebarProps {
 export default function UsersSidebar({ userTypes, selectedId, onSelectUser, onAddNew }: UsersSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Filter daftar user types berdasarkan nama atau deskripsi
+  // *(Kode Tambahan)* Memfilter daftar user berdasarkan pencarian nama atau deskripsi
   const filteredUsers = useMemo(() => {
     if (!searchQuery.trim()) return userTypes;
 
@@ -30,10 +30,10 @@ export default function UsersSidebar({ userTypes, selectedId, onSelectUser, onAd
   return (
     <div className="w-80 bg-white border-r border-gray-200 flex flex-col h-full">
       
-      {/* Header Sub-Sidebar dengan Search Bar & Tombol Tambah */}
+      {/* Header Sidebar: Search Bar & Tombol Tambah */}
       <div className="p-4 border-b border-gray-100">
         <div className="flex items-center gap-2 mb-2">
-          {/* Input Search Bar */}
+          {/* Input Search */}
           <div className="relative flex-1">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
               <Search className="w-4 h-4" />
@@ -65,21 +65,23 @@ export default function UsersSidebar({ userTypes, selectedId, onSelectUser, onAd
           </button>
         </div>
 
-        {/* Informasi Jumlah (Showing X Users) */}
+        {/* Informasi Jumlah User */}
         <div className="text-[11px] text-gray-400 font-medium px-0.5 uppercase tracking-wider">
           Showing {filteredUsers.length} Users
         </div>
       </div>
 
-      {/* List User Types */}
+      {/* List Card User Types */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {filteredUsers.length === 0 ? (
-          <div className="py-8 text-center text-gray-400 text-xs italic">
+          <div className="py-8 text-center text-gray-400 text-xs italic text-gray-400">
             No users found.
           </div>
         ) : (
           filteredUsers.map((type) => {
             const isSelected = selectedId === type.id;
+            const initialLetter = type.name ? type.name.charAt(0).toUpperCase() : 'U';
+
             return (
               <div
                 key={type.id}
@@ -88,15 +90,17 @@ export default function UsersSidebar({ userTypes, selectedId, onSelectUser, onAd
                   isSelected ? 'bg-blue-50/60 border-blue-200 shadow-xs' : 'bg-white border-gray-200 hover:border-gray-300'
                 }`}
               >
-                <div className="flex items-center gap-2 mb-1">
-                  <User className="w-4 h-4 text-blue-600" />
-                  <h4 className="text-xs font-bold text-gray-900">{type.name}</h4>
+                <div className="flex items-center gap-3 mb-1.5">
+                  <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-600 font-bold text-xs flex items-center justify-center flex-shrink-0">
+                    {initialLetter}
+                  </div>
+                  <h4 className="text-xs font-bold text-gray-900 truncate">{type.name}</h4>
                 </div>
-                <p className="text-[11px] text-gray-500 line-clamp-1 mb-2">{type.description}</p>
-                <div className="flex items-center gap-3 text-[10px] text-gray-400 font-medium">
-                  <span>{type.storiesCount} Stories</span>
+                <p className="text-[11px] text-gray-500 line-clamp-1 mb-2 pl-10">{type.description}</p>
+                <div className="flex items-center gap-3 text-[10px] text-gray-400 font-medium pl-10">
+                  <span>{type.storiesCount ?? 0} Stories</span>
                   <span>•</span>
-                  <span>{type.personasCount} Personas</span>
+                  <span>{type.personasCount ?? 0} Personas</span>
                 </div>
               </div>
             );
