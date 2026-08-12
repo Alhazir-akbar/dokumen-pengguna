@@ -127,7 +127,7 @@ export default function DescribeProject() {
 
             {/* Menu Dropdown Popup Platform */}
             {isDropdownOpen && (
-              <div className="absolute left-0 bottom-full mb-2 w-56 bg-slate-900 border border-blue-400/30 rounded-xl shadow-2xl py-2 z-50 flex flex-col">
+              <div className="absolute left-0 bottom-full mb-2 w-56 bg-white border border-blue-400/30 rounded-xl shadow-2xl py-2 z-50 flex flex-col">
                 {platforms.map((item) => (
                   <button
                     key={item}
@@ -137,7 +137,7 @@ export default function DescribeProject() {
                       setIsDropdownOpen(false);
                     }}
                     className={`flex items-center justify-between px-4 py-2 text-xs text-left transition-colors hover:bg-blue-600/40 cursor-pointer ${
-                      platformType === item ? 'text-white font-semibold bg-blue-600/50' : 'text-blue-300'
+                      platformType === item ? 'text-white font-semibold bg-blue-600/50' : 'text-blue-500'
                     }`}
                   >
                     <span>{item}</span>
@@ -165,7 +165,7 @@ export default function DescribeProject() {
 
             {/* Menu Dropdown Popup Attach */}
             {isAttachOpen && (
-              <div className="absolute left-0 bottom-full mb-2 w-64 bg-slate-900 border border-blue-400/30 rounded-xl shadow-2xl py-2 z-50 flex flex-col">
+              <div className="absolute left-0 bottom-full mb-2 w-64 bg-white border border-blue-400/30 rounded-xl shadow-2xl py-2 z-50 flex flex-col">
                 <div className="px-4 py-1 text-[10px] font-semibold text-blue-400 uppercase tracking-wider">
                   Select Attachment Type
                 </div>
@@ -176,7 +176,7 @@ export default function DescribeProject() {
                       key={opt.label}
                       type="button"
                       onClick={() => handleSelectAttachOption(opt)}
-                      className="flex items-center gap-3 px-4 py-2 text-xs text-left text-blue-300 hover:text-white transition-colors hover:bg-blue-600/40 cursor-pointer"
+                      className="flex items-center gap-3 px-4 py-2 text-xs text-left text-blue-500 hover:text-white transition-colors hover:bg-blue-600/40 cursor-pointer"
                     >
                       <IconComp className="w-4 h-4 text-blue-400 shrink-0" />
                       <span>{opt.label}</span>
@@ -189,13 +189,14 @@ export default function DescribeProject() {
 
           {/* Badge Label Jika File / Link Berhasil Ditambahkan */}
           {attachedFile && (
-            <span className="text-[11px] text-blue-200 bg-blue-500/20 border border-blue-400/30 px-2.5 py-1 rounded-md flex items-center gap-1.5 max-w-[220px] truncate" title={attachedFile}>
-              📎 <span className="truncate">{attachedFile}</span>
-              <button 
-                type="button" 
-                onClick={() => setAttachedFile(null)}
-                className="text-red-300 hover:text-red-100 ml-1 font-bold cursor-pointer shrink-0"
-              >
+          <span className="text-[11px] text-blue-400 bg-white border border-blue-400/30 px-2.5 py-1 rounded-md flex items-center gap-1.5 max-w-[220px] truncate" title={attachedFile}>
+            <Paperclip className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">{attachedFile}</span>
+            <button 
+              type="button" 
+              onClick={() => setAttachedFile(null)}
+              className="text-red-300 hover:text-red-100 ml-1 font-bold cursor-pointer shrink-0"
+            >
                 <X className="w-3 h-3 inline" />
               </button>
             </span>
@@ -208,7 +209,7 @@ export default function DescribeProject() {
         <button
           type="button"
           onClick={nextStep}
-          className="bg-white text-blue-600 hover:bg-blue-50 px-4 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-md text-xs cursor-pointer"
+          className="bg-white text-blue-500 hover:bg-blue-50 px-4 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-md text-sm cursor-pointer"
         >
           Next <ArrowRight className="w-4 h-4" />
         </button>

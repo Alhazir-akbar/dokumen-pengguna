@@ -32,7 +32,7 @@ export default function TeamName() {
           value={teamName}
           onChange={(e) => updateTeamName(e.target.value)}
           placeholder="Type in your team name..."
-          className="w-full bg-blue-700/50 border border-blue-400/40 rounded-xl px-4 py-3.5 text-white placeholder-blue-300/60 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all shadow-inner"
+          className="w-full bg-white/10 border border-blue-200/40 rounded-xl px-4 py-3.5 text-white placeholder-blue-300/60 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all shadow-inner"
         />
       </div>
 

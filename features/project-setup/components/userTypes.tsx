@@ -106,35 +106,35 @@ export default function UserTypes() {
       {/* Modal / Popup Tambah User Type */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-blue-400/30 rounded-2xl p-6 w-full max-w-md shadow-2xl text-left">
-            <h3 className="text-lg font-bold text-white mb-4">Add New User Type</h3>
+          <div className="bg-white border border-blue-400/30 rounded-2xl p-6 w-full max-w-md shadow-2xl text-left">
+            <h3 className="text-lg font-bold text-blue-800 mb-4">Add New User Type</h3>
             <form onSubmit={handleAdd} className="flex flex-col gap-4">
               <div>
-                <label className="block text-xs font-medium text-blue-200 mb-1">User Type Name</label>
+                <label className="block text-xs font-medium text-blue-500 mb-1">User Type Name</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Administrator, Customer"
                   value={newTypeName}
                   onChange={(e) => setNewTypeName(e.target.value)}
-                  className="w-full bg-blue-950/50 border border-blue-500/30 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-400"
+                  className="w-full bg-blue-500/60 border border-blue-500/30 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-400"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-blue-200 mb-1">Description</label>
+                <label className="block text-xs font-medium text-blue-500 mb-1">Description</label>
                 <textarea
                   rows={3}
                   placeholder="Describe what this user does..."
                   value={newTypeDesc}
                   onChange={(e) => setNewTypeDesc(e.target.value)}
-                  className="w-full bg-blue-950/50 border border-blue-500/30 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-400 resize-none"
+                  className="w-full bg-blue-500/60 border border-blue-500/30 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-400 resize-none"
                 />
               </div>
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="bg-transparent hover:bg-white/10 text-white border border-white/20 px-4 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer"
+                  className="bg-red-400 hover:bg-white/10 text-white border border-white/20 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
