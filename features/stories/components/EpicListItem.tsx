@@ -61,7 +61,7 @@ export default function EpicListItem({ epic, selectedStoryId, onSelectStory, onS
                 >
                   <div className="flex items-center gap-2 truncate">
                     <FileText className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-blue-600' : 'text-gray-400'}`} />
-                    <span className="truncate">{story.i_want || story.title}</span>
+                    <span className="truncate">{story.i_want || 'Example story'}</span>
                   </div>
                   
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-mono shrink-0 ml-1">
