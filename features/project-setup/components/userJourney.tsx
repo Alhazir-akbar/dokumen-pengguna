@@ -84,9 +84,9 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
           <button
             type="button"
             onClick={() => setJourneyText(`A user discovers ${titleName} via search, registers an account, explores the main dashboard, sets up preferences, and successfully completes their first task.`)}
-            className="text-yellow-300 hover:text-yellow-200 text-xs font-medium flex items-center gap-1 transition-colors px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10"
+            className="text-gray-300 hover:text-yellow-200 text-xs font-medium flex items-center gap-1 transition-colors px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10"
           >
-            <Sparkles className="w-3 h-3" /> Suggest with AI
+            <Sparkles className="w-3 h-3" />
           </button>
         </div>
       </div>
@@ -96,9 +96,9 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
         <button
           type="button"
           onClick={handleFinish}
-          className="bg-white text-blue-600 hover:bg-blue-50 px-6 py-3 rounded-xl font-bold transition-all flex items-center gap-2 shadow-lg text-sm cursor-pointer"
+          className="bg-white text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-lg text-sm cursor-pointer"
         >
-          Finished, Create my Project ✓
+          Finished, Create my Project
         </button>
       </div>
 

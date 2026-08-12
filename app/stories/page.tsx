@@ -5,12 +5,13 @@ import { UserStory, Epic } from '@/features/stories/types';
 import StoriesSidebar from '@/features/stories/components/StoriesSidebar';
 import EmptyDetailPanel from '@/features/stories/components/EmptyDetailPanel';
 import EpicDetailPanel from '@/features/stories/components/EpicDetailPanel';
+import ManualStoryDetailPanel from '@/features/stories/components/ManualStoryDetailPanel'; // <-- Komponen panel manual
 import AppSidebar from '@/features/common/components/AppSidebar';
 import { MessageSquare, Upload, Download, X } from 'lucide-react';
 import { useWizardStore } from '@/features/project-setup/store/wizard-store';
 
 export default function StoriesPage() {
-  const { epics, userStories, projectName, addStory, addEpic } = useWizardStore() as any;
+  const { epics, userStories, projectName, addStory, updateStory, deleteStory, useAi } = useWizardStore() as any;
 
   const formattedEpics: Epic[] = epics.map((epic: any, index: number) => ({
     id: epic.id,
@@ -65,7 +66,26 @@ export default function StoriesPage() {
     setIsModalOpen(false);
   };
 
-  // 2. Fungsi Tombol Upload Dokumen (Membaca file JSON/Text eksternal)
+  // 2. Fungsi Update Story (Mode Manual)
+  const handleUpdateStory = (updatedStory: UserStory) => {
+    setSelectedStory(updatedStory);
+    if (typeof updateStory === 'function') {
+      updateStory(updatedStory);
+    }
+  };
+
+  // 3. Fungsi Delete Story (Mode Manual)
+  const handleDeleteStory = () => {
+    if (!selectedStory) return;
+    if (confirm('Apakah Anda yakin ingin menghapus user story ini?')) {
+      if (typeof deleteStory === 'function') {
+        deleteStory(selectedStory.id);
+      }
+      setSelectedStory(null);
+    }
+  };
+
+  // 4. Fungsi Tombol Upload Dokumen
   const handleUpload = () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -74,7 +94,7 @@ export default function StoriesPage() {
       const file = e.target.files?.[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = () => {
           try {
             alert(`File "${file.name}" berhasil di-upload dan dibaca!`);
           } catch (err) {
@@ -87,7 +107,7 @@ export default function StoriesPage() {
     input.click();
   };
 
-  // 3. Fungsi Tombol Download / Export JSON
+  // 5. Fungsi Tombol Download / Export JSON
   const handleDownload = () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(formattedEpics, null, 2));
     const downloadAnchor = document.createElement('a');
@@ -98,7 +118,7 @@ export default function StoriesPage() {
     downloadAnchor.remove();
   };
 
-  // 4. Fungsi Chat Assistant
+  // 6. Fungsi Chat Assistant
   const handleChatAssistant = () => {
     alert('Membuka Userdoc Assistant Chat Panel...');
   };
@@ -124,9 +144,16 @@ export default function StoriesPage() {
       <main className="flex-1 flex flex-col h-full bg-white overflow-hidden">
         {/* Header Atas */}
         <div className="h-14 border-b border-gray-200 px-6 flex items-center justify-between bg-white shrink-0">
-          <span className="text-xs font-medium text-gray-600">
-            {projectName ? projectName : 'alalal'} <span className="text-gray-400">/</span>
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-gray-600">
+              {projectName ? projectName : 'alalal'} <span className="text-gray-400">/</span>
+            </span>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+              useAi ? 'bg-purple-50 text-purple-600 border border-purple-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
+            }`}>
+              {useAi ? 'AI Powered' : 'Manual Mode'}
+            </span>
+          </div>
 
           <div className="flex items-center gap-3">
             <button 
@@ -160,26 +187,49 @@ export default function StoriesPage() {
         </div>
 
         {/* Dynamic Content Panel */}
-        <div className="flex-1 flex overflow-hidden">
-          {selectedStory ? (
-            <EpicDetailPanel story={selectedStory} />
-          ) : selectedEpic ? (
-            <div className="flex-1 bg-white p-8 overflow-y-auto">
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">{selectedEpic.name}</h1>
-              <p className="text-sm text-gray-600 mb-6">{selectedEpic.description || 'Tidak ada deskripsi epic.'}</p>
-              <h3 className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-4 border-b pb-2">Daftar Stories dalam Epic Ini</h3>
-              <ul className="space-y-2">
-                {selectedEpic.user_stories?.map((st) => (
-                  <li key={st.id} onClick={() => setSelectedStory(st)} className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer flex justify-between items-center text-sm">
-                    <span className="font-medium text-gray-800">{st.i_want}</span>
-                    <span className="text-xs bg-gray-100 px-2 py-0.5 rounded font-mono">{st.code}</span>
-                  </li>
-                ))}
-              </ul>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {!useAi && userStories.length === 0 && (
+            <div className="bg-amber-50 border-b border-amber-100 px-6 py-2.5 flex items-center justify-between text-xs text-amber-800 shrink-0">
+              <span>💡 Anda sedang berada di Mode Manual. Silakan buat Epic dan User Story pertama Anda secara mandiri.</span>
+              <button 
+                onClick={() => setIsModalOpen(true)}
+                className="font-semibold underline hover:text-amber-900 cursor-pointer"
+              >
+                + Buat Story Sekarang
+              </button>
             </div>
-          ) : (
-            <EmptyDetailPanel onOpenAddModal={() => setIsModalOpen(true)} />
           )}
+
+          <div className="flex-1 flex overflow-hidden">
+            {selectedStory ? (
+              // Pengecekan Panel Detail Berdasarkan Mode (AI / Manual)
+              useAi ? (
+                <EpicDetailPanel story={selectedStory} />
+              ) : (
+                <ManualStoryDetailPanel 
+                  story={selectedStory} 
+                  onDelete={handleDeleteStory}
+                  onUpdate={handleUpdateStory}
+                />
+              )
+            ) : selectedEpic ? (
+              <div className="flex-1 bg-white p-8 overflow-y-auto">
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">{selectedEpic.name}</h1>
+                <p className="text-sm text-gray-600 mb-6">{selectedEpic.description || 'Tidak ada deskripsi epic.'}</p>
+                <h3 className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-4 border-b pb-2">Daftar Stories dalam Epic Ini</h3>
+                <ul className="space-y-2">
+                  {selectedEpic.user_stories?.map((st) => (
+                    <li key={st.id} onClick={() => setSelectedStory(st)} className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer flex justify-between items-center text-sm">
+                      <span className="font-medium text-gray-800">{st.i_want}</span>
+                      <span className="text-xs bg-gray-100 px-2 py-0.5 rounded font-mono">{st.code}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <EmptyDetailPanel onOpenAddModal={() => setIsModalOpen(true)} />
+            )}
+          </div>
         </div>
       </main>
 
