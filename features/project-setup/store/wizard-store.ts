@@ -60,6 +60,7 @@ interface WizardState {
   
   addUserType: (item: UserTypeItem) => void;
   removeUserType: (id: string) => void;
+  updateUserTypeDescription: (id: string, description: string) => void; // Penambahan method baru
   
   updateUserGoal: (userTypeName: string, goals: string, frustrations: string) => void;
 
@@ -73,7 +74,7 @@ interface WizardState {
   removeUserStory: (id: string) => void;
 
   updateEpic: (id: string, updatedData: Partial<EpicItem>) => void;
-  resetStore: () => void; // Fungsi untuk mengosongkan data saat mode manual
+  resetStore: () => void;
 }
 
 export const useWizardStore = create<WizardState>((set) => ({
@@ -85,7 +86,6 @@ export const useWizardStore = create<WizardState>((set) => ({
   projectDescription: '',
   platformType: 'Web Application',
   
-  // Dikosongkan agar mode manual bersih dari awal
   userTypes: [],
   userGoals: [],
   epics: [],
@@ -105,6 +105,11 @@ export const useWizardStore = create<WizardState>((set) => ({
   
   addUserType: (item: UserTypeItem) => set((state) => ({ userTypes: [...state.userTypes, item] })),
   removeUserType: (id: string) => set((state) => ({ userTypes: state.userTypes.filter((u) => u.id !== id) })),
+  updateUserTypeDescription: (id: string, description: string) => set((state) => ({
+    userTypes: state.userTypes.map((ut) =>
+      ut.id === id ? { ...ut, description } : ut
+    ),
+  })),
   
   updateUserGoal: (userTypeName, goals, frustrations) => set((state) => ({
     userGoals: state.userGoals.map((g) => 
