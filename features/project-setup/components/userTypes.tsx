@@ -1,4 +1,3 @@
-// features/wizard/components/userTypes.tsx
 'use client';
 
 import { useState } from 'react';
@@ -7,10 +6,11 @@ import { useWizardStore, UserTypeItem } from '../store/wizard-store';
 import { Sparkles, Trash2, ArrowRight, Plus } from 'lucide-react';
 
 export default function UserTypes() {
-  const { projectName, userTypes, addUserType, removeUserType, nextStep } = useWizardStore();
+  const { projectName, userTypes, addUserType, removeUserType, updateUserTypeDescription, nextStep } = useWizardStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTypeName, setNewTypeName] = useState('');
   const [newTypeDesc, setNewTypeDesc] = useState('');
+  const [error, setError] = useState(false);
 
   const titleName = projectName.trim() ? projectName : 'your project';
 
@@ -28,6 +28,27 @@ export default function UserTypes() {
     setNewTypeName('');
     setNewTypeDesc('');
     setIsModalOpen(false);
+    if (error) setError(false);
+  };
+
+  // Fungsi untuk mensimulasikan AI Generate deskripsi berdasarkan nama tipe user
+  const handleAiGenerateDesc = (user: UserTypeItem) => {
+    const aiGeneratedDescription = `A key stakeholder responsible for interacting with ${titleName}, managing core features, and overseeing workflow efficiency.`;
+    
+    // Jika store Anda memiliki fungsi update, gunakan itu. Jika belum, kita fallback atau asumsikan ada.
+    // Pastikan fungsi updateUserTypeDescription ada di wizard-store.ts Anda.
+    if (updateUserTypeDescription) {
+      updateUserTypeDescription(user.id, aiGeneratedDescription);
+    }
+  };
+
+  const handleNext = () => {
+    if (userTypes.length === 0) {
+      setError(true);
+      return;
+    }
+    setError(false);
+    nextStep();
   };
 
   return (
@@ -48,7 +69,9 @@ export default function UserTypes() {
       </p>
 
       {/* List Card Container */}
-      <div className="bg-white/10 border border-white/20 rounded-2xl w-full mb-6 backdrop-blur-md shadow-xl overflow-hidden divide-y divide-white/10 text-left">
+      <div className={`bg-white/10 border rounded-2xl w-full mb-2 backdrop-blur-md shadow-xl overflow-hidden divide-y divide-white/10 text-left transition-all ${
+        error ? 'border-red-400 ring-2 ring-red-400/50' : 'border-white/20'
+      }`}>
         {userTypes.length === 0 ? (
           <div className="p-8 text-center text-blue-200 text-sm">
             No user types added yet. Click &quot;Add user type&quot; below.
@@ -65,16 +88,17 @@ export default function UserTypes() {
               <div className="flex items-center gap-2 shrink-0 pt-1">
                 <button
                   type="button"
+                  onClick={() => handleAiGenerateDesc(user)}
                   title="Generate or enhance with AI"
-                  className="p-1.5 text-blue-200 hover:text-white transition-colors rounded-lg hover:bg-white/10"
+                  className="p-1.5 text-blue-200 hover:text-white transition-colors rounded-lg hover:bg-white/10 cursor-pointer"
                 >
-                  <Sparkles className="w-4 h-4 text-gray-300" />
+                  <Sparkles className="w-4 h-4 text-yellow-300" />
                 </button>
                 <button
                   type="button"
                   onClick={() => removeUserType(user.id)}
                   title="Delete user type"
-                  className="p-1.5 text-gray-300 hover:text-red-100 transition-colors rounded-lg hover:bg-red-500/20"
+                  className="p-1.5 text-gray-300 hover:text-red-100 transition-colors rounded-lg hover:bg-red-500/20 cursor-pointer"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -84,11 +108,22 @@ export default function UserTypes() {
         )}
       </div>
 
+      {/* Pesan Peringatan Jika Kosong */}
+      {error && (
+        <div className="w-full text-left mb-4">
+          <p className="text-red-300 text-xs">
+            ⚠️ Tambahkan minimal 1 user type sebelum melanjutkan ke tahap berikutnya.
+          </p>
+        </div>
+      )}
+
+      {!error && <div className="mb-4"></div>}
+
       {/* Tombol Bawah (Next & Add User Type) */}
       <div className="w-full flex items-center justify-between">
         <button
           type="button"
-          onClick={nextStep}
+          onClick={handleNext}
           className="bg-white text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-md text-sm cursor-pointer"
         >
           Next <ArrowRight className="w-4 h-4" />
@@ -117,7 +152,7 @@ export default function UserTypes() {
                   placeholder="e.g. Administrator, Customer"
                   value={newTypeName}
                   onChange={(e) => setNewTypeName(e.target.value)}
-                  className="w-full bg-blue-500/60 border border-blue-500/30 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-400"
+                  className="w-full bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 text-slate-800 text-xs focus:outline-none focus:border-blue-400"
                 />
               </div>
               <div>
@@ -127,14 +162,14 @@ export default function UserTypes() {
                   placeholder="Describe what this user does..."
                   value={newTypeDesc}
                   onChange={(e) => setNewTypeDesc(e.target.value)}
-                  className="w-full bg-blue-500/60 border border-blue-500/30 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-400 resize-none"
+                  className="w-full bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 text-slate-800 text-xs focus:outline-none focus:border-blue-400 resize-none"
                 />
               </div>
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="bg-red-400 hover:bg-white/10 text-white border border-white/20 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                  className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer"
                 >
                   Cancel
                 </button>

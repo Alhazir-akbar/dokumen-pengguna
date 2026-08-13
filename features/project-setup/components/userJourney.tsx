@@ -14,10 +14,17 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
   const [journeyText, setJourneyText] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [loadingText, setLoadingText] = useState('Analyzing project context...');
+  const [error, setError] = useState(false);
 
   const titleName = projectName.trim() ? projectName : 'your project';
 
   const handleFinish = () => {
+    // Validasi: jika kosong atau hanya berisi spasi, batalkan dan tampilkan error
+    if (!journeyText || journeyText.trim() === "") {
+      setError(true);
+      return;
+    }
+    setError(false);
     setIsGenerating(true);
 
     // Simulasi tahapan proses AI generating data sebelum masuk ke halaman stories
@@ -70,12 +77,17 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
       </p>
 
       {/* Textarea Input User Journey */}
-      <div className="w-full bg-white/10 border border-white/20 rounded-2xl p-4 sm:p-5 backdrop-blur-md shadow-xl text-left mb-6">
+      <div className={`w-full bg-white/10 border rounded-2xl p-4 sm:p-5 backdrop-blur-md shadow-xl text-left mb-2 transition-all ${
+        error ? 'border-red-400 ring-2 ring-red-400/50' : 'border-white/20'
+      }`}>
         <textarea
           rows={5}
           placeholder={`What is a sample user journey within ${titleName}?`}
           value={journeyText}
-          onChange={(e) => setJourneyText(e.target.value)}
+          onChange={(e) => {
+            setJourneyText(e.target.value);
+            if (error) setError(false); // Hilangkan pesan error saat user mengetik
+          }}
           className="w-full bg-blue-950/40 border border-blue-400/20 rounded-xl p-4 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-400 resize-none placeholder:text-blue-200/50"
         />
         
@@ -83,13 +95,27 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
         <div className="flex justify-end mt-2">
           <button
             type="button"
-            onClick={() => setJourneyText(`A user discovers ${titleName} via search, registers an account, explores the main dashboard, sets up preferences, and successfully completes their first task.`)}
-            className="text-gray-300 hover:text-yellow-200 text-xs font-medium flex items-center gap-1 transition-colors px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10"
+            onClick={() => {
+              setJourneyText(`A user discovers ${titleName} via search, registers an account, explores the main dashboard, sets up preferences, and successfully completes their first task.`);
+              if (error) setError(false);
+            }}
+            className="text-gray-300 hover:text-yellow-200 text-xs font-medium flex items-center gap-1 transition-colors px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer"
           >
             <Sparkles className="w-3 h-3" />
           </button>
         </div>
       </div>
+
+      {/* Pesan Peringatan Jika Kosong */}
+      {error && (
+        <div className="w-full text-left mb-4">
+          <p className="text-red-300 text-xs">
+            ⚠️ User journey wajib diisi sebelum menyelesaikan proyek.
+          </p>
+        </div>
+      )}
+
+      {!error && <div className="mb-4"></div>}
 
       {/* Tombol Finished / Create my Project */}
       <div className="w-full flex items-center justify-start">

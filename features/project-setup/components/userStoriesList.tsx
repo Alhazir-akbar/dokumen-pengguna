@@ -82,7 +82,7 @@ export default function UserStoriesList() {
       </h1>
       
       <p className="text-blue-200 text-xs sm:text-sm mb-8 max-w-xl">
-        We&apos;ve suggested 54 user stories below, grouped by their epic. Feel free to add more, edit, or remove them. Click a story to edit its details and assign it to the appropriate user types.
+        We&apos;ve suggested user stories below, grouped by their epic. Feel free to add more, edit, or remove them. Click a story to edit its details and assign it to the appropriate user types.
       </p>
 
       {/* List Container per Epic */}
@@ -131,7 +131,7 @@ export default function UserStoriesList() {
                         type="button"
                         onClick={() => removeUserStory(story.id)}
                         title="Delete story"
-                        className="text-red-300 hover:text-red-100 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                        className="text-red-300 hover:text-red-100 opacity-0 group-hover:opacity-100 transition-opacity p-1 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -149,7 +149,7 @@ export default function UserStoriesList() {
                   setSelectedEpicTitle(epic.title);
                   setIsModalOpen(true);
                 }}
-                className="text-blue-300 hover:text-white text-xs font-medium flex items-center gap-1 transition-colors px-2 py-1 rounded hover:bg-white/10"
+                className="text-blue-300 hover:text-white text-xs font-medium flex items-center gap-1 transition-colors px-2 py-1 rounded hover:bg-white/10 cursor-pointer"
               >
                 + Add row
               </button>
@@ -164,7 +164,7 @@ export default function UserStoriesList() {
         <button
           type="button"
           onClick={nextStep}
-          className="bg-white text-blue-600 hover:bg-blue-50 px-6 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-md text-sm"
+          className="bg-white text-blue-600 hover:bg-blue-50 px-6 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-md text-sm cursor-pointer"
         >
           Next <ArrowRight className="w-4 h-4" />
         </button>
@@ -210,13 +210,13 @@ export default function UserStoriesList() {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="bg-transparent hover:bg-white/10 text-white border border-white/20 px-4 py-2 rounded-xl text-xs font-medium transition-all"
+                  className="bg-transparent hover:bg-white/10 text-white border border-white/20 px-4 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-xl text-xs font-semibold transition-all shadow-md"
+                  className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-xl text-xs font-semibold transition-all shadow-md cursor-pointer"
                 >
                   Save Story
                 </button>

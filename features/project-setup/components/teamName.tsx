@@ -3,9 +3,21 @@
 import LogoUserdoc from '../../../public/logoUserDoc';
 import { useWizardStore } from '../store/wizard-store';
 import { ArrowRight } from 'lucide-react';
+import { useState } from 'react';
 
 export default function TeamName() {
   const { teamName, updateTeamName, nextStep } = useWizardStore();
+  const [error, setError] = useState(false);
+
+  const handleNext = () => {
+    // Validasi: jika kosong atau hanya berisi spasi, batalkan dan tampilkan error
+    if (!teamName || teamName.trim() === "") {
+      setError(true);
+      return;
+    }
+    setError(false);
+    nextStep();
+  };
 
   return (
     <div className="flex flex-col items-start w-full max-w-xl mx-auto pt-12">
@@ -26,21 +38,36 @@ export default function TeamName() {
       </p>
 
       {/* Kotak Input Nama Tim */}
-      <div className="relative w-full mb-6">
+      <div className="relative w-full mb-2">
         <input
           type="text"
           value={teamName}
-          onChange={(e) => updateTeamName(e.target.value)}
+          onChange={(e) => {
+            updateTeamName(e.target.value);
+            if (error) setError(false); // Hilangkan pesan error saat user mulai mengetik
+          }}
           placeholder="Type in your team name..."
-          className="w-full bg-white/10 border border-blue-200/40 rounded-xl px-4 py-3.5 text-white placeholder-blue-300/60 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all shadow-inner"
+          className={`w-full bg-white/10 border rounded-xl px-4 py-3.5 text-white placeholder-blue-300/60 focus:outline-none focus:ring-2 transition-all shadow-inner ${
+            error ? 'border-red-400 focus:ring-red-400' : 'border-blue-200/40 focus:ring-white/50'
+          }`}
         />
       </div>
+
+      {/* Pesan Peringatan Jika Kosong */}
+      {error && (
+        <p className="text-red-300 text-xs mb-4 animate-shake">
+          ⚠️ Nama tim wajib diisi sebelum melanjutkan.
+        </p>
+      )}
+
+      {/* Spasi tambahan jika tidak ada error agar layout tetap stabil */}
+      {!error && <div className="mb-4"></div>}
 
       {/* Tombol Create Team */}
       <button
         type="button"
-        onClick={nextStep}
-        className="bg-white hover:bg-blue-50 text-blue-700 px-6 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 shadow-lg"
+        onClick={handleNext}
+        className="bg-white hover:bg-blue-50 text-blue-700 px-6 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 shadow-lg cursor-pointer"
       >
         Create Team <ArrowRight className="w-4 h-4" />
       </button>
