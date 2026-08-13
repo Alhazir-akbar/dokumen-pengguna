@@ -15,7 +15,9 @@ import {
   Clock, 
   Bell, 
   MessageSquare,
-  FolderKanban
+  FolderKanban,
+  AlertCircle,
+  Plus
 } from 'lucide-react';
 
 // Fungsi helper untuk menentukan ikon berdasarkan nama Epic
@@ -33,13 +35,16 @@ const getEpicIcon = (title: string) => {
 };
 
 export default function UserStoriesList() {
-  const { projectName, epics, userStories, addUserStory, removeUserStory, nextStep } = useWizardStore();
+  const { projectName, epics, userTypes, userStories, addUserStory, removeUserStory, nextStep } = useWizardStore();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEpicTitle, setSelectedEpicTitle] = useState(epics[0]?.title || 'General');
   const [storyName, setStoryName] = useState('');
-  const [userType, setUserType] = useState('Registered User');
+  
+  // Defaultkan ke userType pertama jika ada, jika tidak kosongkan
+  const [selectedUserType, setSelectedUserType] = useState(userTypes[0]?.name || 'Registered User');
   const [description, setDescription] = useState('');
+  const [error, setError] = useState(false);
 
   const titleName = projectName.trim() ? projectName : 'your project';
 
@@ -58,7 +63,7 @@ export default function UserStoriesList() {
       epicId: 'custom',
       epicTitle: selectedEpicTitle,
       storyName: storyName,
-      userType: userType,
+      userType: selectedUserType,
       description: description || 'No description provided.',
     };
 
@@ -66,6 +71,17 @@ export default function UserStoriesList() {
     setStoryName('');
     setDescription('');
     setIsModalOpen(false);
+    if (error) setError(false);
+  };
+
+  const handleNext = () => {
+    // Rules: Pastikan minimal ada 1 user story yang dibuat sebelum lanjut
+    if (userStories.length === 0) {
+      setError(true);
+      return;
+    }
+    setError(false);
+    nextStep();
   };
 
   return (
@@ -86,7 +102,7 @@ export default function UserStoriesList() {
       </p>
 
       {/* List Container per Epic */}
-      <div className="w-full flex flex-col gap-6 mb-8 text-left">
+      <div className="w-full flex flex-col gap-6 mb-6 text-left">
         {groupedStories.map((epic) => (
           <div 
             key={epic.id} 
@@ -117,11 +133,13 @@ export default function UserStoriesList() {
               ) : (
                 epic.stories.map((story: UserStoryItem, index: number) => (
                   <div key={story.id} className="grid grid-cols-12 py-3 px-2 text-xs items-center hover:bg-white/5 transition-colors rounded-lg group">
-                    <div className="col-span-4 text-white font-medium underline underline-offset-2 cursor-pointer truncate pr-2 flex items-center gap-1.5">
+                    <div className="col-span-4 text-white font-medium truncate pr-2 flex items-center gap-1.5">
                       <span className="text-blue-300 font-normal">{index + 1}.</span> {story.storyName}
                     </div>
                     <div className="col-span-3 text-blue-200 truncate pr-2">
-                      {story.userType}
+                      <span className="bg-blue-500/20 text-blue-200 border border-blue-400/30 px-2 py-0.5 rounded-full text-[10px]">
+                        {story.userType}
+                      </span>
                     </div>
                     <div className="col-span-4 text-blue-200/80 truncate pr-2">
                       {story.description}
@@ -151,7 +169,7 @@ export default function UserStoriesList() {
                 }}
                 className="text-blue-300 hover:text-white text-xs font-medium flex items-center gap-1 transition-colors px-2 py-1 rounded hover:bg-white/10 cursor-pointer"
               >
-                + Add row
+                <Plus className="w-3.5 h-3.5" /> Add row
               </button>
             </div>
 
@@ -159,18 +177,28 @@ export default function UserStoriesList() {
         ))}
       </div>
 
+      {/* Pesan Peringatan Jika Kosong */}
+      {error && (
+        <div className="w-full text-left mb-6 bg-red-500/10 border border-red-500/20 p-4 rounded-xl flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-300 shrink-0 mt-0.5" />
+          <p className="text-red-300 text-xs sm:text-sm">
+            <strong>Rules:</strong> Harap tambahkan minimal 1 user story sebelum melanjutkan ke tahap berikutnya.
+          </p>
+        </div>
+      )}
+
       {/* Tombol Navigasi Bawah */}
       <div className="w-full flex items-center justify-start">
         <button
           type="button"
-          onClick={nextStep}
+          onClick={handleNext}
           className="bg-white text-blue-600 hover:bg-blue-50 px-6 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-md text-sm cursor-pointer"
         >
           Next <ArrowRight className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Modal Tambah User Story Manual */}
+      {/* Modal Tambah User Story */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-slate-900 border border-blue-400/30 rounded-2xl p-6 w-full max-w-md shadow-2xl text-left">
@@ -188,13 +216,22 @@ export default function UserStoriesList() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-blue-200 mb-1">User Types</label>
-                <input
-                  type="text"
-                  value={userType}
-                  onChange={(e) => setUserType(e.target.value)}
-                  className="w-full bg-blue-950/50 border border-blue-500/30 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-400"
-                />
+                <label className="block text-xs font-medium text-blue-200 mb-1">User Type</label>
+                <select
+                  value={selectedUserType}
+                  onChange={(e) => setSelectedUserType(e.target.value)}
+                  className="w-full bg-blue-950/50 border border-blue-500/30 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-400 cursor-pointer"
+                >
+                  {userTypes.length > 0 ? (
+                    userTypes.map((ut) => (
+                      <option key={ut.id} value={ut.name} className="bg-slate-900 text-white">
+                        {ut.name}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="General User" className="bg-slate-900 text-white">General User</option>
+                  )}
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-medium text-blue-200 mb-1">Description</label>

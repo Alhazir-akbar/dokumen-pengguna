@@ -60,7 +60,7 @@ interface WizardState {
   
   addUserType: (item: UserTypeItem) => void;
   removeUserType: (id: string) => void;
-  updateUserTypeDescription: (id: string, description: string) => void; // Penambahan method baru
+  updateUserTypeDescription: (id: string, description: string) => void;
   
   updateUserGoal: (userTypeName: string, goals: string, frustrations: string) => void;
 
@@ -111,11 +111,22 @@ export const useWizardStore = create<WizardState>((set) => ({
     ),
   })),
   
-  updateUserGoal: (userTypeName, goals, frustrations) => set((state) => ({
-    userGoals: state.userGoals.map((g) => 
-      g.userTypeName === userTypeName ? { ...g, goals, frustrations } : g
-    )
-  })),
+  updateUserGoal: (userTypeName, goals, frustrations) => set((state) => {
+    const existingGoalIndex = state.userGoals.findIndex((g) => g.userTypeName === userTypeName);
+    
+    if (existingGoalIndex !== -1) {
+      const updatedGoals = [...state.userGoals];
+      updatedGoals[existingGoalIndex] = { ...updatedGoals[existingGoalIndex], goals, frustrations };
+      return { userGoals: updatedGoals };
+    } else {
+      return { 
+        userGoals: [
+          ...state.userGoals, 
+          { id: Date.now().toString(), userTypeName, goals, frustrations }
+        ] 
+      };
+    }
+  }),
 
   addEpic: (item: EpicItem) => set((state) => ({ epics: [...state.epics, item] })),
   removeEpic: (id: string) => set((state) => ({ epics: state.epics.filter((e) => e.id !== id) })),
