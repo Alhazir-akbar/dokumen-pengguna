@@ -5,9 +5,9 @@ import { UserStory, Epic } from '@/features/stories/types';
 import StoriesSidebar from '@/features/stories/components/StoriesSidebar';
 import EmptyDetailPanel from '@/features/stories/components/EmptyDetailPanel';
 import EpicDetailPanel from '@/features/stories/components/EpicDetailPanel';
-import ManualStoryDetailPanel from '@/features/stories/components/ManualStoryDetailPanel'; // <-- Komponen panel manual
+import ManualStoryDetailPanel from '@/features/stories/components/ManualStoryDetailPanel'; 
 import AppSidebar from '@/features/common/components/AppSidebar';
-import { MessageSquare, Upload, Download, X } from 'lucide-react';
+import { MessageSquare, Upload, Download, X, Lightbulb } from 'lucide-react';
 import { useWizardStore } from '@/features/project-setup/store/wizard-store';
 
 export default function StoriesPage() {
@@ -189,14 +189,9 @@ export default function StoriesPage() {
         {/* Dynamic Content Panel */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {!useAi && userStories.length === 0 && (
-            <div className="bg-amber-50 border-b border-amber-100 px-6 py-2.5 flex items-center justify-between text-xs text-amber-800 shrink-0">
-              <span>💡 Anda sedang berada di Mode Manual. Silakan buat Epic dan User Story pertama Anda secara mandiri.</span>
-              <button 
-                onClick={() => setIsModalOpen(true)}
-                className="font-semibold underline hover:text-amber-900 cursor-pointer"
-              >
-                + Buat Story Sekarang
-              </button>
+            <div className="bg-amber-50 border-b border-amber-100 px-6 py-2.5 flex items-center gap-2 text-xs text-amber-800 shrink-0">
+              <Lightbulb className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>Anda sedang berada di Mode Manual. Silakan buat Epic dan User Story pertama Anda secara mandiri.</span>
             </div>
           )}
 
