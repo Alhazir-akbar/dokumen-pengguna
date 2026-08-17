@@ -65,8 +65,8 @@ export default function WizardPage() {
           {step === 4 && <SoftwareIntro />}
           {step === 5 && <SoftwareName />}
           {step === 6 && <SoftwareOverview />}
-          {step === 7 && <SoftwareDetails />}
-          {step === 8 && <SoftwareScale />}
+          {step === 7 && <SoftwareScale />}
+          {step === 8 && <SoftwareDetails />}
           {step === 9 && <SoftwareTechnologies />}
           {step === 10 && (
             <UserJourney 
