@@ -209,7 +209,7 @@ export default function SettingsPage() {
                   required
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
-                  className="mt-1.5 block w-full px-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50/50 text-sm focus:outline-hidden focus:border-blue-500 transition-all"
+                  className="mt-1.5 block w-full px-3 py-2.5 border border-gray-200 rounded-xl text-gray-900 bg-gray-50/50 text-sm focus:outline-hidden focus:border-blue-500 transition-all"
                 />
               </div>
 
@@ -219,7 +219,7 @@ export default function SettingsPage() {
                   rows={4}
                   value={projectDesc}
                   onChange={(e) => setProjectDesc(e.target.value)}
-                  className="mt-1.5 block w-full px-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50/50 text-sm focus:outline-hidden focus:border-blue-500 transition-all"
+                  className="mt-1.5 block w-full px-3 py-2.5 border text-gray-900 border-gray-200 rounded-xl bg-gray-50/50 text-sm focus:outline-hidden focus:border-blue-500 transition-all"
                 />
               </div>
 
@@ -293,7 +293,7 @@ export default function SettingsPage() {
                   placeholder="Misal: Format Cerita Pengguna"
                   value={newRuleName}
                   onChange={(e) => setNewRuleName(e.target.value)}
-                  className="mt-1.5 block w-full px-3 py-2 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:outline-hidden focus:border-blue-500 transition-all"
+                  className="mt-1.5 block w-full px-3 py-2 border text-gray-900 border-gray-200 rounded-xl bg-gray-50 text-sm focus:outline-hidden focus:border-blue-500 transition-all"
                 />
               </div>
               <div>
@@ -304,7 +304,7 @@ export default function SettingsPage() {
                   placeholder="Misal: Tulis cerita pengguna menggunakan struktur Bahasa Indonesia yang formal..."
                   value={newRuleContent}
                   onChange={(e) => setNewRuleContent(e.target.value)}
-                  className="mt-1.5 block w-full px-3 py-2 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:outline-hidden focus:border-blue-500 transition-all"
+                  className="mt-1.5 block w-full px-3 py-2 border text-gray-900 border-gray-200 rounded-xl bg-gray-50 text-sm focus:outline-hidden focus:border-blue-500 transition-all"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
