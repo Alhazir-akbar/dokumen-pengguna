@@ -18,29 +18,58 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
 
   const titleName = projectName.trim() ? projectName : 'your project';
 
-  const handleFinish = () => {
-    // Validasi: jika kosong atau hanya berisi spasi, batalkan dan tampilkan error
-    if (!journeyText || journeyText.trim() === "") {
-      setError(true);
-      return;
-    }
-    setError(false);
-    setIsGenerating(true);
+  const handleFinish = async () => {
+  if (!journeyText || journeyText.trim() === "") {
+    setError(true);
+    return;
+  }
+  setError(false);
+  setIsGenerating(true);
+  setLoadingText('Menyimpan proyek ke server...');
 
-    // Simulasi tahapan proses AI generating data sebelum masuk ke halaman stories
-    setTimeout(() => {
-      setLoadingText('Generating user stories & epics...');
-    }, 1200);
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const token = localStorage.getItem('token');
+    const workspaceId = localStorage.getItem('active_workspace_id');
 
-    setTimeout(() => {
-      setLoadingText('Finalizing project structure...');
-    }, 2400);
+    if (!workspaceId) throw new Error('Workspace belum dibuat');
+
+    setLoadingText('Generating user stories & epics...');
+
+    // Panggil API buat proyek baru
+    const res = await fetch(`${apiUrl}/api/projects`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token || ''}`
+      },
+      body: JSON.stringify({
+        name: projectName,
+        description: projectDescription,
+        workspace_id: Number(workspaceId)
+      })
+    });
+
+    if (!res.ok) throw new Error('Gagal membuat proyek');
+
+    const project = await res.json();
+
+    // Simpan project_id ke localStorage agar halaman Build, Settings, dll bisa menggunakannya
+    localStorage.setItem('active_project_id', String(project.id));
+
+    setLoadingText('Finalizing project structure...');
 
     setTimeout(() => {
       setIsGenerating(false);
-      onFinishProject(); // Pindah ke halaman stories/dashboard utama
-    }, 3500);
-  };
+      onFinishProject(); // Redirect ke /stories
+    }, 1000);
+
+  } catch (err) {
+    console.error(err);
+    setIsGenerating(false);
+    setError(true);
+  }
+};
 
   if (isGenerating) {
     return (
