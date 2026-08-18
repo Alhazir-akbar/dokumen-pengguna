@@ -2,12 +2,13 @@
 
 import LogoUserdoc from '../../../public/logoUserDoc';
 import { useWizardStore } from '../store/wizard-store';
-import { FolderGit2, FileCode2, Eye, ArrowLeft } from 'lucide-react';
+import { FolderGit2, FileCode2, Eye } from 'lucide-react';
 
 export default function ProjectType() {
-  const { projectType, setProjectType, nextStep, prevStep } = useWizardStore();
+  // Pastikan store Anda memiliki tipe 'generate' | 'translate' | 'example' | null
+  const { projectType, setProjectType, nextStep } = useWizardStore();
 
-  const handleSelect = (type: string) => {
+  const handleSelect = (type: 'generate' | 'translate' | 'example') => {
     setProjectType(type);
     nextStep();
   };
@@ -15,7 +16,7 @@ export default function ProjectType() {
   return (
     <div className="flex flex-col items-center w-full max-w-3xl mx-auto pt-10 text-center">
       
-      {/* Logo Kotak (UD) */}
+      {/* Logo */}
       <div className="mb-6">
         <LogoUserdoc />
       </div>
@@ -23,7 +24,7 @@ export default function ProjectType() {
       {/* Grid 2 Pilihan Utama */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 w-full mb-6">
         
-        {/* Pilihan 1: Generate new software requirements */}
+        {/* Pilihan: Generate */}
         <div
           onClick={() => handleSelect('generate')}
           className={`cursor-pointer p-8 rounded-2xl border transition-all flex flex-col items-center text-center ${
@@ -43,7 +44,7 @@ export default function ProjectType() {
           </p>
         </div>
 
-        {/* Pilihan 2: Translate source code */}
+        {/* Pilihan: Translate */}
         <div
           onClick={() => handleSelect('translate')}
           className={`cursor-pointer p-8 rounded-2xl border transition-all flex flex-col items-center text-center ${
@@ -62,20 +63,22 @@ export default function ProjectType() {
             Reverse engineer your code into a detailed knowledge base which would otherwise take months.
           </p>
         </div>
-
       </div>
 
-      {/* Teks OR & Tombol Explore Example */}
+      {/* Tombol Explore Example */}
       <div className="w-full flex flex-col items-center mb-8">
         <span className="text-blue-300/80 text-xs font-medium uppercase tracking-wider mb-3">OR</span>
         <button
           type="button"
           onClick={() => handleSelect('example')}
-          className="text-white hover:text-blue-200 text-sm font-medium transition-colors flex items-center gap-2"
+          className={`text-sm font-medium transition-colors flex items-center gap-2 ${
+            projectType === 'example' ? 'text-white' : 'text-white hover:text-blue-200'
+          }`}
         >
           <Eye className="w-4 h-4" /> Explore an example Userdoc project
         </button>
       </div>
+      
     </div>
   );
 }

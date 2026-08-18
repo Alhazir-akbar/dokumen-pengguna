@@ -34,12 +34,15 @@ export interface UserStoryItem {
   description: string;
 }
 
+// Perbarui tipe projectType agar mendukung 'generate', 'translate', dan 'example'
+export type ProjectTypeEnum = 'generate' | 'translate' | 'example' | null;
+
 interface WizardState {
   step: number;
   teamName: string;
   projectName: string;
   useAi: boolean | null;
-  projectType: string | null;
+  projectType: ProjectTypeEnum;
   projectDescription: string;
   platformType: string;
   userTypes: UserTypeItem[];
@@ -54,7 +57,7 @@ interface WizardState {
   updateTeamName: (name: string) => void;
   updateProjectName: (name: string) => void;
   setUseAi: (choice: boolean) => void;
-  setProjectType: (type: string) => void;
+  setProjectType: (type: ProjectTypeEnum) => void;
   setProjectDescription: (desc: string) => void;
   setPlatformType: (platform: string) => void;
   
@@ -99,7 +102,7 @@ export const useWizardStore = create<WizardState>((set) => ({
   updateTeamName: (name) => set({ teamName: name }),
   updateProjectName: (name) => set({ projectName: name }),
   setUseAi: (choice: boolean) => set({ useAi: choice }),
-  setProjectType: (type: string) => set({ projectType: type }),
+  setProjectType: (type: ProjectTypeEnum) => set({ projectType: type }),
   setProjectDescription: (desc: string) => set({ projectDescription: desc }),
   setPlatformType: (platform: string) => set({ platformType: platform }),
   
@@ -142,6 +145,13 @@ export const useWizardStore = create<WizardState>((set) => ({
   })),
 
   resetStore: () => set({
+    step: 1,
+    teamName: '',
+    projectName: '',
+    useAi: null,
+    projectType: null,
+    projectDescription: '',
+    platformType: 'Web Application',
     userTypes: [],
     userGoals: [],
     epics: [],
