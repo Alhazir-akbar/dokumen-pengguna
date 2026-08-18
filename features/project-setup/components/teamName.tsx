@@ -9,15 +9,40 @@ export default function TeamName() {
   const { teamName, updateTeamName, nextStep } = useWizardStore();
   const [error, setError] = useState(false);
 
-  const handleNext = () => {
-    // Validasi: jika kosong atau hanya berisi spasi, batalkan dan tampilkan error
-    if (!teamName || teamName.trim() === "") {
-      setError(true);
-      return;
-    }
-    setError(false);
+  const handleNext = async () => {
+  if (!teamName || teamName.trim() === "") {
+    setError(true);
+    return;
+  }
+  setError(false);
+
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const token = localStorage.getItem('token');
+
+    // Panggil API buat workspace baru
+    const res = await fetch(`${apiUrl}/api/workspaces`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token || ''}`
+      },
+      body: JSON.stringify({ name: teamName })
+    });
+
+    if (!res.ok) throw new Error('Gagal membuat workspace');
+
+    const workspace = await res.json();
+
+    // Simpan workspace_id ke localStorage agar halaman lain bisa menggunakannya
+    localStorage.setItem('active_workspace_id', String(workspace.id));
+
     nextStep();
-  };
+  } catch (err) {
+    console.error(err);
+    setError(true);
+  }
+};
 
   return (
     <div className="flex flex-col items-start w-full max-w-xl mx-auto pt-12">
