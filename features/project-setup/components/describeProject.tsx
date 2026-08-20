@@ -3,14 +3,43 @@
 import { useState, useRef } from 'react';
 import LogoUserdoc from '../../../public/logoUserDoc';
 import { useWizardStore } from '../store/wizard-store';
-import { Box, Paperclip, Sparkles, ArrowRight, Check, FileText, Image as ImageIcon, Link as LinkIcon, Code, X } from 'lucide-react';
+import {
+  Box,
+  Paperclip,
+  Sparkles,
+  ArrowRight,
+  Check,
+  FileText,
+  Image as ImageIcon,
+  Link as LinkIcon,
+  Code,
+  X,
+  Loader2,
+  AlertCircle,
+} from 'lucide-react';
+import { projectApi } from '@/services/projectsApi';
+import { getAuthToken } from '@/lib/auth';
 
 export default function DescribeProject() {
-  const { projectName, projectDescription, setProjectDescription, platformType, setPlatformType, nextStep } = useWizardStore();
+  const {
+    projectName,
+    projectDescription,
+    setProjectDescription,
+    platformType,
+    setPlatformType,
+    nextStep,
+    createProjectIfNeeded,
+    isCreatingProject,
+  } = useWizardStore() as any;
+
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isAttachOpen, setIsAttachOpen] = useState(false);
   const [attachedFile, setAttachedFile] = useState<string | null>(null);
   const [error, setError] = useState(false);
+
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [actionError, setActionError] = useState('');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const titleName = projectName.trim() ? projectName : 'your project';
@@ -34,7 +63,6 @@ export default function DescribeProject() {
     { label: 'Attach Source Code / Repo', icon: Code, type: 'file', accept: '.zip,.rar,.tar,.json' },
   ];
 
-  // Fungsi untuk menangani pilihan dari menu attach
   const handleSelectAttachOption = (option: typeof attachOptions[0]) => {
     setIsAttachOpen(false);
 
@@ -51,7 +79,6 @@ export default function DescribeProject() {
     }
   };
 
-  // Fungsi ketika file lokal berhasil dipilih
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
@@ -59,20 +86,63 @@ export default function DescribeProject() {
     }
   };
 
-  const handleNext = () => {
-    // Validasi: jika kosong atau hanya spasi, batalkan dan tampilkan error
+  const handleAiSuggest = async () => {
+    setActionError('');
+    const token = getAuthToken();
+
+    if (!token) {
+      setActionError('Sesi habis, silakan login kembali.');
+      return;
+    }
+
+    setIsSuggesting(true);
+    try {
+      const result = await projectApi.suggestDescription(
+        {
+          project_name: projectName?.trim() || 'Proyek Baru',
+          platform_type: platformType,
+        },
+        token
+      );
+
+      setProjectDescription(result.description);
+      if (error) setError(false);
+    } catch (err: any) {
+      console.error('Gagal mendapatkan saran AI:', err);
+      setActionError(err.message || 'AI gagal memberikan saran. Silakan coba lagi.');
+    } finally {
+      setIsSuggesting(false);
+    }
+  };
+
+  const handleNext = async () => {
     if (!projectDescription || projectDescription.trim() === "") {
       setError(true);
       return;
     }
     setError(false);
+    setActionError('');
+
+    const token = getAuthToken();
+    if (!token) {
+      setActionError('Sesi habis, silakan login kembali.');
+      return;
+    }
+
+    const id = await createProjectIfNeeded(token);
+    if (!id) {
+      setActionError('Gagal membuat proyek. Silakan coba lagi.');
+      return;
+    }
+
     nextStep();
   };
+
+  const isBusy = isSuggesting || isCreatingProject;
 
   return (
     <div className="flex flex-col items-center w-full max-w-2xl mx-auto pt-8 text-center">
       
-      {/* Hidden File Input untuk Upload Lokal */}
       <input 
         type="file" 
         ref={fileInputRef} 
@@ -80,54 +150,54 @@ export default function DescribeProject() {
         className="hidden" 
       />
 
-      {/* Logo Kotak (UD) */}
       <div className="mb-4">
         <LogoUserdoc />
       </div>
 
-      {/* Judul Utama */}
       <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
         Tell us about {titleName}
       </h1>
       
       <p className="text-blue-200 text-xs sm:text-sm mb-6 max-w-lg">
-        Enter a high level overview of what it does, and how you use it (click the <Sparkles className="w-3.5 h-3.5 inline text-gray-300 mx-0.5" /> button for a detailed example and suggestion).
+        Enter a high level overview of what it does, and how you use it (click the <Sparkles className="w-3.5 h-3.5 inline text-gray-300 mx-0.5" /> button and let AI suggest a description for you if you're not sure where to start).
       </p>
 
-      {/* Kotak Input / Textarea Container */}
       <div className={`bg-white/20 border rounded-2xl p-4 w-full mb-2 backdrop-blur-sm shadow-xl text-left relative flex flex-col transition-all ${
         error ? 'border-red-400 ring-2 ring-red-400/50' : 'border-blue-400/30'
       }`}>
         
-        {/* Tombol AI Suggestion */}
         <button 
           type="button" 
-          onClick={() => {
-            setProjectDescription(`${titleName} is a comprehensive digital platform designed to optimize workflow management, track real-time analytics, and streamline team collaboration efficiently.`);
-            if (error) setError(false);
-          }}
-          className="absolute top-4 right-4 text-blue-200 hover:text-white transition-colors p-1 cursor-pointer"
+          onClick={handleAiSuggest}
+          disabled={isBusy}
+          className="absolute top-4 right-4 text-blue-200 hover:text-white transition-colors p-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           title="Get AI suggestion"
         >
-          <Sparkles className="w-4 h-4 text-gray-300" />
+          {isSuggesting ? (
+            <Loader2 className="w-4 h-4 text-gray-300 animate-spin" />
+          ) : (
+            <Sparkles className="w-4 h-4 text-gray-300" />
+          )}
         </button>
 
-        {/* Textarea */}
         <textarea
           rows={7}
           value={projectDescription}
           onChange={(e) => {
             setProjectDescription(e.target.value);
-            if (error) setError(false); // Hilangkan pesan error saat user mengetik
+            if (error) setError(false);
           }}
-          placeholder={`${titleName} description...`}
-          className="w-full bg-transparent text-white placeholder-white/40 text-sm focus:outline-none resize-none mb-4 pr-8"
+          placeholder={
+            isSuggesting
+              ? 'AI sedang menyusun draf deskripsi...'
+              : `${titleName} description...`
+          }
+          disabled={isSuggesting}
+          className="w-full bg-transparent text-white placeholder-white/40 text-sm focus:outline-none resize-none mb-4 pr-8 disabled:opacity-70"
         />
 
-        {/* Bagian Bawah Textarea: Tombol Dropdown & Attach */}
         <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-blue-400/25 relative">
           
-          {/* Tombol Dropdown Platform */}
           <div className="relative">
             <button
               type="button"
@@ -142,7 +212,6 @@ export default function DescribeProject() {
               <span className="text-blue-300 text-[10px] ml-1">▼</span>
             </button>
 
-            {/* Menu Dropdown Popup Platform */}
             {isDropdownOpen && (
               <div className="absolute left-0 bottom-full mb-2 w-56 bg-white border border-blue-400/30 rounded-xl shadow-2xl py-2 z-50 flex flex-col">
                 {platforms.map((item) => (
@@ -165,7 +234,6 @@ export default function DescribeProject() {
             )}
           </div>
 
-          {/* Tombol Dropdown Attach */}
           <div className="relative">
             <button
               type="button"
@@ -180,7 +248,6 @@ export default function DescribeProject() {
               <span className="text-blue-300 text-[10px] ml-1">▼</span>
             </button>
 
-            {/* Menu Dropdown Popup Attach */}
             {isAttachOpen && (
               <div className="absolute left-0 bottom-full mb-2 w-64 bg-white border border-blue-400/30 rounded-xl shadow-2xl py-2 z-50 flex flex-col">
                 <div className="px-4 py-1 text-[10px] font-semibold text-blue-400 uppercase tracking-wider">
@@ -204,7 +271,6 @@ export default function DescribeProject() {
             )}
           </div>
 
-          {/* Badge Label Jika File / Link Berhasil Ditambahkan */}
           {attachedFile && (
           <span className="text-[11px] text-blue-400 bg-white border border-blue-400/30 px-2.5 py-1 rounded-md flex items-center gap-1.5 max-w-[220px] truncate" title={attachedFile}>
             <Paperclip className="w-3.5 h-3.5 shrink-0" />
@@ -221,25 +287,33 @@ export default function DescribeProject() {
         </div>
       </div>
 
-      {/* Pesan Peringatan Jika Kosong */}
-      {error && (
+      {(error || actionError) && (
         <div className="w-full text-left mb-4">
-          <p className="text-red-300 text-xs">
-            ⚠️ Deskripsi proyek wajib diisi sebelum melanjutkan.
+          <p className="text-red-300 text-xs flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+            {error ? 'Deskripsi proyek wajib diisi sebelum melanjutkan.' : actionError}
           </p>
         </div>
       )}
 
-      {!error && <div className="mb-4"></div>}
+      {!error && !actionError && <div className="mb-4"></div>}
 
-      {/* Tombol Next */}
       <div className="w-full flex justify-start">
         <button
           type="button"
           onClick={handleNext}
-          className="bg-white text-blue-500 hover:bg-blue-50 px-4 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-md text-sm cursor-pointer"
+          disabled={isBusy}
+          className="bg-white text-blue-500 hover:bg-blue-50 px-4 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-md text-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          Next <ArrowRight className="w-4 h-4" />
+          {isCreatingProject ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" /> Membuat proyek...
+            </>
+          ) : (
+            <>
+              Next <ArrowRight className="w-4 h-4" />
+            </>
+          )}
         </button>
       </div>
 
