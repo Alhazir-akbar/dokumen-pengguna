@@ -1,54 +1,465 @@
 // app/stories/page.tsx
 'use client';
 
-import { useState } from 'react';
-import { mockEpics } from '@/features/stories/data/mock-epics';
-import { UserStory } from '@/features/stories/types';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { UserStory, Epic } from '@/features/stories/types';
 import StoriesSidebar from '@/features/stories/components/StoriesSidebar';
 import EmptyDetailPanel from '@/features/stories/components/EmptyDetailPanel';
 import EpicDetailPanel from '@/features/stories/components/EpicDetailPanel';
+import ManualStoryDetailPanel from '@/features/stories/components/ManualStoryDetailPanel';
 import AppSidebar from '@/features/common/components/AppSidebar';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Upload, Download, X, Lightbulb, Loader2 } from 'lucide-react';
+import { fetchEpics, fetchStories } from '@/services/storiesApi';
+import { projectApi } from '@/services/projectsApi';
+import { getAuthToken } from '@/lib/auth';
 
-export default function StoriesPage() {
+function StoriesPageContent() {
+  const searchParams = useSearchParams();
+  const projectId = searchParams.get('project_id');
+
+  const [rawEpics, setRawEpics] = useState<any[]>([]);
+  const [rawStories, setRawStories] = useState<any[]>([]);
+  const [projectName, setProjectName] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+
+  // Fetch data asli dari backend berdasarkan project_id di URL,
+  // BUKAN dari wizard store (yang cuma state sementara selama proses wizard).
+  useEffect(() => {
+    const loadData = async () => {
+      if (!projectId) {
+        setLoadError('project_id tidak ditemukan di URL.');
+        setIsLoading(false);
+        return;
+      }
+
+      const token = getAuthToken();
+      if (!token) {
+        setLoadError('Sesi habis, silakan login kembali.');
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const [epicsData, storiesData, projectData] = await Promise.all([
+          fetchEpics(Number(projectId), token),
+          fetchStories(Number(projectId), token),
+          projectApi.getProjectById(Number(projectId), token),
+        ]);
+
+        setRawEpics(epicsData);
+        setRawStories(storiesData);
+        setProjectName(projectData.name);
+      } catch (err: any) {
+        console.error('Gagal memuat data stories:', err);
+        setLoadError(err.message || 'Gagal memuat data dari server.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [projectId]);
+
+  // Transform data backend (EpicResponse, UserStoryResponse) -> bentuk yang dipakai UI.
+  // Backend UserStory pakai field as_a / i_want / so_that (bukan userType/storyName/description).
+  const formattedEpics: Epic[] = rawEpics.map((epic: any, index: number) => ({
+    id: epic.id,
+    code: `EP-${index + 1}`,
+    name: epic.name,
+    title: epic.name,
+    description: epic.description,
+    user_stories: rawStories
+      .filter((story: any) => story.epic_id === epic.id)
+      .map((story: any, sIndex: number) => ({
+        id: story.id,
+        epicId: story.epic_id,
+        code: story.code || `US-${index + 1}.${sIndex + 1}`,
+        as_a: story.as_a || 'User',
+        i_want: story.i_want || 'Melakukan sesuatu',
+        so_that: story.so_that || 'Sistem berjalan dengan baik',
+        acceptanceCriteria: (story.acceptance_criteria || []).map((ac: any) => ac.description),
+        techNotes: [],
+        testCases: [],
+      })),
+  }));
+
   const [selectedStory, setSelectedStory] = useState<UserStory | null>(null);
+  const [selectedEpic, setSelectedEpic] = useState<Epic | null>(null);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newAsA, setNewAsA] = useState('');
+  const [newSoThat, setNewSoThat] = useState('');
+  const [selectedEpicId, setSelectedEpicId] = useState<number | ''>('');
+
+  useEffect(() => {
+    if (formattedEpics.length > 0 && selectedEpicId === '') {
+      setSelectedEpicId(formattedEpics[0].id as any);
+    }
+  }, [formattedEpics, selectedEpicId]);
+
+  // Create story baru langsung ke backend (bukan ke wizard store)
+  const handleSaveNewStory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim() || !projectId) return;
+
+    const token = getAuthToken();
+    if (!token) {
+      alert('Sesi habis, silakan login kembali.');
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/stories`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            epic_id: selectedEpicId || formattedEpics[0]?.id,
+            as_a: newAsA || 'User',
+            i_want: newTitle,
+            so_that: newSoThat || 'Sistem berjalan dengan baik',
+            status: 'draft',
+            project_id: Number(projectId),
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Gagal menyimpan story baru');
+      }
+
+      const newStory = await response.json();
+      setRawStories((prev) => [...prev, newStory]);
+
+      setNewTitle('');
+      setNewAsA('');
+      setNewSoThat('');
+      setIsModalOpen(false);
+    } catch (err: any) {
+      console.error('Gagal membuat story:', err);
+      alert(err.message || 'Gagal menyimpan story baru.');
+    }
+  };
+
+  const handleUpdateStory = async (updatedStory: UserStory) => {
+    const token = getAuthToken();
+    if (!token) return;
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/stories/${updatedStory.id}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            epic_id: (updatedStory as any).epicId,
+            as_a: updatedStory.as_a,
+            i_want: updatedStory.i_want,
+            so_that: updatedStory.so_that,
+            status: 'draft',
+            project_id: Number(projectId),
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Gagal memperbarui story');
+      }
+
+      const saved = await response.json();
+      setSelectedStory(saved);
+      setRawStories((prev) => prev.map((s) => (s.id === saved.id ? saved : s)));
+    } catch (err: any) {
+      console.error('Gagal update story:', err);
+      alert(err.message || 'Gagal memperbarui story.');
+    }
+  };
+
+  const handleDeleteStory = async () => {
+    if (!selectedStory) return;
+    if (!confirm('Apakah Anda yakin ingin menghapus user story ini?')) return;
+
+    const token = getAuthToken();
+    if (!token) return;
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/stories/${selectedStory.id}`,
+        {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Gagal menghapus story');
+      }
+
+      setRawStories((prev) => prev.filter((s) => s.id !== selectedStory.id));
+      setSelectedStory(null);
+    } catch (err: any) {
+      console.error('Gagal hapus story:', err);
+      alert(err.message || 'Gagal menghapus story.');
+    }
+  };
+
+  const handleUpload = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,.txt';
+    input.onchange = (e: any) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            alert(`File "${file.name}" berhasil di-upload dan dibaca!`);
+          } catch (err) {
+            alert('Format file tidak valid.');
+          }
+        };
+        reader.readAsText(file);
+      }
+    };
+    input.click();
+  };
+
+  const handleDownload = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(formattedEpics, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `${projectName || 'project'}-stories.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
+
+  const handleChatAssistant = () => {
+    alert('Membuka Userdoc Assistant Chat Panel...');
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+          <p className="text-sm text-gray-500">Memuat data proyek...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
+        <div className="text-center max-w-md px-6">
+          <p className="text-red-600 font-medium mb-2">Gagal memuat data</p>
+          <p className="text-sm text-gray-500">{loadError}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-50 font-sans">
       {/* 1. Main Navigation Toolbar (Dipanggil dari Komponen Global) */}
       <AppSidebar activeMenu="stories" />
 
-      {/* 2. Sub-Sidebar (Daftar Epic & Stories khusus halaman ini) */}
-      <StoriesSidebar 
-        epics={mockEpics} 
-        selectedStoryId={selectedStory?.id} 
-        onSelectStory={(story: UserStory) => setSelectedStory(story)} 
+      <StoriesSidebar
+        epics={formattedEpics}
+        selectedStoryId={selectedStory?.id}
+        onSelectStory={(story: UserStory) => {
+          setSelectedStory(story);
+          setSelectedEpic(null);
+        }}
+        onSelectEpic={(epic: Epic) => {
+          setSelectedEpic(epic);
+          setSelectedStory(null);
+        }}
+        onAddNew={() => setIsModalOpen(true)}
       />
 
-      {/* 3. Main Content / Detail Panel (Sisi Kanan) */}
       <main className="flex-1 flex flex-col h-full bg-white overflow-hidden">
-        {/* Top Navbar Kecil */}
-        <div className="h-14 border-b border-gray-200 px-6 flex items-center justify-between bg-white">
-          <span className="text-xs font-medium text-gray-500">alalal -</span>
+        <div className="h-14 border-b border-gray-200 px-6 flex items-center justify-between bg-white shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-gray-600">
+              {projectName || 'Untitled Project'} <span className="text-gray-400">/</span>
+            </span>
+          </div>
+
           <div className="flex items-center gap-3">
-            <button className="text-xs text-gray-600 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-gray-100 transition-colors">
+            <button
+              onClick={handleChatAssistant}
+              className="text-xs text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm font-medium cursor-pointer"
+            >
               <MessageSquare className="w-3.5 h-3.5 text-blue-600" /> Chat to Userdoc Assistant
             </button>
-            <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
+
+            <div className="flex items-center gap-1.5 text-gray-500">
+              <button
+                onClick={handleUpload}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 cursor-pointer"
+                title="Upload Document"
+              >
+                <Upload className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleDownload}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 cursor-pointer"
+                title="Download / Export JSON"
+              >
+                <Download className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-sm ml-1">
               UD
             </div>
           </div>
         </div>
 
-        {/* Konten Berubah Dinamis */}
-        <div className="flex-1 flex overflow-hidden">
-          {selectedStory ? (
-            <EpicDetailPanel story={selectedStory} />
-          ) : (
-            <EmptyDetailPanel />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {formattedEpics.length === 0 && (
+            <div className="bg-amber-50 border-b border-amber-100 px-6 py-2.5 flex items-center gap-2 text-xs text-amber-800 shrink-0">
+              <Lightbulb className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>Belum ada Epic atau User Story. Silakan buat yang pertama.</span>
+            </div>
           )}
+
+          <div className="flex-1 flex overflow-hidden">
+            {selectedStory ? (
+              <ManualStoryDetailPanel
+                story={selectedStory}
+                onDelete={handleDeleteStory}
+                onUpdate={handleUpdateStory}
+              />
+            ) : selectedEpic ? (
+              <div className="flex-1 bg-white p-8 overflow-y-auto">
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">{selectedEpic.name}</h1>
+                <p className="text-sm text-gray-600 mb-6">{selectedEpic.description || 'Tidak ada deskripsi epic.'}</p>
+                <h3 className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-4 border-b pb-2">Daftar Stories dalam Epic Ini</h3>
+                <ul className="space-y-2">
+                  {selectedEpic.user_stories?.map((st) => (
+                    <li key={st.id} onClick={() => setSelectedStory(st)} className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer flex justify-between items-center text-sm">
+                      <span className="font-medium text-gray-800">{st.i_want}</span>
+                      <span className="text-xs bg-gray-100 px-2 py-0.5 rounded font-mono">{st.code}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <EmptyDetailPanel onOpenAddModal={() => setIsModalOpen(true)} />
+            )}
+          </div>
         </div>
       </main>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl overflow-hidden border border-gray-100 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h3 className="font-bold text-gray-800 text-base">Create New User Story</h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveNewStory} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Pilih Epic</label>
+                <select
+                  value={selectedEpicId}
+                  onChange={(e) => setSelectedEpicId(Number(e.target.value))}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500"
+                >
+                  {formattedEpics.map((ep) => (
+                    <option key={ep.id} value={ep.id}>{ep.title}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Sebagai (As a)</label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Admin, Guest, Registered User"
+                  value={newAsA}
+                  onChange={(e) => setNewAsA(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Saya ingin (I want to)</label>
+                <input
+                  type="text"
+                  placeholder="Contoh: melakukan login ke dalam sistem"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  required
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Sehingga (So that)</label>
+                <textarea
+                  placeholder="Contoh: saya dapat mengakses dashboard utama"
+                  value={newSoThat}
+                  onChange={(e) => setNewSoThat(e.target.value)}
+                  rows={3}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm cursor-pointer"
+                >
+                  Simpan Story
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function StoriesPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
+        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+      </div>
+    }>
+      <StoriesPageContent />
+    </Suspense>
   );
 }

@@ -2,7 +2,7 @@
 
 import LogoUserdoc from '../../../public/logoUserDoc';
 import { useWizardStore } from '../store/wizard-store';
-import { Sparkles, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Sparkles, ArrowRight, ArrowLeft, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 
 export default function NameProject() {
@@ -10,7 +10,6 @@ export default function NameProject() {
   const [error, setError] = useState(false);
 
   const handleNext = () => {
-    // Validasi: jika kosong atau hanya berisi spasi, batalkan dan tampilkan error
     if (!projectName || projectName.trim() === "") {
       setError(true);
       return;
@@ -19,20 +18,28 @@ export default function NameProject() {
     nextStep();
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleNext();
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    updateProjectName(e.target.value);
+    if (error) setError(false);
+  };
+
   return (
     <div className="flex flex-col items-start w-full max-w-xl mx-auto pt-12">
-      
-      {/* Panggil Logo di sini */}
       <div className="mb-8">
         <LogoUserdoc />
       </div>
 
-      {/* Judul Pertanyaan */}
       <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
         What is the name of your project?
       </h1>
 
-      {/* Sub-teks penjelasan */}
       <p className="text-blue-200 text-sm mb-6 leading-relaxed">
         This is the name of your software, app, or system you want to create requirements for.{' '}
         <span className="mt-1 text-blue-300 flex items-center gap-1.5">
@@ -40,16 +47,14 @@ export default function NameProject() {
         </span>
       </p>
 
-      {/* Kotak Input dengan Ikon AI di dalamnya */}
       <div className="relative w-full mb-2">
         <input
           type="text"
           value={projectName}
-          onChange={(e) => {
-            updateProjectName(e.target.value);
-            if (error) setError(false); // Hilangkan pesan error saat user mengetik
-          }}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
           placeholder="Type your project name here..."
+          autoFocus
           className={`w-full bg-white/10 border rounded-xl px-4 py-3.5 text-white placeholder-blue-300/60 focus:outline-none focus:ring-2 transition-all shadow-inner pr-12 ${
             error ? 'border-red-400 focus:ring-red-400' : 'border-blue-100/40 focus:ring-white/50'
           }`}
@@ -59,17 +64,15 @@ export default function NameProject() {
         </div>
       </div>
 
-      {/* Pesan Peringatan Jika Kosong */}
       {error && (
-        <p className="text-red-300 text-xs mb-4 animate-shake">
-          ⚠️ Nama proyek wajib diisi sebelum melanjutkan.
+        <p className="text-red-300 text-xs mb-4 animate-shake flex items-center gap-1.5">
+          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+          Nama proyek wajib diisi sebelum melanjutkan.
         </p>
       )}
 
-      {/* Spasi tambahan jika tidak ada error agar layout tetap stabil */}
       {!error && <div className="mb-4"></div>}
 
-      {/* Tombol Navigasi (Back & Next) */}
       <div className="w-full flex items-center justify-between">
         <button
           type="button"
