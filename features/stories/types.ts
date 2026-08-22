@@ -1,13 +1,17 @@
 export interface UserStory {
-  id: string;
+  id: number | string;
+  epicId?: number | string;
   code: string;
   as_a: string;
   i_want: string;
   so_that: string;
+  acceptanceCriteria?: string[];
+  techNotes?: string[];
+  testCases?: string[];
 }
 
 export interface Epic {
-  id: string;
+  id: number | string;
   code: string;
   name: string;
   description: string;

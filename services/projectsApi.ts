@@ -48,6 +48,30 @@ export interface SuggestDescriptionResponse {
   description: string;
 }
 
+export interface SuggestJourneyPayload {
+  project_name: string;
+  journey_context: string;
+}
+
+export interface SuggestJourneyResponse {
+  journey: string;
+}
+
+export interface RequirementsPayload {
+  user_types: Array<{ name: string; description: string }>;
+  epics: Array<{ name: string; description: string }>;
+  user_stories: Array<{
+    epic_name: string;
+    story_name: string;
+    user_type: string;
+    description: string;
+    acceptance_criteria: string[];
+    tech_notes: string[];
+    test_cases: string[];
+  }>;
+  nfrs: Array<{ category: string; description: string }>;
+}
+
 // ============ Helper ============
 
 const getAuthHeaders = (token: string) => ({
@@ -125,7 +149,7 @@ export const projectApi = {
     return response.json();
   },
 
-  // 6. Integrasi AI: saran deskripsi proyek singkat (dipakai di step DescribeProject)
+  // 6. Integrasi AI: saran deskripsi proyek singkat
   suggestDescription: async (
     data: SuggestDescriptionPayload,
     token: string
@@ -142,7 +166,24 @@ export const projectApi = {
     return response.json();
   },
 
-  // 7. Integrasi AI: Generate Requirements (epics, user stories, user types, NFRs)
+  // 7. Integrasi AI: saran user journey
+  suggestJourney: async (
+    data: SuggestJourneyPayload,
+    token: string
+  ): Promise<SuggestJourneyResponse> => {
+    const response = await fetch(`${API_BASE_URL}/api/projects/suggest-journey`, {
+      method: 'POST',
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'AI gagal memberikan saran user journey');
+    }
+    return response.json();
+  },
+
+  // 8. Integrasi AI: Generate Requirements
   generateRequirements: async (id: number, token: string) => {
     const response = await fetch(`${API_BASE_URL}/api/projects/${id}/generate-requirements`, {
       method: 'POST',
@@ -155,17 +196,43 @@ export const projectApi = {
     return response.json();
   },
 
-  // 8. Integrasi AI: Simpan hasil requirements (yang sudah diedit user) ke DB
-  saveRequirements: async (id: number, aiRequirementsData: any, token: string) => {
+  // 9. Integrasi AI: Simpan hasil requirements ke DB dengan sanitasi payload yang aman
+  saveRequirements: async (id: number, rawData: any, token: string) => {
+    // Normalisasi struktur data agar sesuai dengan Pydantic Schema backend
+    const sanitizedPayload: RequirementsPayload = {
+      user_types: (rawData.user_types || []).map((ut: any) => ({
+        name: ut.name || 'General User',
+        description: ut.description || 'No description provided',
+      })),
+      epics: (rawData.epics || []).map((ep: any) => ({
+        name: ep.name || ep.title || 'Core Module',
+        description: ep.description || 'No description provided',
+      })),
+      user_stories: (rawData.user_stories || []).map((st: any) => ({
+        epic_name: st.epic_name || st.epicTitle || 'Core Module',
+        story_name: st.story_name || st.storyName || 'Manage Feature',
+        user_type: st.user_type || st.userType || 'User',
+        description: st.description || 'System feature requirement',
+        acceptance_criteria: st.acceptance_criteria || ['Given user is active, When interacting, Then system processes.'],
+        tech_notes: st.tech_notes || ['Implement standard API and database storage.'],
+        test_cases: st.test_cases || ['Functional Test: Verify feature works as expected.'],
+      })),
+      nfrs: (rawData.nfrs || []).map((nfr: any) => ({
+        category: nfr.category || 'Performance',
+        description: nfr.description || 'System should perform efficiently under normal load.',
+      })),
+    };
+
     const response = await fetch(`${API_BASE_URL}/api/projects/${id}/save-requirements`, {
       method: 'POST',
       headers: getAuthHeaders(token),
-      body: JSON.stringify(aiRequirementsData),
+      body: JSON.stringify(sanitizedPayload),
     });
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.detail || 'Gagal menyimpan draf kebutuhan');
     }
     return response.json();
-  }
+  },
 };

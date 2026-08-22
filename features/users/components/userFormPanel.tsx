@@ -16,8 +16,16 @@ export default function UserFormPanel({ initialData, onSubmit, onCancel }: UserF
   const [description, setDescription] = useState(initialData?.description || '');
   const [personas, setPersonas] = useState<Persona[]>(initialData?.personas || []);
 
+  // Simpan id persona yang sudah ada sejak awal form dibuka.
+  // Dipakai untuk mendeteksi persona mana yang dihapus user selama sesi edit ini,
+  // supaya nanti bisa benar-benar dihapus di backend (bukan cuma hilang dari state lokal).
+  const [initialPersonaIds] = useState<number[]>(
+    (initialData?.personas || []).map((p) => p.id).filter((id): id is number => !!id)
+  );
+
   const handleAddPersona = () => {
     const newPersona: Persona = {
+      // sengaja tanpa id -> menandakan persona baru, belum ada di database
       name: 'New Persona',
       workTitle: '',
       age: '',
@@ -44,13 +52,19 @@ export default function UserFormPanel({ initialData, onSubmit, onCancel }: UserF
     e.preventDefault();
     if (!name.trim()) return;
 
+    // Persona yang id-nya ada di initialPersonaIds tapi sudah tidak ada lagi
+    // di array `personas` saat ini berarti sengaja dihapus user selama edit.
+    const remainingIds = personas.map((p) => p.id).filter((id): id is number => !!id);
+    const deletedPersonaIds = initialPersonaIds.filter((id) => !remainingIds.includes(id));
+
     const savedUserType: UserType = {
-      id: initialData?.id || `user-${Date.now()}`,
+      id: initialData?.id || '', // id asli akan diisi backend saat create; page yang handle ini
       name,
       description,
       storiesCount: initialData?.storiesCount || 0,
       personasCount: personas.length,
       personas,
+      deletedPersonaIds,
     };
 
     onSubmit(savedUserType);
@@ -113,7 +127,7 @@ export default function UserFormPanel({ initialData, onSubmit, onCancel }: UserF
           </div>
 
           {personas.map((persona, index) => (
-            <div key={index} className="bg-white border border-gray-200 rounded-xl p-6 shadow-xs space-y-6">
+            <div key={persona.id ?? `new-${index}`} className="bg-white border border-gray-200 rounded-xl p-6 shadow-xs space-y-6">
               <div className="flex items-center justify-between border-b border-gray-100 pb-4">
                 <div className="flex items-center gap-3 flex-1">
                   <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm shrink-0">

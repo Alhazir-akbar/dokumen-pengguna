@@ -15,7 +15,6 @@ export default function ManualStoryDetailPanel({ story, onDelete, onUpdate }: Ma
   const [activeTab, setActiveTab] = useState<'criteria' | 'notes' | 'tests'>('criteria');
   const [isEditing, setIsEditing] = useState(false);
 
-  // State untuk form edit data manual
   const [asA, setAsA] = useState(story.as_a);
   const [iWant, setIWant] = useState(story.i_want);
   const [soThat, setSoThat] = useState(story.so_that);
@@ -39,7 +38,6 @@ export default function ManualStoryDetailPanel({ story, onDelete, onUpdate }: Ma
         {/* Header Title & Action Code */}
         <div className="flex items-start justify-between border-b border-gray-100 pb-6 mb-6">
           <div>
-            {/* Mengganti label agar tidak kaku bertuliskan "Example story" */}
             <h1 className="text-2xl font-bold text-gray-900 mb-1">
               {story.i_want ? `I want ${story.i_want}` : 'Manual User Story'}
             </h1>
@@ -50,20 +48,18 @@ export default function ManualStoryDetailPanel({ story, onDelete, onUpdate }: Ma
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-400 font-mono font-medium">{story.code}</span>
             <span className="text-xs text-gray-400 font-mono font-medium">v0.1</span>
-            
-            {/* Tombol Edit */}
-            <button 
-              onClick={() => setIsEditing(!isEditing)} 
-              className="p-1.5 text-gray-400 hover:text-blue-600 rounded-md transition-colors cursor-pointer" 
+
+            <button
+              onClick={() => setIsEditing(!isEditing)}
+              className="p-1.5 text-gray-400 hover:text-blue-600 rounded-md transition-colors cursor-pointer"
               title="Edit Story"
             >
               <Edit3 className="w-4 h-4" />
             </button>
 
-            {/* Tombol Delete */}
-            <button 
-              onClick={onDelete} 
-              className="p-1.5 text-gray-400 hover:text-red-600 rounded-md transition-colors cursor-pointer" 
+            <button
+              onClick={onDelete}
+              className="p-1.5 text-gray-400 hover:text-red-600 rounded-md transition-colors cursor-pointer"
               title="Delete Story"
             >
               <Trash2 className="w-4 h-4" />
@@ -77,39 +73,39 @@ export default function ManualStoryDetailPanel({ story, onDelete, onUpdate }: Ma
             <h3 className="text-xs font-bold text-blue-600 uppercase">Edit Manual Story</h3>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">As a...</label>
-              <input 
-                type="text" 
-                value={asA} 
-                onChange={(e) => setAsA(e.target.value)} 
+              <input
+                type="text"
+                value={asA}
+                onChange={(e) => setAsA(e.target.value)}
                 className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-gray-800"
               />
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">I want to...</label>
-              <input 
-                type="text" 
-                value={iWant} 
-                onChange={(e) => setIWant(e.target.value)} 
+              <input
+                type="text"
+                value={iWant}
+                onChange={(e) => setIWant(e.target.value)}
                 className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-gray-800"
               />
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">So that...</label>
-              <input 
-                type="text" 
-                value={soThat} 
-                onChange={(e) => setSoThat(e.target.value)} 
+              <input
+                type="text"
+                value={soThat}
+                onChange={(e) => setSoThat(e.target.value)}
                 className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-gray-800"
               />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <button 
+              <button
                 onClick={() => setIsEditing(false)}
                 className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold cursor-pointer"
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={handleSaveEdit}
                 className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold cursor-pointer hover:bg-blue-700"
               >
@@ -134,6 +130,9 @@ export default function ManualStoryDetailPanel({ story, onDelete, onUpdate }: Ma
             }`}
           >
             ACCEPTANCE CRITERIA
+            {story.acceptanceCriteria && story.acceptanceCriteria.length > 0 && (
+              <span className="ml-1.5 text-[10px] text-gray-400 font-normal">({story.acceptanceCriteria.length})</span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab('notes')}
@@ -142,6 +141,9 @@ export default function ManualStoryDetailPanel({ story, onDelete, onUpdate }: Ma
             }`}
           >
             TECH NOTES
+            {story.techNotes && story.techNotes.length > 0 && (
+              <span className="ml-1.5 text-[10px] text-gray-400 font-normal">({story.techNotes.length})</span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab('tests')}
@@ -150,21 +152,58 @@ export default function ManualStoryDetailPanel({ story, onDelete, onUpdate }: Ma
             }`}
           >
             TEST CASES
+            {story.testCases && story.testCases.length > 0 && (
+              <span className="ml-1.5 text-[10px] text-gray-400 font-normal">({story.testCases.length})</span>
+            )}
           </button>
         </div>
 
         {activeTab === 'criteria' && (
-          <div className="space-y-4 text-xs text-gray-700 leading-relaxed">
-            <p className="text-gray-600">Acceptance criteria defined manually for this user story.</p>
-            <ul className="list-disc pl-5 space-y-1.5 text-gray-600">
-              <li>Ensure clear definitions of done</li>
-              <li>Validate requirements from the user perspective</li>
+          story.acceptanceCriteria && story.acceptanceCriteria.length > 0 ? (
+            <ul className="space-y-2.5 text-xs text-gray-700 leading-relaxed list-disc pl-5">
+              {story.acceptanceCriteria.map((ac, index) => (
+                <li key={index}>{ac}</li>
+              ))}
             </ul>
-          </div>
+          ) : (
+            <div className="space-y-4 text-xs text-gray-700 leading-relaxed">
+              <p className="text-gray-500 italic">Belum ada acceptance criteria untuk story ini.</p>
+            </div>
+          )
         )}
 
-        {activeTab === 'notes' && <div className="text-xs text-gray-500 italic">No tech notes added yet.</div>}
-        {activeTab === 'tests' && <div className="text-xs text-gray-500 italic">No test cases added yet.</div>}
+        {/* Tech Notes: sekarang menampilkan data asli dari story.techNotes (hasil AI generate
+            atau input manual), bukan lagi teks statis "No tech notes added yet." */}
+        {activeTab === 'notes' && (
+          story.techNotes && story.techNotes.length > 0 ? (
+            <ul className="space-y-3 text-xs text-gray-700 leading-relaxed">
+              {story.techNotes.map((note, index) => (
+                <li key={index} className="flex gap-2.5 p-3 bg-blue-50/40 border border-blue-100 rounded-lg">
+                  <Code className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
+                  <span>{note}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="text-xs text-gray-500 italic">No tech notes added yet.</div>
+          )
+        )}
+
+        {/* Test Cases: sama seperti Tech Notes, sekarang menampilkan data asli. */}
+        {activeTab === 'tests' && (
+          story.testCases && story.testCases.length > 0 ? (
+            <ul className="space-y-3 text-xs text-gray-700 leading-relaxed">
+              {story.testCases.map((tc, index) => (
+                <li key={index} className="flex gap-2.5 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                  <span className="text-[10px] font-mono font-bold text-gray-400 shrink-0 mt-0.5">TC-{index + 1}</span>
+                  <span>{tc}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="text-xs text-gray-500 italic">No test cases added yet.</div>
+          )
+        )}
       </div>
 
       {/* Sidebar Kanan */}

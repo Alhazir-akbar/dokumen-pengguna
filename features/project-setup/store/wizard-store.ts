@@ -53,10 +53,8 @@ interface WizardState {
   epics: EpicItem[];
   nonFunctionals: NonFunctionalItem[];
   userStories: UserStoryItem[];
-
   projectId: number | null;
   isCreatingProject: boolean;
-
   workspaceId: number | null;
   isCreatingWorkspace: boolean;
 
@@ -73,32 +71,25 @@ interface WizardState {
   addUserType: (item: UserTypeItem) => void;
   removeUserType: (id: string) => void;
   updateUserTypeDescription: (id: string, description: string) => void;
-
   updateUserGoal: (userTypeName: string, goals: string, frustrations: string) => void;
 
   addEpic: (item: EpicItem) => void;
   removeEpic: (id: string) => void;
   updateEpic: (id: string, updatedData: Partial<EpicItem>) => void;
 
-  addNonFunctional: (item: NonFunctionalItem) => void;
-  removeNonFunctional: (id: string) => void;
-
-  addUserStory: (item: UserStoryItem) => void;
-  removeUserStory: (id: string) => void;
-
-  setProjectId: (id: number) => void;
-  setWorkspaceId: (id: number) => void;
-
   createWorkspaceIfNeeded: (token: string) => Promise<number | null>;
   createProjectIfNeeded: (token: string) => Promise<number | null>;
-
   generateAIRequirements: (projectId: number, token: string) => Promise<boolean>;
   resetStore: () => void;
 }
 
+const getValidToken = (token?: string): string => {
+  return token || localStorage.getItem('token') || localStorage.getItem('access_token') || '';
+};
+
 export const useWizardStore = create<WizardState>()(
   persist(
-    (set, get) => ({
+    (set, get: any) => ({
       step: 1,
       teamName: '',
       projectName: '',
@@ -106,13 +97,11 @@ export const useWizardStore = create<WizardState>()(
       projectType: null,
       projectDescription: '',
       platformType: 'Web Application',
-
       userTypes: [],
       userGoals: [],
       epics: [],
       nonFunctionals: [],
       userStories: [],
-
       projectId: null,
       isCreatingProject: false,
       workspaceId: null,
@@ -124,69 +113,50 @@ export const useWizardStore = create<WizardState>()(
 
       updateTeamName: (name) => set({ teamName: name }),
       updateProjectName: (name) => set({ projectName: name }),
-      setUseAi: (choice: boolean) => set({ useAi: choice }),
-      setProjectType: (type: ProjectTypeEnum) => set({ projectType: type }),
-      setProjectDescription: (desc: string) => set({ projectDescription: desc }),
-      setPlatformType: (platform: string) => set({ platformType: platform }),
+      setUseAi: (choice) => set({ useAi: choice }),
+      setProjectType: (type) => set({ projectType: type }),
+      setProjectDescription: (desc) => set({ projectDescription: desc }),
+      setPlatformType: (platform) => set({ platformType: platform }),
 
-      addUserType: (item: UserTypeItem) => set((state) => ({ userTypes: [...state.userTypes, item] })),
-      removeUserType: (id: string) => set((state) => ({ userTypes: state.userTypes.filter((u) => u.id !== id) })),
-      updateUserTypeDescription: (id: string, description: string) => set((state) => ({
-        userTypes: state.userTypes.map((ut) =>
-          ut.id === id ? { ...ut, description } : ut
-        ),
+      addUserType: (item) => set((state) => ({ userTypes: [...state.userTypes, item] })),
+      removeUserType: (id) => set((state) => ({ userTypes: state.userTypes.filter((u) => u.id !== id) })),
+      updateUserTypeDescription: (id, description) => set((state) => ({
+        userTypes: state.userTypes.map((ut) => ut.id === id ? { ...ut, description } : ut)
       })),
 
       updateUserGoal: (userTypeName, goals, frustrations) => set((state) => {
-        const existingGoalIndex = state.userGoals.findIndex((g) => g.userTypeName === userTypeName);
-
-        if (existingGoalIndex !== -1) {
-          const updatedGoals = [...state.userGoals];
-          updatedGoals[existingGoalIndex] = { ...updatedGoals[existingGoalIndex], goals, frustrations };
-          return { userGoals: updatedGoals };
+        const existingIndex = state.userGoals.findIndex((g: any) => g.userTypeName === userTypeName);
+        if (existingIndex !== -1) {
+          const updated = [...state.userGoals];
+          updated[existingIndex] = { ...updated[existingIndex], goals, frustrations };
+          return { userGoals: updated };
         } else {
           return {
-            userGoals: [
-              ...state.userGoals,
-              { id: Date.now().toString(), userTypeName, goals, frustrations }
-            ]
+            userGoals: [...state.userGoals, { id: Date.now().toString(), userTypeName, goals, frustrations }]
           };
         }
       }),
 
-      addEpic: (item: EpicItem) => set((state) => ({ epics: [...state.epics, item] })),
-      removeEpic: (id: string) => set((state) => ({ epics: state.epics.filter((e) => e.id !== id) })),
-      updateEpic: (id: string, updatedData: Partial<EpicItem>) => set((state) => ({
+      addEpic: (item) => set((state) => ({ epics: [...state.epics, item] })),
+      removeEpic: (id) => set((state) => ({ epics: state.epics.filter((e) => e.id !== id) })),
+      updateEpic: (id, updatedData) => set((state) => ({
         epics: state.epics.map((e) => (e.id === id ? { ...e, ...updatedData } : e))
       })),
 
-      addNonFunctional: (item: NonFunctionalItem) => set((state) => ({ nonFunctionals: [...state.nonFunctionals, item] })),
-      removeNonFunctional: (id: string) => set((state) => ({ nonFunctionals: state.nonFunctionals.filter((n) => n.id !== id) })),
-
-      addUserStory: (item: UserStoryItem) => set((state) => ({ userStories: [...state.userStories, item] })),
-      removeUserStory: (id: string) => set((state) => ({ userStories: state.userStories.filter((s) => s.id !== id) })),
-
-      setProjectId: (id: number) => set({ projectId: id }),
-      setWorkspaceId: (id: number) => set({ workspaceId: id }),
-
       createWorkspaceIfNeeded: async (token: string) => {
+        const activeToken = getValidToken(token);
+        if (!activeToken) throw new Error('Token tidak ditemukan.');
+
         const existingId = get().workspaceId;
-        if (existingId) {
-          return existingId;
-        }
+        if (existingId) return existingId;
 
-        const name = get().teamName?.trim();
-        if (!name) {
-          console.error('Nama tim kosong, tidak bisa membuat workspace.');
-          return null;
-        }
-
+        const teamName = get().teamName?.trim() || 'Workspace Utama';
         set({ isCreatingWorkspace: true });
 
         try {
-          const newWorkspace = await workspaceApi.createWorkspace({ name }, token);
-          set({ workspaceId: newWorkspace.id, isCreatingWorkspace: false });
-          return newWorkspace.id;
+          const newWs = await workspaceApi.createWorkspace({ name: teamName }, activeToken);
+          set({ workspaceId: newWs.id, isCreatingWorkspace: false });
+          return newWs.id;
         } catch (error) {
           console.error('Gagal membuat workspace:', error);
           set({ isCreatingWorkspace: false });
@@ -195,36 +165,33 @@ export const useWizardStore = create<WizardState>()(
       },
 
       createProjectIfNeeded: async (token: string) => {
-        const existingId = get().projectId;
-        if (existingId) {
-          return existingId;
-        }
+        const activeToken = getValidToken(token);
+        if (!activeToken) throw new Error('Token tidak ditemukan.');
+        if (get().projectId) return get().projectId;
 
         set({ isCreatingProject: true });
-
         try {
           let activeWorkspaceId = get().workspaceId;
-
           if (!activeWorkspaceId) {
-            const myWorkspaces = await workspaceApi.getMyWorkspaces(token);
-
+            const myWorkspaces = await workspaceApi.getMyWorkspaces(activeToken);
             if (!myWorkspaces || myWorkspaces.length === 0) {
-              throw new Error('Anda belum tergabung di ruang kerja manapun. Silakan ulangi dari langkah "Setup your team".');
+              const newWs = await workspaceApi.createWorkspace({ name: get().teamName || 'Workspace Utama' }, activeToken);
+              activeWorkspaceId = newWs.id;
+            } else {
+              activeWorkspaceId = myWorkspaces[0].id;
             }
-
-            activeWorkspaceId = myWorkspaces[0].id;
             set({ workspaceId: activeWorkspaceId });
           }
 
           const newProject = await projectApi.createProject({
             name: get().projectName || 'Proyek Baru',
             description: get().projectDescription || '',
-            workspace_id: activeWorkspaceId,
-            application_type: get().platformType || 'Web App',
+            workspace_id: activeWorkspaceId!,
+            application_type: get().platformType || 'Web Application',
             domain_business: 'General',
             target_users: 'General User',
             business_goals: '',
-          }, token);
+          }, activeToken);
 
           set({ projectId: newProject.id, isCreatingProject: false });
           return newProject.id;
@@ -236,99 +203,44 @@ export const useWizardStore = create<WizardState>()(
       },
 
       generateAIRequirements: async (projectId: number, token: string) => {
+        const activeToken = getValidToken(token);
         try {
-          const response = await projectApi.generateRequirements(projectId, token);
-
-          const mappedUserTypes: UserTypeItem[] = (response.user_types || []).map(
-            (ut: any, index: number) => ({
-              id: `ut-${Date.now()}-${index}`,
-              name: ut.name,
-              description: ut.description,
-            })
-          );
-
-          const mappedEpics: EpicItem[] = (response.epics || []).map((epic: any, index: number) => ({
-            id: `epic-${Date.now()}-${index}`,
-            title: epic.name,
-            description: epic.description,
+          const response = await projectApi.generateRequirements(projectId, activeToken);
+          const mappedEpics: EpicItem[] = (response.epics || []).map((e: any, i: number) => ({
+            id: `e-${i}`,
+            title: e.name,
+            description: e.description,
           }));
 
-          const mappedUserStories: UserStoryItem[] = (response.user_stories || []).map(
-            (story: any, index: number) => {
-              const relatedEpic = mappedEpics.find((e) => e.title === story.epic_name);
-              return {
-                id: `story-${Date.now()}-${index}`,
-                epicId: relatedEpic?.id || '',
-                epicTitle: story.epic_name,
-                storyName: story.story_name,
-                userType: story.user_type,
-                description: story.description,
-              };
-            }
-          );
+          const mappedStories: UserStoryItem[] = (response.user_stories || []).map((s: any, i: number) => ({
+            id: `s-${i}`,
+            epicId: mappedEpics.find(e => e.title === s.epic_name)?.id || '',
+            epicTitle: s.epic_name,
+            storyName: s.story_name,
+            userType: s.user_type,
+            description: s.description,
+          }));
 
-          const mappedNonFunctionals: NonFunctionalItem[] = (response.nfrs || []).map(
-            (nfr: any, index: number) => ({
-              id: `nfr-${Date.now()}-${index}`,
-              category: nfr.category,
-              description: nfr.description,
-            })
-          );
-
-          set({
-            epics: mappedEpics,
-            userStories: mappedUserStories,
-            userTypes: mappedUserTypes,
-            nonFunctionals: mappedNonFunctionals,
+          set({ 
+            epics: mappedEpics, 
+            userStories: mappedStories,
+            userTypes: (response.user_types || []).map((ut: any) => ({ id: ut.name, name: ut.name, description: ut.description })),
+            nonFunctionals: (response.nfrs || []).map((n: any) => ({ id: n.category, category: n.category, description: n.description }))
           });
-
           return true;
         } catch (error) {
-          console.error('Gagal memproses AI Requirements:', error);
+          console.error('AI Gen Error:', error);
           return false;
         }
       },
 
       resetStore: () => set({
-        step: 1,
-        teamName: '',
-        projectName: '',
-        useAi: null,
-        projectType: null,
-        projectDescription: '',
-        platformType: 'Web Application',
-        userTypes: [],
-        userGoals: [],
-        epics: [],
-        nonFunctionals: [],
-        userStories: [],
-        projectId: null,
-        isCreatingProject: false,
-        workspaceId: null,
-        isCreatingWorkspace: false,
+        step: 1, teamName: '', projectName: '', projectDescription: '', userTypes: [], userGoals: [], epics: [], userStories: [], projectId: null, workspaceId: null
       }),
     }),
     {
-      name: 'userdoc-wizard-storage', // key di localStorage
+      name: 'userdoc-wizard-storage',
       storage: createJSONStorage(() => localStorage),
-      // isCreatingProject & isCreatingWorkspace sengaja TIDAK di-persist,
-      // supaya kalau reload di tengah proses create, tombol nggak nyangkut "loading" terus.
-      partialize: (state) => ({
-        step: state.step,
-        teamName: state.teamName,
-        projectName: state.projectName,
-        useAi: state.useAi,
-        projectType: state.projectType,
-        projectDescription: state.projectDescription,
-        platformType: state.platformType,
-        userTypes: state.userTypes,
-        userGoals: state.userGoals,
-        epics: state.epics,
-        nonFunctionals: state.nonFunctionals,
-        userStories: state.userStories,
-        projectId: state.projectId,
-        workspaceId: state.workspaceId,
-      }),
     }
   )
 );

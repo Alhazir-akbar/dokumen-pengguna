@@ -23,8 +23,6 @@ function StoriesPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
-  // Fetch data asli dari backend berdasarkan project_id di URL,
-  // BUKAN dari wizard store (yang cuma state sementara selama proses wizard).
   useEffect(() => {
     const loadData = async () => {
       if (!projectId) {
@@ -62,13 +60,10 @@ function StoriesPageContent() {
     loadData();
   }, [projectId]);
 
-  // Transform data backend (EpicResponse, UserStoryResponse) -> bentuk yang dipakai UI.
-  // Backend UserStory pakai field as_a / i_want / so_that (bukan userType/storyName/description).
   const formattedEpics: Epic[] = rawEpics.map((epic: any, index: number) => ({
     id: epic.id,
     code: `EP-${index + 1}`,
     name: epic.name,
-    title: epic.name,
     description: epic.description,
     user_stories: rawStories
       .filter((story: any) => story.epic_id === epic.id)
@@ -80,8 +75,8 @@ function StoriesPageContent() {
         i_want: story.i_want || 'Melakukan sesuatu',
         so_that: story.so_that || 'Sistem berjalan dengan baik',
         acceptanceCriteria: (story.acceptance_criteria || []).map((ac: any) => ac.description),
-        techNotes: [],
-        testCases: [],
+        techNotes: (story.tech_notes || []).map((tn: any) => tn.content),
+        testCases: (story.test_cases || []).map((tc: any) => tc.description),
       })),
   }));
 
@@ -100,7 +95,6 @@ function StoriesPageContent() {
     }
   }, [formattedEpics, selectedEpicId]);
 
-  // Create story baru langsung ke backend (bukan ke wizard store)
   const handleSaveNewStory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !projectId) return;
@@ -275,11 +269,11 @@ function StoriesPageContent() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-50 font-sans relative">
-      <AppSidebar activeMenu="stories" />
+      <AppSidebar activeMenu="stories" projectId={projectId} />
 
       <StoriesSidebar
         epics={formattedEpics}
-        selectedStoryId={selectedStory?.id}
+        selectedStoryId={selectedStory?.id as string}
         onSelectStory={(story: UserStory) => {
           setSelectedStory(story);
           setSelectedEpic(null);
@@ -388,7 +382,7 @@ function StoriesPageContent() {
                   className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500"
                 >
                   {formattedEpics.map((ep) => (
-                    <option key={ep.id} value={ep.id}>{ep.title}</option>
+                    <option key={ep.id} value={ep.id}>{ep.name}</option>
                   ))}
                 </select>
               </div>

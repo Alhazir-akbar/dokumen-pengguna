@@ -19,42 +19,39 @@ export default function TeamName() {
   const [actionError, setActionError] = useState('');
 
   const handleNext = async () => {
-    if (!teamName || teamName.trim() === "") {
-      setError(true);
-      return;
-    }
-    setError(false);
-    setActionError('');
+  if (!teamName || teamName.trim() === "") {
+    setError(true);
+    return;
+  }
+  setError(false);
 
-    const token = getAuthToken();
-    if (!token) {
-      setActionError('Sesi habis, silakan login kembali.');
-      return;
-    }
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const token = localStorage.getItem('token');
 
-    // Bikin workspace beneran di backend, disimpan sebagai workspaceId di store,
-    // supaya step-step selanjutnya (create project, dll) punya workspace yang valid.
-    const id = await createWorkspaceIfNeeded(token);
-    if (!id) {
-      setActionError('Gagal membuat ruang kerja. Silakan coba lagi.');
-      return;
-    }
+    // Panggil API buat workspace baru
+    const res = await fetch(`${apiUrl}/api/workspaces`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token || ''}`
+      },
+      body: JSON.stringify({ name: teamName })
+    });
+
+    if (!res.ok) throw new Error('Gagal membuat workspace');
+
+    const workspace = await res.json();
+
+    // Simpan workspace_id ke localStorage agar halaman lain bisa menggunakannya
+    localStorage.setItem('active_workspace_id', String(workspace.id));
 
     nextStep();
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    updateTeamName(e.target.value);
-    if (error) setError(false);
-    if (actionError) setActionError('');
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleNext();
-    }
-  };
+  } catch (err) {
+    console.error(err);
+    setError(true);
+  }
+};
 
   return (
     <div className="flex flex-col items-start w-full max-w-xl mx-auto pt-12">

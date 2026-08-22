@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWizardStore } from '@/features/project-setup/store/wizard-store';
 
-import { submitWizardBatch } from '@/services/storiesApi';
+import { projectApi } from '@/services/projectsApi';
 import { getAuthToken } from '@/lib/auth';
 
 import TeamName from '@/features/project-setup/components/teamName';
@@ -12,7 +12,6 @@ import NameProject from '@/features/project-setup/components/nameProject';
 import ProjectType from '@/features/project-setup/components/projectType';
 import AiIntro from '@/features/project-setup/components/aiIntro';
 import DescribeProject from '@/features/project-setup/components/describeProject';
-import AiChoice from '@/features/project-setup/components/aiChoice';
 import UserTypes from '@/features/project-setup/components/userTypes';
 import EpicsList from '@/features/project-setup/components/epicList';
 import NonFunctionalList from '@/features/project-setup/components/nonFunctionalList';
@@ -30,7 +29,16 @@ import SoftwareTechnologies from '@/features/project-setup/components/softwareTe
 export default function WizardPage() {
   const router = useRouter();
 
-  const { step, projectType, projectId, epics, userStories, resetStore } = useWizardStore() as any;
+  const {
+    step,
+    projectType,
+    projectId,
+    userTypes,
+    epics,
+    userStories,
+    nonFunctionals,
+    resetStore,
+  } = useWizardStore() as any;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -52,36 +60,38 @@ export default function WizardPage() {
     }
 
     try {
+      // Hanya kirim requirements kalau alur "generate dengan AI" yang dipakai.
+      // Alur "translate" / "example" belum punya data epics/userTypes/NFR dari wizard ini,
+      // jadi kita skip supaya tidak mengirim payload kosong yang salah bentuk.
       if (projectType === 'generate') {
-        // Transform data store -> bentuk yang backend (WizardBatchCreateSchema) minta.
-        // Store pakai "title" untuk epic; backend minta "name". Stories perlu di-nest per epic.
-        const payloadEpics = (epics || []).map((epic: any) => ({
-          name: epic.title,
-          description: epic.description || '',
-          stories: (userStories || [])
-            .filter((s: any) => s.epicId === epic.id || s.epicTitle === epic.title)
-            .map((s: any) => ({
-              storyName: s.storyName,
-              userType: s.userType,
-              description: s.description || '',
-            })),
-        }));
+        // Payload ini HARUS cocok persis dengan skema ProjectRequirementsOutput
+        // di backend (services/ai.py), karena divalidasi oleh Pydantic.
+        const payload = {
+          user_types: (userTypes || []).map((ut: any) => ({
+            name: ut.name,
+            description: ut.description || '',
+          })),
+          epics: (epics || []).map((e: any) => ({
+            name: e.title,
+            description: e.description || '',
+          })),
+          user_stories: (userStories || []).map((s: any) => ({
+            epic_name: s.epicTitle,
+            story_name: s.storyName,
+            user_type: s.userType,
+            description: s.description || '',
+            // Wizard saat ini belum punya UI untuk acceptance criteria manual,
+            // jadi dikirim kosong. Kalau nanti field ini ditambahkan di
+            // userStoriesList.tsx, tinggal map ke sini.
+            acceptance_criteria: s.acceptanceCriteria || [],
+          })),
+          nfrs: (nonFunctionals || []).map((n: any) => ({
+            category: n.category,
+            description: n.description,
+          })),
+        };
 
-        const payloadUserStories = (userStories || []).map((s: any) => ({
-          storyName: s.storyName,
-          userType: s.userType,
-          description: s.description || '',
-        }));
-
-        console.log('Payload dikirim ke /stories/batch:', {
-          epics: payloadEpics,
-          userStories: payloadUserStories,
-        });
-
-        await submitWizardBatch(projectId, {
-          epics: payloadEpics,
-          userStories: payloadUserStories,
-        }, token);
+        await projectApi.saveRequirements(projectId, payload, token);
       }
 
       resetStore();
@@ -111,13 +121,14 @@ export default function WizardPage() {
         <>
           {step === 4 && <AiIntro />}
           {step === 5 && <DescribeProject />}
-          {step === 6 && <AiChoice />}
-          {step === 7 && <UserTypes />}
-          {step === 8 && <EpicsList />}
-          {step === 9 && <NonFunctionalList />}
-          {step === 10 && <UserStoriesList />}
-          {step === 11 && <UserTypeGoals />}
-          {step === 12 && <UserJourney onFinishProject={handleFinishWizard} />}
+          {/* Step "AiChoice" dihapus — DescribeProject sekarang otomatis men-generate
+              rekomendasi AI begitu user klik Next, tanpa perlu pilihan manual/AI lagi. */}
+          {step === 6 && <UserTypes />}
+          {step === 7 && <EpicsList />}
+          {step === 8 && <NonFunctionalList />}
+          {step === 9 && <UserStoriesList />}
+          {step === 10 && <UserTypeGoals />}
+          {step === 11 && <UserJourney onFinishProject={handleFinishWizard} />}
         </>
       )}
 
