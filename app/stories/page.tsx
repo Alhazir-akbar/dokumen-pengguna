@@ -6,12 +6,19 @@ import { UserStory, Epic } from '@/features/stories/types';
 import StoriesSidebar from '@/features/stories/components/StoriesSidebar';
 import EmptyDetailPanel from '@/features/stories/components/EmptyDetailPanel';
 import EpicDetailPanel from '@/features/stories/components/EpicDetailPanel';
+<<<<<<< HEAD
 import ManualStoryDetailPanel from '@/features/stories/components/ManualStoryDetailPanel';
 import AppSidebar from '@/features/common/components/AppSidebar';
 import { MessageSquare, Upload, Download, X, Lightbulb, Loader2 } from 'lucide-react';
 import { fetchEpics, fetchStories } from '@/services/storiesApi';
 import { projectApi } from '@/services/projectsApi';
 import { getAuthToken } from '@/lib/auth';
+=======
+import ManualStoryDetailPanel from '@/features/stories/components/ManualStoryDetailPanel'; 
+import AppSidebar from '@/features/common/components/AppSidebar';
+import { MessageSquare, Upload, Download, X, Lightbulb } from 'lucide-react';
+import { useWizardStore } from '@/features/project-setup/store/wizard-store';
+>>>>>>> origin/dev
 
 function StoriesPageContent() {
   const searchParams = useSearchParams();
@@ -325,10 +332,17 @@ function StoriesPageContent() {
         </div>
 
         <div className="flex-1 flex flex-col overflow-hidden">
+<<<<<<< HEAD
           {formattedEpics.length === 0 && (
             <div className="bg-amber-50 border-b border-amber-100 px-6 py-2.5 flex items-center gap-2 text-xs text-amber-800 shrink-0">
               <Lightbulb className="w-4 h-4 text-amber-600 shrink-0" />
               <span>Belum ada Epic atau User Story. Silakan buat yang pertama.</span>
+=======
+          {!useAi && userStories.length === 0 && (
+            <div className="bg-amber-50 border-b border-amber-100 px-6 py-2.5 flex items-center gap-2 text-xs text-amber-800 shrink-0">
+              <Lightbulb className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>Anda sedang berada di Mode Manual. Silakan buat Epic dan User Story pertama Anda secara mandiri.</span>
+>>>>>>> origin/dev
             </div>
           )}
 

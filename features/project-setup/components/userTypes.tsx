@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 // features/project-setup/components/userTypes.tsx
+=======
+>>>>>>> origin/dev
 'use client';
 
 import { useState } from 'react';
@@ -7,7 +10,11 @@ import { useWizardStore, UserTypeItem } from '../store/wizard-store';
 import { Sparkles, Trash2, ArrowRight, Plus, AlertCircle } from 'lucide-react';
 
 export default function UserTypes() {
+<<<<<<< HEAD
   const { projectName, userTypes, addUserType, removeUserType, updateUserTypeDescription, nextStep } = useWizardStore() as any;
+=======
+  const { projectName, userTypes, addUserType, removeUserType, updateUserTypeDescription, nextStep } = useWizardStore();
+>>>>>>> origin/dev
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTypeName, setNewTypeName] = useState('');
   const [newTypeDesc, setNewTypeDesc] = useState('');
@@ -32,15 +39,28 @@ export default function UserTypes() {
     if (error) setError(false);
   };
 
+<<<<<<< HEAD
   const handleAiGenerateDesc = (user: UserTypeItem) => {
     const aiGeneratedDescription = `A key stakeholder responsible for interacting with ${titleName}, managing core features, ensuring seamless operational workflow, and meeting system objectives.`;
+=======
+  // Fungsi untuk mensimulasikan AI Generate deskripsi berdasarkan nama tipe user
+  const handleAiGenerateDesc = (user: UserTypeItem) => {
+    const aiGeneratedDescription = `A key stakeholder responsible for interacting with ${titleName}, managing core features, and overseeing workflow efficiency.`;
+    
+    // Jika store Anda memiliki fungsi update, gunakan itu. Jika belum, kita fallback atau asumsikan ada.
+    // Pastikan fungsi updateUserTypeDescription ada di wizard-store.ts Anda.
+>>>>>>> origin/dev
     if (updateUserTypeDescription) {
       updateUserTypeDescription(user.id, aiGeneratedDescription);
     }
   };
 
   const handleNext = () => {
+<<<<<<< HEAD
     if (!userTypes || userTypes.length === 0) {
+=======
+    if (userTypes.length === 0) {
+>>>>>>> origin/dev
       setError(true);
       return;
     }
@@ -63,12 +83,22 @@ export default function UserTypes() {
         Gunakan tombol <Sparkles className="w-3.5 h-3.5 inline text-yellow-300 mx-0.5" /> untuk memperbarui deskripsi dengan AI.
       </p>
 
+<<<<<<< HEAD
       <div className={`bg-white/10 border rounded-3xl w-full mb-4 backdrop-blur-xl shadow-2xl overflow-hidden divide-y divide-white/10 text-left transition-all ${
         error ? 'border-red-400 ring-4 ring-red-400/20 bg-red-950/10' : 'border-blue-400/30'
       }`}>
         {!userTypes || userTypes.length === 0 ? (
           <div className="p-10 text-center text-blue-200/70 text-sm">
             Belum ada tipe pengguna yang ditambahkan. Klik &quot;Add user type&quot; di bawah untuk mulai.
+=======
+      {/* List Card Container */}
+      <div className={`bg-white/10 border rounded-2xl w-full mb-2 backdrop-blur-md shadow-xl overflow-hidden divide-y divide-white/10 text-left transition-all ${
+        error ? 'border-red-400 ring-2 ring-red-400/50' : 'border-white/20'
+      }`}>
+        {userTypes.length === 0 ? (
+          <div className="p-8 text-center text-blue-200 text-sm">
+            No user types added yet. Click &quot;Add user type&quot; below.
+>>>>>>> origin/dev
           </div>
         ) : (
           userTypes.map((user: UserTypeItem) => (
@@ -83,15 +113,25 @@ export default function UserTypes() {
                   type="button"
                   onClick={() => handleAiGenerateDesc(user)}
                   title="Generate or enhance with AI"
+<<<<<<< HEAD
                   className="p-2 text-yellow-300 hover:text-white transition-colors rounded-xl hover:bg-white/10 border border-white/10 cursor-pointer shadow-sm bg-white/5"
                 >
                   <Sparkles className="w-4 h-4 animate-pulse" />
+=======
+                  className="p-1.5 text-blue-200 hover:text-white transition-colors rounded-lg hover:bg-white/10 cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4 text-yellow-300" />
+>>>>>>> origin/dev
                 </button>
                 <button
                   type="button"
                   onClick={() => removeUserType(user.id)}
                   title="Delete user type"
+<<<<<<< HEAD
                   className="p-2 text-red-300 hover:text-white transition-colors rounded-xl hover:bg-red-500/20 border border-red-500/20 cursor-pointer shadow-sm bg-red-950/20"
+=======
+                  className="p-1.5 text-gray-300 hover:text-red-100 transition-colors rounded-lg hover:bg-red-500/20 cursor-pointer"
+>>>>>>> origin/dev
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -101,20 +141,38 @@ export default function UserTypes() {
         )}
       </div>
 
+<<<<<<< HEAD
       {error && (
         <div className="w-full text-left mb-4 animate-fadeIn">
           <p className="text-red-300 text-xs flex items-center gap-1.5 bg-red-950/40 border border-red-500/30 px-3.5 py-2.5 rounded-xl">
             <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
             Tambahkan minimal 1 user type sebelum melanjutkan ke tahap berikutnya.
+=======
+      {/* Pesan Peringatan Jika Kosong */}
+      {error && (
+        <div className="w-full text-left mb-4">
+          <p className="text-red-300 text-xs">
+            ⚠️ Tambahkan minimal 1 user type sebelum melanjutkan ke tahap berikutnya.
+>>>>>>> origin/dev
           </p>
         </div>
       )}
 
+<<<<<<< HEAD
+=======
+      {!error && <div className="mb-4"></div>}
+
+      {/* Tombol Bawah (Next & Add User Type) */}
+>>>>>>> origin/dev
       <div className="w-full flex items-center justify-between">
         <button
           type="button"
           onClick={handleNext}
+<<<<<<< HEAD
           className="bg-white text-blue-600 hover:bg-blue-50 px-6 py-3 rounded-2xl font-bold transition-all duration-300 flex items-center gap-2.5 shadow-xl text-sm cursor-pointer"
+=======
+          className="bg-white text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-md text-sm cursor-pointer"
+>>>>>>> origin/dev
         >
           <span>Next</span> <ArrowRight className="w-4 h-4" />
         </button>
@@ -141,7 +199,11 @@ export default function UserTypes() {
                   placeholder="e.g. Administrator, Customer, Moderator"
                   value={newTypeName}
                   onChange={(e) => setNewTypeName(e.target.value)}
+<<<<<<< HEAD
                   className="w-full bg-blue-950/40 border border-blue-500/30 rounded-2xl px-4 py-3 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-400 placeholder:text-blue-200/30"
+=======
+                  className="w-full bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 text-slate-800 text-xs focus:outline-none focus:border-blue-400"
+>>>>>>> origin/dev
                 />
               </div>
               <div>
@@ -151,14 +213,22 @@ export default function UserTypes() {
                   placeholder="Describe what this user does..."
                   value={newTypeDesc}
                   onChange={(e) => setNewTypeDesc(e.target.value)}
+<<<<<<< HEAD
                   className="w-full bg-blue-950/40 border border-blue-500/30 rounded-2xl px-4 py-3 text-white text-xs sm:text-sm focus:outline-none focus:border-blue-400 resize-none placeholder:text-blue-200/30"
+=======
+                  className="w-full bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 text-slate-800 text-xs focus:outline-none focus:border-blue-400 resize-none"
+>>>>>>> origin/dev
                 />
               </div>
               <div className="flex items-center justify-end gap-2.5 pt-3">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
+<<<<<<< HEAD
                   className="bg-white/10 hover:bg-white/20 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+=======
+                  className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+>>>>>>> origin/dev
                 >
                   Cancel
                 </button>

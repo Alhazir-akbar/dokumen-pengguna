@@ -38,6 +38,10 @@ export interface UserStoryItem {
   description: string;
 }
 
+<<<<<<< HEAD
+=======
+// Perbarui tipe projectType agar mendukung 'generate', 'translate', dan 'example'
+>>>>>>> origin/dev
 export type ProjectTypeEnum = 'generate' | 'translate' | 'example' | null;
 
 interface WizardState {
@@ -71,11 +75,16 @@ interface WizardState {
   addUserType: (item: UserTypeItem) => void;
   removeUserType: (id: string) => void;
   updateUserTypeDescription: (id: string, description: string) => void;
+<<<<<<< HEAD
+=======
+  
+>>>>>>> origin/dev
   updateUserGoal: (userTypeName: string, goals: string, frustrations: string) => void;
 
   addEpic: (item: EpicItem) => void;
   removeEpic: (id: string) => void;
   updateEpic: (id: string, updatedData: Partial<EpicItem>) => void;
+<<<<<<< HEAD
 
   createWorkspaceIfNeeded: (token: string) => Promise<number | null>;
   createProjectIfNeeded: (token: string) => Promise<number | null>;
@@ -106,6 +115,61 @@ export const useWizardStore = create<WizardState>()(
       isCreatingProject: false,
       workspaceId: null,
       isCreatingWorkspace: false,
+=======
+  resetStore: () => void;
+}
+
+export const useWizardStore = create<WizardState>((set) => ({
+  step: 1,
+  teamName: '',
+  projectName: '',
+  useAi: null,
+  projectType: null,
+  projectDescription: '',
+  platformType: 'Web Application',
+  
+  userTypes: [],
+  userGoals: [],
+  epics: [],
+  nonFunctionals: [],
+  userStories: [],
+
+  setStep: (step) => set({ step }),
+  nextStep: () => set((state) => ({ step: state.step + 1 })),
+  prevStep: () => set((state) => ({ step: Math.max(state.step - 1, 1) })),
+  
+  updateTeamName: (name) => set({ teamName: name }),
+  updateProjectName: (name) => set({ projectName: name }),
+  setUseAi: (choice: boolean) => set({ useAi: choice }),
+  setProjectType: (type: ProjectTypeEnum) => set({ projectType: type }),
+  setProjectDescription: (desc: string) => set({ projectDescription: desc }),
+  setPlatformType: (platform: string) => set({ platformType: platform }),
+  
+  addUserType: (item: UserTypeItem) => set((state) => ({ userTypes: [...state.userTypes, item] })),
+  removeUserType: (id: string) => set((state) => ({ userTypes: state.userTypes.filter((u) => u.id !== id) })),
+  updateUserTypeDescription: (id: string, description: string) => set((state) => ({
+    userTypes: state.userTypes.map((ut) =>
+      ut.id === id ? { ...ut, description } : ut
+    ),
+  })),
+  
+  updateUserGoal: (userTypeName, goals, frustrations) => set((state) => {
+    const existingGoalIndex = state.userGoals.findIndex((g) => g.userTypeName === userTypeName);
+    
+    if (existingGoalIndex !== -1) {
+      const updatedGoals = [...state.userGoals];
+      updatedGoals[existingGoalIndex] = { ...updatedGoals[existingGoalIndex], goals, frustrations };
+      return { userGoals: updatedGoals };
+    } else {
+      return { 
+        userGoals: [
+          ...state.userGoals, 
+          { id: Date.now().toString(), userTypeName, goals, frustrations }
+        ] 
+      };
+    }
+  }),
+>>>>>>> origin/dev
 
       setStep: (step) => set({ step }),
       nextStep: () => set((state) => ({ step: state.step + 1 })),
@@ -118,6 +182,7 @@ export const useWizardStore = create<WizardState>()(
       setProjectDescription: (desc) => set({ projectDescription: desc }),
       setPlatformType: (platform) => set({ platformType: platform }),
 
+<<<<<<< HEAD
       addUserType: (item) => set((state) => ({ userTypes: [...state.userTypes, item] })),
       removeUserType: (id) => set((state) => ({ userTypes: state.userTypes.filter((u) => u.id !== id) })),
       updateUserTypeDescription: (id, description) => set((state) => ({
@@ -244,3 +309,20 @@ export const useWizardStore = create<WizardState>()(
     }
   )
 );
+=======
+  resetStore: () => set({
+    step: 1,
+    teamName: '',
+    projectName: '',
+    useAi: null,
+    projectType: null,
+    projectDescription: '',
+    platformType: 'Web Application',
+    userTypes: [],
+    userGoals: [],
+    epics: [],
+    nonFunctionals: [],
+    userStories: [],
+  }),
+}));
+>>>>>>> origin/dev

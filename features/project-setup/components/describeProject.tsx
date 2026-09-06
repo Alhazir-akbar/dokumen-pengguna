@@ -47,6 +47,10 @@ export default function DescribeProject() {
   const [isAttachOpen, setIsAttachOpen] = useState(false);
   const [attachedFile, setAttachedFile] = useState<string | null>(null);
   const [error, setError] = useState(false);
+<<<<<<< HEAD
+=======
+  const fileInputRef = useRef<HTMLInputElement>(null);
+>>>>>>> origin/dev
 
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [actionError, setActionError] = useState('');
@@ -107,6 +111,7 @@ export default function DescribeProject() {
     }
   };
 
+<<<<<<< HEAD
   const handleAiSuggest = async () => {
     setActionError('');
     const token = getAuthToken() || localStorage.getItem('token') || '';
@@ -134,10 +139,16 @@ export default function DescribeProject() {
 
   const handleNext = async () => {
     if (!projectDescription || projectDescription.trim() === '') {
+=======
+  const handleNext = () => {
+    // Validasi: jika kosong atau hanya spasi, batalkan dan tampilkan error
+    if (!projectDescription || projectDescription.trim() === "") {
+>>>>>>> origin/dev
       setError(true);
       return;
     }
     setError(false);
+<<<<<<< HEAD
     setActionError('');
 
     const token = getAuthToken() || localStorage.getItem('token') || '';
@@ -249,6 +260,21 @@ export default function DescribeProject() {
   return (
     <div className="flex flex-col items-center w-full max-w-2xl mx-auto pt-8 text-center pb-12">
       <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+=======
+    nextStep();
+  };
+
+  return (
+    <div className="flex flex-col items-center w-full max-w-2xl mx-auto pt-8 text-center">
+      
+      {/* Hidden File Input untuk Upload Lokal */}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleFileChange} 
+        className="hidden" 
+      />
+>>>>>>> origin/dev
 
       <div className="mb-4">
         <LogoUserdoc />
@@ -262,6 +288,7 @@ export default function DescribeProject() {
         Enter a high-level overview of what it does, and how you use it for your <span className="text-white font-semibold">{platformType}</span> project.
       </p>
 
+<<<<<<< HEAD
       <div
         className={`bg-white/10 border rounded-3xl p-5 sm:p-6 w-full mb-4 backdrop-blur-xl shadow-2xl text-left relative flex flex-col transition-all ${
           error ? 'border-red-400 ring-4 ring-red-400/20 bg-red-950/10' : 'border-blue-400/30 hover:border-blue-400/50'
@@ -286,12 +313,32 @@ export default function DescribeProject() {
             )}
           </button>
         </div>
+=======
+      {/* Kotak Input / Textarea Container */}
+      <div className={`bg-white/20 border rounded-2xl p-4 w-full mb-2 backdrop-blur-sm shadow-xl text-left relative flex flex-col transition-all ${
+        error ? 'border-red-400 ring-2 ring-red-400/50' : 'border-blue-400/30'
+      }`}>
+        
+        {/* Tombol AI Suggestion */}
+        <button 
+          type="button" 
+          onClick={() => {
+            setProjectDescription(`${titleName} is a comprehensive digital platform designed to optimize workflow management, track real-time analytics, and streamline team collaboration efficiently.`);
+            if (error) setError(false);
+          }}
+          className="absolute top-4 right-4 text-blue-200 hover:text-white transition-colors p-1 cursor-pointer"
+          title="Get AI suggestion"
+        >
+          <Sparkles className="w-4 h-4 text-gray-300" />
+        </button>
+>>>>>>> origin/dev
 
         <textarea
           rows={6}
           value={projectDescription}
           onChange={(e) => {
             setProjectDescription(e.target.value);
+<<<<<<< HEAD
             if (error) setError(false);
           }}
           placeholder={
@@ -301,6 +348,12 @@ export default function DescribeProject() {
           }
           disabled={isSuggesting}
           className="w-full bg-blue-950/40 border border-blue-500/30 rounded-2xl p-4 text-white placeholder-white/40 text-xs sm:text-sm focus:outline-none focus:border-blue-400 resize-none mb-4 disabled:opacity-70 leading-relaxed"
+=======
+            if (error) setError(false); // Hilangkan pesan error saat user mengetik
+          }}
+          placeholder={`${titleName} description...`}
+          className="w-full bg-transparent text-white placeholder-white/40 text-sm focus:outline-none resize-none mb-4 pr-8"
+>>>>>>> origin/dev
         />
 
         <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-blue-400/20 relative">
@@ -399,21 +452,39 @@ export default function DescribeProject() {
         </div>
       </div>
 
+<<<<<<< HEAD
       {(error || actionError) && (
         <div className="w-full text-left mb-4">
           <p className="text-red-300 text-xs flex items-center gap-1.5 bg-red-950/40 border border-red-500/30 px-3.5 py-2.5 rounded-xl">
             <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
             {error ? 'Deskripsi proyek wajib diisi sebelum melanjutkan.' : actionError}
+=======
+      {/* Pesan Peringatan Jika Kosong */}
+      {error && (
+        <div className="w-full text-left mb-4">
+          <p className="text-red-300 text-xs">
+            ⚠️ Deskripsi proyek wajib diisi sebelum melanjutkan.
+>>>>>>> origin/dev
           </p>
         </div>
       )}
 
+<<<<<<< HEAD
+=======
+      {!error && <div className="mb-4"></div>}
+
+      {/* Tombol Next */}
+>>>>>>> origin/dev
       <div className="w-full flex justify-start">
         <button
           type="button"
           onClick={handleNext}
+<<<<<<< HEAD
           disabled={isBusy}
           className="bg-white text-blue-600 hover:bg-blue-50 px-6 py-3 rounded-2xl font-bold transition-all duration-300 flex items-center gap-2.5 shadow-xl text-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+=======
+          className="bg-white text-blue-500 hover:bg-blue-50 px-4 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-md text-sm cursor-pointer"
+>>>>>>> origin/dev
         >
           {isCreatingProject || isGenerating ? (
             <>

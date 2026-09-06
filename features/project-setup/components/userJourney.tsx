@@ -18,6 +18,7 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
 
   const titleName = projectName.trim() ? projectName : 'your project';
 
+<<<<<<< HEAD
   const handleFinish = async () => {
   if (!journeyText || journeyText.trim() === "") {
     setError(true);
@@ -26,6 +27,16 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
   setError(false);
   setIsGenerating(true);
   setLoadingText('Menyimpan proyek ke server...');
+=======
+  const handleFinish = () => {
+    // Validasi: jika kosong atau hanya berisi spasi, batalkan dan tampilkan error
+    if (!journeyText || journeyText.trim() === "") {
+      setError(true);
+      return;
+    }
+    setError(false);
+    setIsGenerating(true);
+>>>>>>> origin/dev
 
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';

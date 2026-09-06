@@ -2,7 +2,11 @@
 
 import LogoUserdoc from '../../../public/logoUserDoc';
 import { useWizardStore } from '../store/wizard-store';
+<<<<<<< HEAD
 import { Sparkles, ArrowRight, ArrowLeft, AlertCircle } from 'lucide-react';
+=======
+import { Sparkles, ArrowRight, ArrowLeft } from 'lucide-react';
+>>>>>>> origin/dev
 import { useState } from 'react';
 
 export default function NameProject() {
@@ -10,6 +14,10 @@ export default function NameProject() {
   const [error, setError] = useState(false);
 
   const handleNext = () => {
+<<<<<<< HEAD
+=======
+    // Validasi: jika kosong atau hanya berisi spasi, batalkan dan tampilkan error
+>>>>>>> origin/dev
     if (!projectName || projectName.trim() === "") {
       setError(true);
       return;
@@ -17,6 +25,7 @@ export default function NameProject() {
     setError(false);
     nextStep();
   };
+<<<<<<< HEAD
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -29,6 +38,8 @@ export default function NameProject() {
     updateProjectName(e.target.value);
     if (error) setError(false);
   };
+=======
+>>>>>>> origin/dev
 
   return (
     <div className="flex flex-col items-start w-full max-w-xl mx-auto pt-12">
@@ -47,14 +58,26 @@ export default function NameProject() {
         </span>
       </p>
 
+<<<<<<< HEAD
+=======
+      {/* Kotak Input dengan Ikon AI di dalamnya */}
+>>>>>>> origin/dev
       <div className="relative w-full mb-2">
         <input
           type="text"
           value={projectName}
+<<<<<<< HEAD
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           placeholder="Type your project name here..."
           autoFocus
+=======
+          onChange={(e) => {
+            updateProjectName(e.target.value);
+            if (error) setError(false); // Hilangkan pesan error saat user mengetik
+          }}
+          placeholder="Type your project name here..."
+>>>>>>> origin/dev
           className={`w-full bg-white/10 border rounded-xl px-4 py-3.5 text-white placeholder-blue-300/60 focus:outline-none focus:ring-2 transition-all shadow-inner pr-12 ${
             error ? 'border-red-400 focus:ring-red-400' : 'border-blue-100/40 focus:ring-white/50'
           }`}
@@ -64,6 +87,7 @@ export default function NameProject() {
         </div>
       </div>
 
+<<<<<<< HEAD
       {error && (
         <p className="text-red-300 text-xs mb-4 animate-shake flex items-center gap-1.5">
           <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
@@ -73,6 +97,19 @@ export default function NameProject() {
 
       {!error && <div className="mb-4"></div>}
 
+=======
+      {/* Pesan Peringatan Jika Kosong */}
+      {error && (
+        <p className="text-red-300 text-xs mb-4 animate-shake">
+          ⚠️ Nama proyek wajib diisi sebelum melanjutkan.
+        </p>
+      )}
+
+      {/* Spasi tambahan jika tidak ada error agar layout tetap stabil */}
+      {!error && <div className="mb-4"></div>}
+
+      {/* Tombol Navigasi (Back & Next) */}
+>>>>>>> origin/dev
       <div className="w-full flex items-center justify-between">
         <button
           type="button"
