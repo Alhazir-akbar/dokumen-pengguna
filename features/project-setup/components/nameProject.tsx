@@ -42,9 +42,6 @@ export default function NameProject() {
 
       <p className="text-blue-200 text-sm mb-6 leading-relaxed">
         This is the name of your software, app, or system you want to create requirements for.{' '}
-        <span className="mt-1 text-blue-300 flex items-center gap-1.5">
-          (click the <Sparkles className="w-3.5 h-3.5 inline-block" /> button on the right for some inspiration)
-        </span>
       </p>
 
       <div className="relative w-full mb-2">
@@ -59,9 +56,6 @@ export default function NameProject() {
             error ? 'border-red-400 focus:ring-red-400' : 'border-blue-100/40 focus:ring-white/50'
           }`}
         />
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-200 cursor-pointer hover:text-white transition-colors">
-          <Sparkles className="w-5 h-5" />
-        </div>
       </div>
 
       {error && (

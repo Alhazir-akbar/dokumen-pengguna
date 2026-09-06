@@ -4,10 +4,22 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { projectApi } from '@/services/projectsApi';
 import { workspaceApi } from '@/services/workspaceApi';
 
+export interface PersonaDraft {
+  name: string;
+  age?: number;
+  location?: string;
+  familyStatus?: string;
+  jobTitle?: string;
+  about?: string;
+  goals?: string;
+  frustrations?: string;
+}
+
 export interface UserTypeItem {
   id: string;
   name: string;
   description: string;
+  personas?: PersonaDraft[];
 }
 
 export interface UserGoalItem {
@@ -36,6 +48,9 @@ export interface UserStoryItem {
   storyName: string;
   userType: string;
   description: string;
+  acceptanceCriteria?: string[];
+  techNotes?: string[];
+  testCases?: string[];
 }
 
 export type ProjectTypeEnum = 'generate' | 'translate' | 'example' | null;
@@ -80,6 +95,7 @@ interface WizardState {
   removeEpic: (id: string) => void;
   updateEpic: (id: string, updatedData: Partial<EpicItem>) => void;
 
+<<<<<<< Updated upstream
   addNonFunctional: (item: NonFunctionalItem) => void;
   removeNonFunctional: (id: string) => void;
 
@@ -88,6 +104,17 @@ interface WizardState {
 
   setProjectId: (id: number) => void;
   setWorkspaceId: (id: number) => void;
+=======
+  // Penambahan method untuk User Story
+  addUserStory: (item: UserStoryItem) => void;
+  removeUserStory: (id: string) => void;
+  updateStory: (id: string, updatedData: Partial<UserStoryItem>) => void;
+
+  // Penambahan method untuk Non-Functional Requirement (jaga-jaga jika dipanggil)
+  addNonFunctional?: (item: NonFunctionalItem) => void;
+  removeNonFunctional?: (id: string) => void;
+  updateNonFunctional?: (id: string, updatedData: Partial<NonFunctionalItem>) => void;
+>>>>>>> Stashed changes
 
   createWorkspaceIfNeeded: (token: string) => Promise<number | null>;
   createProjectIfNeeded: (token: string) => Promise<number | null>;
@@ -160,6 +187,7 @@ export const useWizardStore = create<WizardState>()(
         epics: state.epics.map((e) => (e.id === id ? { ...e, ...updatedData } : e))
       })),
 
+<<<<<<< Updated upstream
       addNonFunctional: (item: NonFunctionalItem) => set((state) => ({ nonFunctionals: [...state.nonFunctionals, item] })),
       removeNonFunctional: (id: string) => set((state) => ({ nonFunctionals: state.nonFunctionals.filter((n) => n.id !== id) })),
 
@@ -168,6 +196,21 @@ export const useWizardStore = create<WizardState>()(
 
       setProjectId: (id: number) => set({ projectId: id }),
       setWorkspaceId: (id: number) => set({ workspaceId: id }),
+=======
+      // IMPLEMENTASI FUNGSI USER STORY YANG DIBUTUHKAN
+      addUserStory: (item) => set((state) => ({ userStories: [...state.userStories, item] })),
+      removeUserStory: (id) => set((state) => ({ userStories: state.userStories.filter((s) => s.id !== id) })),
+      updateStory: (id, updatedData) => set((state) => ({
+        userStories: state.userStories.map((s) => (s.id === id ? { ...s, ...updatedData } : s))
+      })),
+
+      // IMPLEMENTASI FUNGSI NFR (JAGA-JAGA)
+      addNonFunctional: (item) => set((state) => ({ nonFunctionals: [...state.nonFunctionals, item] })),
+      removeNonFunctional: (id) => set((state) => ({ nonFunctionals: state.nonFunctionals.filter((n) => n.id !== id) })),
+      updateNonFunctional: (id, updatedData) => set((state) => ({
+        nonFunctionals: state.nonFunctionals.map((n) => (n.id === id ? { ...n, ...updatedData } : n))
+      })),
+>>>>>>> Stashed changes
 
       createWorkspaceIfNeeded: async (token: string) => {
         const existingId = get().workspaceId;
@@ -253,6 +296,7 @@ export const useWizardStore = create<WizardState>()(
             description: epic.description,
           }));
 
+<<<<<<< Updated upstream
           const mappedUserStories: UserStoryItem[] = (response.user_stories || []).map(
             (story: any, index: number) => {
               const relatedEpic = mappedEpics.find((e) => e.title === story.epic_name);
@@ -280,6 +324,39 @@ export const useWizardStore = create<WizardState>()(
             userStories: mappedUserStories,
             userTypes: mappedUserTypes,
             nonFunctionals: mappedNonFunctionals,
+=======
+          const mappedStories: UserStoryItem[] = (response.user_stories || []).map((s: any, i: number) => ({
+            id: `s-${i}`,
+            epicId: mappedEpics.find(e => e.title === s.epic_name)?.id || '',
+            epicTitle: s.epic_name,
+            storyName: s.story_name,
+            userType: s.user_type,
+            description: s.description,
+            acceptanceCriteria: s.acceptance_criteria || [],
+            techNotes: s.tech_notes || [],
+            testCases: s.test_cases || [],
+          }));
+
+          set({
+            epics: mappedEpics,
+            userStories: mappedStories,
+            userTypes: (response.user_types || []).map((ut: any) => ({
+              id: ut.name,
+              name: ut.name,
+              description: ut.description,
+              personas: (ut.personas || []).map((p: any) => ({
+                name: p.name,
+                age: p.age,
+                location: p.location,
+                familyStatus: p.family_status,
+                jobTitle: p.job_title,
+                about: p.about,
+                goals: p.goals,
+                frustrations: p.frustrations,
+              })),
+            })),
+            nonFunctionals: (response.nfrs || []).map((n: any) => ({ id: n.category, category: n.category, description: n.description }))
+>>>>>>> Stashed changes
           });
 
           return true;
@@ -290,6 +367,7 @@ export const useWizardStore = create<WizardState>()(
       },
 
       resetStore: () => set({
+<<<<<<< Updated upstream
         step: 1,
         teamName: '',
         projectName: '',
@@ -306,6 +384,9 @@ export const useWizardStore = create<WizardState>()(
         isCreatingProject: false,
         workspaceId: null,
         isCreatingWorkspace: false,
+=======
+        step: 1, projectName: '', projectDescription: '', userTypes: [], userGoals: [], epics: [], userStories: [], nonFunctionals: [], projectId: null
+>>>>>>> Stashed changes
       }),
     }),
     {
