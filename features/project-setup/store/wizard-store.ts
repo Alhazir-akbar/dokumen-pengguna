@@ -1,13 +1,30 @@
 // features/project-setup/store/wizard-store.ts
 import { create } from 'zustand';
+<<<<<<< HEAD
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { projectApi } from '@/services/projectsApi';
 import { workspaceApi } from '@/services/workspaceApi';
+=======
+import { projectApi } from '@/services/projectsApi';
+import { workspaceApi } from '@/services/workspaceApi';
+
+export interface PersonaDraft {
+  name: string;
+  age?: number;
+  location?: string;
+  familyStatus?: string;
+  jobTitle?: string;
+  about?: string;
+  goals?: string;
+  frustrations?: string;
+}
+>>>>>>> 23ab38d (add file)
 
 export interface UserTypeItem {
   id: string;
   name: string;
   description: string;
+  personas?: PersonaDraft[];
 }
 
 export interface UserGoalItem {
@@ -36,12 +53,18 @@ export interface UserStoryItem {
   storyName: string;
   userType: string;
   description: string;
+  acceptanceCriteria?: string[];
+  techNotes?: string[];
+  testCases?: string[];
 }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
 // Perbarui tipe projectType agar mendukung 'generate', 'translate', dan 'example'
 >>>>>>> origin/dev
+=======
+>>>>>>> 23ab38d (add file)
 export type ProjectTypeEnum = 'generate' | 'translate' | 'example' | null;
 
 interface WizardState {
@@ -59,6 +82,12 @@ interface WizardState {
   userStories: UserStoryItem[];
   projectId: number | null;
   isCreatingProject: boolean;
+  workspaceId: number | null;
+  isCreatingWorkspace: boolean;
+
+  projectId: number | null;
+  isCreatingProject: boolean;
+
   workspaceId: number | null;
   isCreatingWorkspace: boolean;
 
@@ -85,10 +114,25 @@ interface WizardState {
   removeEpic: (id: string) => void;
   updateEpic: (id: string, updatedData: Partial<EpicItem>) => void;
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+
+  addNonFunctional: (item: NonFunctionalItem) => void;
+  removeNonFunctional: (id: string) => void;
+  updateNonFunctional: (id: string, updatedData: Partial<NonFunctionalItem>) => void;
+
+  addUserStory: (item: UserStoryItem) => void;
+  removeUserStory: (id: string) => void;
+  updateStory: (id: string, updatedData: Partial<UserStoryItem>) => void;
+
+  setProjectId: (id: number) => void;
+  setWorkspaceId: (id: number) => void;
+>>>>>>> 23ab38d (add file)
 
   createWorkspaceIfNeeded: (token: string) => Promise<number | null>;
   createProjectIfNeeded: (token: string) => Promise<number | null>;
   generateAIRequirements: (projectId: number, token: string) => Promise<boolean>;
+<<<<<<< HEAD
   resetStore: () => void;
 }
 
@@ -116,10 +160,12 @@ export const useWizardStore = create<WizardState>()(
       workspaceId: null,
       isCreatingWorkspace: false,
 =======
+=======
+>>>>>>> 23ab38d (add file)
   resetStore: () => void;
 }
 
-export const useWizardStore = create<WizardState>((set) => ({
+export const useWizardStore = create<WizardState>((set, get) => ({
   step: 1,
   teamName: '',
   projectName: '',
@@ -134,6 +180,11 @@ export const useWizardStore = create<WizardState>((set) => ({
   nonFunctionals: [],
   userStories: [],
 
+  projectId: null,
+  isCreatingProject: false,
+  workspaceId: null,
+  isCreatingWorkspace: false,
+
   setStep: (step) => set({ step }),
   nextStep: () => set((state) => ({ step: state.step + 1 })),
   prevStep: () => set((state) => ({ step: Math.max(state.step - 1, 1) })),
@@ -145,9 +196,9 @@ export const useWizardStore = create<WizardState>((set) => ({
   setProjectDescription: (desc: string) => set({ projectDescription: desc }),
   setPlatformType: (platform: string) => set({ platformType: platform }),
   
-  addUserType: (item: UserTypeItem) => set((state) => ({ userTypes: [...state.userTypes, item] })),
-  removeUserType: (id: string) => set((state) => ({ userTypes: state.userTypes.filter((u) => u.id !== id) })),
-  updateUserTypeDescription: (id: string, description: string) => set((state) => ({
+  addUserType: (item) => set((state) => ({ userTypes: [...state.userTypes, item] })),
+  removeUserType: (id) => set((state) => ({ userTypes: state.userTypes.filter((u) => u.id !== id) })),
+  updateUserTypeDescription: (id, description) => set((state) => ({
     userTypes: state.userTypes.map((ut) =>
       ut.id === id ? { ...ut, description } : ut
     ),
@@ -171,6 +222,7 @@ export const useWizardStore = create<WizardState>((set) => ({
   }),
 >>>>>>> origin/dev
 
+<<<<<<< HEAD
       setStep: (step) => set({ step }),
       nextStep: () => set((state) => ({ step: state.step + 1 })),
       prevStep: () => set((state) => ({ step: Math.max(state.step - 1, 1) })),
@@ -280,10 +332,126 @@ export const useWizardStore = create<WizardState>((set) => ({
           const mappedStories: UserStoryItem[] = (response.user_stories || []).map((s: any, i: number) => ({
             id: `s-${i}`,
             epicId: mappedEpics.find(e => e.title === s.epic_name)?.id || '',
+=======
+  addEpic: (item) => set((state) => ({ epics: [...state.epics, item] })),
+  removeEpic: (id) => set((state) => ({ epics: state.epics.filter((e) => e.id !== id) })),
+  updateEpic: (id, updatedData) => set((state) => ({
+    epics: state.epics.map((e) => (e.id === id ? { ...e, ...updatedData } : e))
+  })),
+
+  addNonFunctional: (item) => set((state) => ({ nonFunctionals: [...state.nonFunctionals, item] })),
+  removeNonFunctional: (id) => set((state) => ({ nonFunctionals: state.nonFunctionals.filter((n) => n.id !== id) })),
+  updateNonFunctional: (id, updatedData) => set((state) => ({
+    nonFunctionals: state.nonFunctionals.map((n) => (n.id === id ? { ...n, ...updatedData } : n))
+  })),
+
+  addUserStory: (item) => set((state) => ({ userStories: [...state.userStories, item] })),
+  removeUserStory: (id) => set((state) => ({ userStories: state.userStories.filter((s) => s.id !== id) })),
+  updateStory: (id, updatedData) => set((state) => ({
+    userStories: state.userStories.map((s) => (s.id === id ? { ...s, ...updatedData } : s))
+  })),
+
+  setProjectId: (id) => set({ projectId: id }),
+  setWorkspaceId: (id) => set({ workspaceId: id }),
+
+  createWorkspaceIfNeeded: async (token: string) => {
+    const existingId = get().workspaceId;
+    if (existingId) return existingId;
+
+    const name = get().teamName?.trim();
+    if (!name) {
+      console.error('Nama tim kosong, tidak bisa membuat workspace.');
+      return null;
+    }
+
+    set({ isCreatingWorkspace: true });
+    try {
+      const newWorkspace = await workspaceApi.createWorkspace({ name }, token);
+      set({ workspaceId: newWorkspace.id, isCreatingWorkspace: false });
+      return newWorkspace.id;
+    } catch (error) {
+      console.error('Gagal membuat workspace:', error);
+      set({ isCreatingWorkspace: false });
+      return null;
+    }
+  },
+
+  createProjectIfNeeded: async (token: string) => {
+    const existingId = get().projectId;
+    if (existingId) return existingId;
+
+    set({ isCreatingProject: true });
+    try {
+      let activeWorkspaceId = get().workspaceId;
+
+      if (!activeWorkspaceId) {
+        const myWorkspaces = await workspaceApi.getMyWorkspaces(token);
+        if (!myWorkspaces || myWorkspaces.length === 0) {
+          throw new Error('Anda belum tergabung di ruang kerja manapun.');
+        }
+        activeWorkspaceId = myWorkspaces[0].id;
+        set({ workspaceId: activeWorkspaceId });
+      }
+
+      const newProject = await projectApi.createProject({
+        name: get().projectName || 'Proyek Baru',
+        description: get().projectDescription || '',
+        workspace_id: activeWorkspaceId,
+        application_type: get().platformType || 'Web App',
+        domain_business: 'General',
+        target_users: 'General User',
+        business_goals: '',
+      }, token);
+
+      set({ projectId: newProject.id, isCreatingProject: false });
+      return newProject.id;
+    } catch (error) {
+      console.error('Gagal membuat proyek:', error);
+      set({ isCreatingProject: false });
+      return null;
+    }
+  },
+
+  generateAIRequirements: async (projectId: number, token: string) => {
+    try {
+      const response = await projectApi.generateRequirements(projectId, token);
+
+      const mappedUserTypes: UserTypeItem[] = (response.user_types || []).map(
+        (ut: any, index: number) => ({
+          id: ut.name || `ut-${Date.now()}-${index}`,
+          name: ut.name,
+          description: ut.description,
+          personas: (ut.personas || []).map((p: any) => ({
+            name: p.name,
+            age: p.age,
+            location: p.location,
+            familyStatus: p.family_status,
+            jobTitle: p.job_title,
+            about: p.about,
+            goals: p.goals,
+            frustrations: p.frustrations,
+          })),
+        })
+      );
+
+      const mappedEpics: EpicItem[] = (response.epics || []).map((epic: any, index: number) => ({
+        id: `epic-${Date.now()}-${index}`,
+        title: epic.name,
+        description: epic.description,
+      }));
+
+      const mappedUserStories: UserStoryItem[] = (response.user_stories || []).map(
+        (s: any, index: number) => {
+          const relatedEpic = mappedEpics.find((e) => e.title === s.epic_name);
+          return {
+            id: `story-${Date.now()}-${index}`,
+            epicId: relatedEpic?.id || '',
+>>>>>>> 23ab38d (add file)
             epicTitle: s.epic_name,
             storyName: s.story_name,
             userType: s.user_type,
             description: s.description,
+<<<<<<< HEAD
           }));
 
           set({ 
@@ -310,6 +478,37 @@ export const useWizardStore = create<WizardState>((set) => ({
   )
 );
 =======
+=======
+            acceptanceCriteria: s.acceptance_criteria || [],
+            techNotes: s.tech_notes || [],
+            testCases: s.test_cases || [],
+          };
+        }
+      );
+
+      const mappedNonFunctionals: NonFunctionalItem[] = (response.nfrs || []).map(
+        (n: any) => ({
+          id: n.category,
+          category: n.category,
+          description: n.description,
+        })
+      );
+
+      set({
+        epics: mappedEpics,
+        userStories: mappedUserStories,
+        userTypes: mappedUserTypes,
+        nonFunctionals: mappedNonFunctionals,
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Gagal memproses AI Requirements:', error);
+      return false;
+    }
+  },
+
+>>>>>>> 23ab38d (add file)
   resetStore: () => set({
     step: 1,
     teamName: '',
@@ -323,6 +522,8 @@ export const useWizardStore = create<WizardState>((set) => ({
     epics: [],
     nonFunctionals: [],
     userStories: [],
+    projectId: null,
+    workspaceId: null,
   }),
 }));
 >>>>>>> origin/dev

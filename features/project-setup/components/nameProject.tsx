@@ -82,9 +82,6 @@ export default function NameProject() {
             error ? 'border-red-400 focus:ring-red-400' : 'border-blue-100/40 focus:ring-white/50'
           }`}
         />
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-200 cursor-pointer hover:text-white transition-colors">
-          <Sparkles className="w-5 h-5" />
-        </div>
       </div>
 
 <<<<<<< HEAD
@@ -115,12 +112,15 @@ export default function NameProject() {
           type="button"
           onClick={prevStep}
           className="bg-transparent hover:bg-white/10 text-white border border-white/20 px-4 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 cursor-pointer"
+          className="bg-transparent hover:bg-white/10 text-white border border-white/20 px-4 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
 
         <button
           type="button"
+          onClick={handleNext}
+          className="bg-transparent hover:bg-white/10 text-white border border-white/20 px-6 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 backdrop-blur-sm cursor-pointer"
           onClick={handleNext}
           className="bg-transparent hover:bg-white/10 text-white border border-white/20 px-6 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 backdrop-blur-sm cursor-pointer"
         >

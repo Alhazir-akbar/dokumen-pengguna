@@ -1,12 +1,17 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 // features/project-setup/components/userTypes.tsx
 =======
 >>>>>>> origin/dev
+=======
+// features/project-setup/components/UserTypes.tsx
+>>>>>>> 23ab38d (add file)
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import LogoUserdoc from '../../../public/logoUserDoc';
 import { useWizardStore, UserTypeItem } from '../store/wizard-store';
+<<<<<<< HEAD
 import { Sparkles, Trash2, ArrowRight, Plus, AlertCircle } from 'lucide-react';
 
 export default function UserTypes() {
@@ -16,16 +21,39 @@ export default function UserTypes() {
   const { projectName, userTypes, addUserType, removeUserType, updateUserTypeDescription, nextStep } = useWizardStore();
 >>>>>>> origin/dev
   const [isModalOpen, setIsModalOpen] = useState(false);
+=======
+import { Plus, X, Pencil, Sparkles, ArrowRight, Trash2 } from 'lucide-react';
+
+export default function UserTypes() {
+  const { projectName, userTypes, addUserType, removeUserType, updateUserTypeDescription, nextStep } = useWizardStore() as any;
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 30);
+    return () => clearTimeout(t);
+  }, []);
+
+  const [isAdding, setIsAdding] = useState(false);
+>>>>>>> 23ab38d (add file)
   const [newTypeName, setNewTypeName] = useState('');
   const [newTypeDesc, setNewTypeDesc] = useState('');
   const [error, setError] = useState(false);
 
+<<<<<<< HEAD
+  const titleName = projectName?.trim() ? projectName : 'your project';
+=======
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+>>>>>>> 23ab38d (add file)
+
   const titleName = projectName?.trim() ? projectName : 'your project';
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAddUserType = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTypeName.trim()) return;
 
+<<<<<<< HEAD
     const newItem: UserTypeItem = {
       id: Date.now().toString(),
       name: newTypeName.trim(),
@@ -33,12 +61,21 @@ export default function UserTypes() {
     };
 
     addUserType(newItem);
+=======
+    addUserType({
+      id: `ut-${Date.now()}`,
+      name: newTypeName.trim(),
+      description: newTypeDesc.trim() || 'No description provided.',
+    });
+    
+>>>>>>> 23ab38d (add file)
     setNewTypeName('');
     setNewTypeDesc('');
-    setIsModalOpen(false);
+    setIsAdding(false);
     if (error) setError(false);
   };
 
+<<<<<<< HEAD
 <<<<<<< HEAD
   const handleAiGenerateDesc = (user: UserTypeItem) => {
     const aiGeneratedDescription = `A key stakeholder responsible for interacting with ${titleName}, managing core features, ensuring seamless operational workflow, and meeting system objectives.`;
@@ -50,9 +87,27 @@ export default function UserTypes() {
     // Jika store Anda memiliki fungsi update, gunakan itu. Jika belum, kita fallback atau asumsikan ada.
     // Pastikan fungsi updateUserTypeDescription ada di wizard-store.ts Anda.
 >>>>>>> origin/dev
+=======
+  const handleAiGenerateDesc = (user: UserTypeItem) => {
+    const aiGeneratedDescription = `A key stakeholder responsible for interacting with ${titleName}, managing core features, and overseeing workflow efficiency.`;
+>>>>>>> 23ab38d (add file)
     if (updateUserTypeDescription) {
       updateUserTypeDescription(user.id, aiGeneratedDescription);
     }
+  };
+
+  const startEditing = (user: UserTypeItem) => {
+    setEditingId(user.id);
+    setEditName(user.name);
+    setEditDesc(user.description || '');
+  };
+
+  const saveEdit = () => {
+    if (!editingId || !editName.trim()) return;
+    if (updateUserTypeDescription) {
+      updateUserTypeDescription(editingId, editDesc);
+    }
+    setEditingId(null);
   };
 
   const handleNext = () => {
@@ -70,6 +125,7 @@ export default function UserTypes() {
 
   return (
     <div className="flex flex-col items-center w-full max-w-2xl mx-auto pt-6 text-center pb-12">
+<<<<<<< HEAD
       <div className="mb-4 transform hover:scale-105 transition-transform duration-300">
         <LogoUserdoc />
       </div>
@@ -93,6 +149,21 @@ export default function UserTypes() {
 =======
       {/* List Card Container */}
       <div className={`bg-white/10 border rounded-2xl w-full mb-2 backdrop-blur-md shadow-xl overflow-hidden divide-y divide-white/10 text-left transition-all ${
+=======
+      <div className="mb-4">
+        <LogoUserdoc />
+      </div>
+
+      <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
+        User types of {titleName}
+      </h1>
+      
+      <p className="text-blue-200 text-xs sm:text-sm mb-6 max-w-lg">
+        Software is nothing without users. What are the different types of users who will interact with {titleName}?
+      </p>
+
+      <div className={`bg-white/10 border rounded-2xl w-full mb-4 backdrop-blur-md shadow-xl overflow-hidden divide-y divide-white/10 text-left transition-all ${
+>>>>>>> 23ab38d (add file)
         error ? 'border-red-400 ring-2 ring-red-400/50' : 'border-white/20'
       }`}>
         {userTypes.length === 0 ? (
@@ -102,6 +173,7 @@ export default function UserTypes() {
           </div>
         ) : (
           userTypes.map((user: UserTypeItem) => (
+<<<<<<< HEAD
             <div key={user.id} className="p-5 sm:p-6 flex items-start justify-between gap-4 hover:bg-white/5 transition-colors">
               <div className="flex flex-col max-w-[75%]">
                 <span className="text-white font-bold text-sm sm:text-base mb-1.5">{user.name}</span>
@@ -136,11 +208,82 @@ export default function UserTypes() {
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
+=======
+            <div key={user.id} className="p-4 sm:p-5 flex items-start justify-between gap-4 hover:bg-white/5 transition-colors">
+              {editingId === user.id ? (
+                <div className="w-full flex flex-col gap-2">
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full bg-white/10 border border-blue-300/40 rounded-xl px-3 py-1.5 text-white text-sm font-semibold focus:outline-none"
+                    autoFocus
+                  />
+                  <textarea
+                    value={editDesc}
+                    onChange={(e) => setEditDesc(e.target.value)}
+                    rows={2}
+                    className="w-full bg-white/10 border border-blue-300/40 rounded-xl px-3 py-1.5 text-blue-100 text-xs resize-none focus:outline-none"
+                  />
+                  <div className="flex items-center gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setEditingId(null)}
+                      className="text-blue-200 hover:text-white text-xs px-2 py-1 cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={saveEdit}
+                      className="bg-white text-blue-700 text-xs px-3 py-1 rounded-lg font-medium hover:bg-blue-50 cursor-pointer"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-col max-w-[75%]">
+                    <span className="text-white font-semibold text-sm sm:text-base mb-1">{user.name}</span>
+                    <p className="text-blue-200 text-xs leading-relaxed">{user.description}</p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleAiGenerateDesc(user)}
+                      title="Generate description with AI"
+                      className="p-1.5 text-yellow-300 hover:text-white transition-colors rounded-lg hover:bg-white/10 cursor-pointer"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => startEditing(user)}
+                      title="Edit user type"
+                      className="p-1.5 text-blue-200 hover:text-white transition-colors rounded-lg hover:bg-white/10 cursor-pointer"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeUserType(user.id)}
+                      title="Delete user type"
+                      className="p-1.5 text-red-300 hover:text-red-100 transition-colors rounded-lg hover:bg-red-500/20 cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </>
+              )}
+>>>>>>> 23ab38d (add file)
             </div>
           ))
         )}
       </div>
 
+<<<<<<< HEAD
 <<<<<<< HEAD
       {error && (
         <div className="w-full text-left mb-4 animate-fadeIn">
@@ -149,6 +292,49 @@ export default function UserTypes() {
             Tambahkan minimal 1 user type sebelum melanjutkan ke tahap berikutnya.
 =======
       {/* Pesan Peringatan Jika Kosong */}
+=======
+      {isAdding && (
+        <form onSubmit={handleAddUserType} className="bg-white/10 border border-blue-300/40 rounded-2xl p-4 w-full mb-4 backdrop-blur-md shadow-xl text-left flex flex-col gap-3">
+          <span className="text-xs font-semibold text-blue-200 uppercase tracking-wider">Add New User Type</span>
+          <input
+            type="text"
+            value={newTypeName}
+            onChange={(e) => setNewTypeName(e.target.value)}
+            placeholder="User type name (e.g. Administrator, Customer)..."
+            autoFocus
+            className="w-full bg-white/10 border border-blue-300/40 rounded-xl px-3 py-2 text-white text-sm font-semibold placeholder-blue-300/60 focus:outline-none"
+          />
+          <textarea
+            value={newTypeDesc}
+            onChange={(e) => setNewTypeDesc(e.target.value)}
+            placeholder="Describe what this user does..."
+            rows={2}
+            className="w-full bg-white/10 border border-blue-300/40 rounded-xl px-3 py-2 text-blue-100 text-xs placeholder-blue-300/60 resize-none focus:outline-none"
+          />
+          <div className="flex items-center gap-2 justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                setIsAdding(false);
+                setNewTypeName('');
+                setNewTypeDesc('');
+              }}
+              className="text-blue-200 hover:text-white text-xs px-3 py-1.5 cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!newTypeName.trim()}
+              className="bg-white text-blue-700 text-xs px-4 py-1.5 rounded-lg font-medium hover:bg-blue-50 cursor-pointer disabled:opacity-50"
+            >
+              Add
+            </button>
+          </div>
+        </form>
+      )}
+
+>>>>>>> 23ab38d (add file)
       {error && (
         <div className="w-full text-left mb-4">
           <p className="text-red-300 text-xs">
@@ -159,24 +345,32 @@ export default function UserTypes() {
       )}
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
       {!error && <div className="mb-4"></div>}
 
       {/* Tombol Bawah (Next & Add User Type) */}
 >>>>>>> origin/dev
+=======
+>>>>>>> 23ab38d (add file)
       <div className="w-full flex items-center justify-between">
         <button
           type="button"
           onClick={handleNext}
 <<<<<<< HEAD
+<<<<<<< HEAD
           className="bg-white text-blue-600 hover:bg-blue-50 px-6 py-3 rounded-2xl font-bold transition-all duration-300 flex items-center gap-2.5 shadow-xl text-sm cursor-pointer"
 =======
           className="bg-white text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-md text-sm cursor-pointer"
 >>>>>>> origin/dev
+=======
+          className="bg-white hover:bg-blue-50 text-blue-700 px-6 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-lg cursor-pointer text-sm"
+>>>>>>> 23ab38d (add file)
         >
           <span>Next</span> <ArrowRight className="w-4 h-4" />
         </button>
 
+<<<<<<< HEAD
         <button
           type="button"
           onClick={() => setIsModalOpen(true)}
@@ -243,6 +437,18 @@ export default function UserTypes() {
           </div>
         </div>
       )}
+=======
+        {!isAdding && (
+          <button
+            type="button"
+            onClick={() => setIsAdding(true)}
+            className="bg-transparent hover:bg-white/10 text-white border border-white/20 px-4 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 cursor-pointer text-sm"
+          >
+            <Plus className="w-4 h-4" /> Add user type
+          </button>
+        )}
+      </div>
+>>>>>>> 23ab38d (add file)
     </div>
   );
 }

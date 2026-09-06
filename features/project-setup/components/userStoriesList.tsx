@@ -1,6 +1,7 @@
+// features/project-setup/components/UserStoriesList.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import LogoUserdoc from '../../../public/logoUserDoc';
 import { useWizardStore, UserStoryItem } from '../store/wizard-store';
 import { 
@@ -20,7 +21,6 @@ import {
   Plus
 } from 'lucide-react';
 
-// Fungsi helper untuk menentukan ikon berdasarkan nama Epic
 const getEpicIcon = (title: string) => {
   const t = title.toLowerCase();
   if (t.includes('login') || t.includes('registration') || t.includes('auth')) return <Lock className="w-4 h-4 text-blue-300" />;
@@ -35,21 +35,31 @@ const getEpicIcon = (title: string) => {
 };
 
 export default function UserStoriesList() {
-  const { projectName, epics, userTypes, userStories, addUserStory, removeUserStory, nextStep } = useWizardStore();
+  const { projectName, epics, userTypes, userStories, addUserStory, removeUserStory, nextStep } = useWizardStore() as any;
   
+  const [mounted, setMounted] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedEpicTitle, setSelectedEpicTitle] = useState(epics[0]?.title || 'General');
-  const [storyName, setStoryName] = useState('');
+  const [selectedEpicTitle, setSelectedEpicTitle] = useState('');
   
-  // Defaultkan ke userType pertama jika ada, jika tidak kosongkan
+  const [storyName, setStoryName] = useState('');
   const [selectedUserType, setSelectedUserType] = useState(userTypes[0]?.name || 'Registered User');
   const [description, setDescription] = useState('');
   const [error, setError] = useState(false);
 
-  const titleName = projectName.trim() ? projectName : 'your project';
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 30);
+    return () => clearTimeout(t);
+  }, []);
 
-  // Kelompokkan stories berdasarkan epic title
-  const groupedStories = epics.map((epic) => ({
+  useEffect(() => {
+    if (userTypes.length > 0 && !selectedUserType) {
+      setSelectedUserType(userTypes[0].name);
+    }
+  }, [userTypes, selectedUserType]);
+
+  const titleName = projectName?.trim() ? projectName : 'your project';
+
+  const groupedStories = epics.map((epic: any) => ({
     ...epic,
     stories: userStories.filter((s: UserStoryItem) => s.epicTitle.toLowerCase() === epic.title.toLowerCase())
   }));
@@ -59,7 +69,7 @@ export default function UserStoriesList() {
     if (!storyName.trim()) return;
 
     const newItem: UserStoryItem = {
-      id: Date.now().toString(),
+      id: `story-${Date.now()}`,
       epicId: 'custom',
       epicTitle: selectedEpicTitle,
       storyName: storyName,
@@ -75,7 +85,6 @@ export default function UserStoriesList() {
   };
 
   const handleNext = () => {
-    // Rules: Pastikan minimal ada 1 user story yang dibuat sebelum lanjut
     if (userStories.length === 0) {
       setError(true);
       return;
@@ -85,30 +94,28 @@ export default function UserStoriesList() {
   };
 
   return (
-    <div className="flex flex-col items-center w-full max-w-4xl mx-auto pt-6 text-center pb-12">
-      
-      {/* Logo Kotak (UD) */}
-      <div className="mb-4">
+    <div className="flex flex-col items-center w-full max-w-5xl mx-auto pt-10 px-4 pb-12">
+      <div className="w-full flex flex-col items-center mb-8 header-fade">
         <LogoUserdoc />
       </div>
 
-      {/* Judul Utama */}
       <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
         {titleName} user stories
       </h1>
       
-      <p className="text-blue-200 text-xs sm:text-sm mb-8 max-w-xl">
-        We&apos;ve suggested user stories below, grouped by their epic. Feel free to add more, edit, or remove them. Click a story to edit its details and assign it to the appropriate user types.
+      <p className="text-blue-200 text-xs sm:text-sm mb-8 max-w-xl text-center">
+        We&apos;ve suggested user stories below, grouped by their epic. Feel free to add more, edit, or remove them.
       </p>
 
-      {/* List Container per Epic */}
       <div className="w-full flex flex-col gap-6 mb-6 text-left">
-        {groupedStories.map((epic) => (
+        {groupedStories.map((epic: any, epicIndex: number) => (
           <div 
             key={epic.id} 
-            className="bg-white/10 border border-white/20 rounded-2xl p-4 sm:p-5 backdrop-blur-md shadow-xl overflow-hidden"
+            className={`bg-white/10 border border-white/20 rounded-2xl p-4 sm:p-5 backdrop-blur-md shadow-xl overflow-hidden transition-all ${
+              mounted ? 'opacity-100' : 'opacity-0'
+            }`}
+            style={{ animationDelay: mounted ? `${Math.min(epicIndex, 8) * 60}ms` : undefined }}
           >
-            {/* Header Epic dengan Ikon Dinamis */}
             <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
               <h3 className="text-white font-bold text-sm uppercase tracking-wider flex items-center gap-2">
                 {getEpicIcon(epic.title)} {epic.title}
@@ -116,19 +123,17 @@ export default function UserStoriesList() {
               <ChevronDown className="w-4 h-4 text-blue-300" />
             </div>
 
-            {/* Tabel Header */}
             <div className="grid grid-cols-12 text-[11px] font-semibold text-blue-300 uppercase tracking-wider pb-2 border-b border-white/5 px-2">
               <div className="col-span-4">Story Name</div>
               <div className="col-span-3">User Types</div>
               <div className="col-span-4">Description</div>
-              <div className="col-span-1 text-right">Action</div>
+              <div className="col-span-1 text-right">Actions</div>
             </div>
 
-            {/* List Stories */}
             <div className="divide-y divide-white/5">
               {epic.stories.length === 0 ? (
-                <div className="py-4 px-2 text-xs text-blue-200/70">
-                  No stories under this epic yet. Click &quot;+ Add row&quot; below.
+                <div className="py-6 px-2 text-xs text-blue-200/70 text-center">
+                  Belum ada story di bawah epic ini. Klik &quot;+ Add row&quot; di kanan bawah untuk mulai.
                 </div>
               ) : (
                 epic.stories.map((story: UserStoryItem, index: number) => (
@@ -159,7 +164,6 @@ export default function UserStoriesList() {
               )}
             </div>
 
-            {/* Tombol Add Row di dalam Card Epic */}
             <div className="mt-3 pt-2 border-t border-white/5 flex justify-end">
               <button
                 type="button"
@@ -172,12 +176,10 @@ export default function UserStoriesList() {
                 <Plus className="w-3.5 h-3.5" /> Add row
               </button>
             </div>
-
           </div>
         ))}
       </div>
 
-      {/* Pesan Peringatan Jika Kosong */}
       {error && (
         <div className="w-full text-left mb-6 bg-red-500/10 border border-red-500/20 p-4 rounded-xl flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-red-300 shrink-0 mt-0.5" />
@@ -187,7 +189,6 @@ export default function UserStoriesList() {
         </div>
       )}
 
-      {/* Tombol Navigasi Bawah */}
       <div className="w-full flex items-center justify-start">
         <button
           type="button"
@@ -198,7 +199,6 @@ export default function UserStoriesList() {
         </button>
       </div>
 
-      {/* Modal Tambah User Story */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-slate-900 border border-blue-400/30 rounded-2xl p-6 w-full max-w-md shadow-2xl text-left">
@@ -208,11 +208,11 @@ export default function UserStoriesList() {
                 <label className="block text-xs font-medium text-blue-200 mb-1">Story Name</label>
                 <input
                   type="text"
-                  required
-                  placeholder="e.g. View Dashboard Analytics"
                   value={storyName}
                   onChange={(e) => setStoryName(e.target.value)}
-                  className="w-full bg-blue-950/50 border border-blue-500/30 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-400"
+                  placeholder="Story name..."
+                  autoFocus
+                  className="w-full bg-white/10 border border-blue-300/40 rounded-lg px-3 py-2 text-white text-sm font-semibold placeholder-blue-300/60 focus:outline-none focus:ring-2 focus:ring-white/50"
                 />
               </div>
               <div>
@@ -223,7 +223,7 @@ export default function UserStoriesList() {
                   className="w-full bg-blue-950/50 border border-blue-500/30 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-400 cursor-pointer"
                 >
                   {userTypes.length > 0 ? (
-                    userTypes.map((ut) => (
+                    userTypes.map((ut: any) => (
                       <option key={ut.id} value={ut.name} className="bg-slate-900 text-white">
                         {ut.name}
                       </option>
@@ -236,11 +236,11 @@ export default function UserStoriesList() {
               <div>
                 <label className="block text-xs font-medium text-blue-200 mb-1">Description</label>
                 <textarea
-                  rows={3}
-                  placeholder="Describe the user story details..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full bg-blue-950/50 border border-blue-500/30 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-400 resize-none"
+                  placeholder="Deskripsi singkat story ini..."
+                  rows={2}
+                  className="w-full bg-white/10 border border-blue-300/40 rounded-lg px-3 py-2 text-blue-100 text-xs placeholder-blue-300/60 resize-none focus:outline-none focus:ring-2 focus:ring-white/50"
                 />
               </div>
               <div className="flex items-center justify-end gap-2 pt-2">
@@ -253,16 +253,15 @@ export default function UserStoriesList() {
                 </button>
                 <button
                   type="submit"
-                  className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-xl text-xs font-semibold transition-all shadow-md cursor-pointer"
+                  className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-xl text-xs font-semibold transition-all shadow-md cursor-pointer flex items-center gap-1.5"
                 >
-                  Save Story
+                  <Plus className="w-3.5 h-3.5" /> Add row
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-
     </div>
   );
 }

@@ -52,13 +52,32 @@ export default function AppSidebar({ activeMenu, projectId }: AppSidebarProps) {
           <span className="text-[9px] font-medium leading-tight text-center">Build</span>
         </Link>
 
+<<<<<<< HEAD
         {/* Settings & Knowledge Base sengaja tidak dibawakan project_id,
             karena keduanya bersifat umum/tidak spesifik ke satu project. */}
+=======
+<<<<<<< Updated upstream
+        {/* Menu Settings */}
+>>>>>>> 23ab38d (add file)
         <Link href="/settings" className={getButtonStyle('settings')}>
+=======
+        {/* PERBAIKAN: Settings sebelumnya sengaja TIDAK dibawakan project_id dengan asumsi
+            halaman itu general/tidak spesifik ke satu project. Ternyata Settings menyimpan
+            info umum project + AI Rules per-project, jadi project_id wajib dibawa juga. */}
+        <Link href={withProject('/settings')} className={getButtonStyle('settings')}>
+>>>>>>> Stashed changes
           <Settings className="w-5 h-5 mb-1" />
           <span className="text-[9px] font-medium leading-tight">Settings</span>
         </Link>
 
+<<<<<<< HEAD
+=======
+<<<<<<< Updated upstream
+        {/* Menu Knowledge Base */}
+=======
+        {/* Knowledge Base tetap general/tidak spesifik ke satu project. */}
+>>>>>>> Stashed changes
+>>>>>>> 23ab38d (add file)
         <Link href="/knowledge" className={getButtonStyle('knowledge')}>
           <HelpCircle className="w-5 h-5 mb-1" />
           <span className="text-[9px] font-medium leading-tight text-center">Knowledge Base</span>

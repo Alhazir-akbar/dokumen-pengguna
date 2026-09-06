@@ -8,6 +8,7 @@ import { Search, Pencil, ChevronDown } from 'lucide-react';
 interface StoriesSidebarProps {
   epics: Epic[];
   selectedStoryId?: string;
+  currentProjectId?: string | null;
   onSelectStory: (story: UserStory) => void;
   onSelectEpic?: (epic: Epic) => void;
   onAddNew?: () => void;
