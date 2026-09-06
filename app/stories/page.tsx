@@ -1,34 +1,47 @@
 // app/stories/page.tsx
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect, Suspense, useCallback } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { UserStory, Epic } from '@/features/stories/types';
 import StoriesSidebar from '@/features/stories/components/StoriesSidebar';
 import EmptyDetailPanel from '@/features/stories/components/EmptyDetailPanel';
-import EpicDetailPanel from '@/features/stories/components/EpicDetailPanel';
 import ManualStoryDetailPanel from '@/features/stories/components/ManualStoryDetailPanel';
 import AppSidebar from '@/features/common/components/AppSidebar';
-import { MessageSquare, Upload, Download, X, Lightbulb, Loader2 } from 'lucide-react';
+import { MessageSquare, Upload, Download, X, Lightbulb, Loader2, RefreshCw } from 'lucide-react';
 import { fetchEpics, fetchStories } from '@/services/storiesApi';
 import { projectApi } from '@/services/projectsApi';
 import { getAuthToken } from '@/lib/auth';
+import { getStoredProjectId, setStoredProjectId } from '@/lib/project-context';
 
 function StoriesPageContent() {
   const searchParams = useSearchParams();
-  const projectId = searchParams.get('project_id');
+  const router = useRouter();
+  const projectIdParam = searchParams.get('project_id');
 
   const [rawEpics, setRawEpics] = useState<any[]>([]);
   const [rawStories, setRawStories] = useState<any[]>([]);
   const [projectName, setProjectName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [reloadToken, setReloadToken] = useState(0);
 
   // Fetch data asli dari backend berdasarkan project_id di URL,
   // BUKAN dari wizard store (yang cuma state sementara selama proses wizard).
   useEffect(() => {
+    // Kalau URL kehilangan project_id (misal browser back, atau ketik ulang manual),
+    // coba pulihkan dari localStorage sebelum langsung nyerah dengan error. Ini yang
+    // sebelumnya menyebabkan "gagal" saat kembali dari halaman lain ke Stories.
+    if (!projectIdParam) {
+      const stored = getStoredProjectId();
+      if (stored) {
+        router.replace(`/stories?project_id=${stored}`);
+        return;
+      }
+    }
+
     const loadData = async () => {
-      if (!projectId) {
+      if (!projectIdParam) {
         setLoadError('project_id tidak ditemukan di URL.');
         setIsLoading(false);
         return;
@@ -42,16 +55,18 @@ function StoriesPageContent() {
       }
 
       setIsLoading(true);
+      setLoadError('');
       try {
         const [epicsData, storiesData, projectData] = await Promise.all([
-          fetchEpics(Number(projectId), token),
-          fetchStories(Number(projectId), token),
-          projectApi.getProjectById(Number(projectId), token),
+          fetchEpics(Number(projectIdParam), token),
+          fetchStories(Number(projectIdParam), token),
+          projectApi.getProjectById(Number(projectIdParam), token),
         ]);
 
         setRawEpics(epicsData);
         setRawStories(storiesData);
         setProjectName(projectData.name);
+        setStoredProjectId(projectIdParam);
       } catch (err: any) {
         console.error('Gagal memuat data stories:', err);
         setLoadError(err.message || 'Gagal memuat data dari server.');
@@ -61,7 +76,9 @@ function StoriesPageContent() {
     };
 
     loadData();
-  }, [projectId]);
+  }, [projectIdParam, reloadToken, router]);
+
+  const handleRetry = useCallback(() => setReloadToken((n) => n + 1), []);
 
   // Transform data backend (EpicResponse, UserStoryResponse) -> bentuk yang dipakai UI.
   // Backend UserStory pakai field as_a / i_want / so_that (bukan userType/storyName/description).
@@ -104,7 +121,7 @@ function StoriesPageContent() {
   // Create story baru langsung ke backend (bukan ke wizard store)
   const handleSaveNewStory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim() || !projectId) return;
+    if (!newTitle.trim() || !projectIdParam) return;
 
     const token = getAuthToken();
     if (!token) {
@@ -127,7 +144,7 @@ function StoriesPageContent() {
             i_want: newTitle,
             so_that: newSoThat || 'Sistem berjalan dengan baik',
             status: 'draft',
-            project_id: Number(projectId),
+            project_id: Number(projectIdParam),
           }),
         }
       );
@@ -169,7 +186,7 @@ function StoriesPageContent() {
             i_want: updatedStory.i_want,
             so_that: updatedStory.so_that,
             status: 'draft',
-            project_id: Number(projectId),
+            project_id: Number(projectIdParam),
           }),
         }
       );
@@ -248,10 +265,6 @@ function StoriesPageContent() {
     downloadAnchor.remove();
   };
 
-  const handleChatAssistant = () => {
-    alert('Membuka Userdoc Assistant Chat Panel...');
-  };
-
   if (isLoading) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
@@ -268,13 +281,20 @@ function StoriesPageContent() {
       <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
         <div className="text-center max-w-md px-6">
           <p className="text-red-600 font-medium mb-2">Gagal memuat data</p>
-          <p className="text-sm text-gray-500">{loadError}</p>
+          <p className="text-sm text-gray-500 mb-4">{loadError}</p>
+          <button
+            onClick={handleRetry}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer"
+          >
+            <RefreshCw className="w-3.5 h-3.5" /> Coba lagi
+          </button>
         </div>
       </div>
     );
   }
 
   return (
+<<<<<<< Updated upstream
     <div className="flex h-screen w-screen overflow-hidden bg-gray-50 font-sans">
       {/* 1. Main Navigation Toolbar (Dipanggil dari Komponen Global) */}
       <AppSidebar activeMenu="stories" />
@@ -282,6 +302,15 @@ function StoriesPageContent() {
       <StoriesSidebar
         epics={formattedEpics}
         selectedStoryId={selectedStory?.id}
+=======
+    <div className="flex h-screen w-screen overflow-hidden bg-gray-50 font-sans relative">
+      <AppSidebar activeMenu="stories" projectId={projectIdParam} />
+
+      <StoriesSidebar
+        epics={formattedEpics}
+        selectedStoryId={selectedStory?.id as string}
+        currentProjectId={projectIdParam}
+>>>>>>> Stashed changes
         onSelectStory={(story: UserStory) => {
           setSelectedStory(story);
           setSelectedEpic(null);
@@ -302,13 +331,6 @@ function StoriesPageContent() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={handleChatAssistant}
-              className="text-xs text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm font-medium cursor-pointer"
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-blue-600" /> Chat to Userdoc Assistant
-            </button>
-
             <div className="flex items-center gap-1.5 text-gray-500">
               <button
                 onClick={handleUpload}

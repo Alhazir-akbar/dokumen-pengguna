@@ -8,6 +8,7 @@ import {
   Paperclip,
   Sparkles,
   ArrowRight,
+  ArrowLeft,
   Check,
   FileText,
   Image as ImageIcon,
@@ -28,6 +29,7 @@ export default function DescribeProject() {
     platformType,
     setPlatformType,
     nextStep,
+    prevStep,
     createProjectIfNeeded,
     isCreatingProject,
   } = useWizardStore() as any;
@@ -141,6 +143,7 @@ export default function DescribeProject() {
   const isBusy = isSuggesting || isCreatingProject;
 
   return (
+<<<<<<< Updated upstream
     <div className="flex flex-col items-center w-full max-w-2xl mx-auto pt-8 text-center">
       
       <input 
@@ -149,6 +152,27 @@ export default function DescribeProject() {
         onChange={handleFileChange} 
         className="hidden" 
       />
+=======
+    <div className="flex flex-col items-center w-full max-w-2xl mx-auto pt-8 text-center pb-12">
+      {/* Pengaturan Scrollbar Transparan Total */}
+      <style jsx global>{`
+        textarea.transparent-scroll::-webkit-scrollbar {
+          width: 6px;
+        }
+        textarea.transparent-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        textarea.transparent-scroll::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 9999px;
+        }
+        textarea.transparent-scroll::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.4);
+        }
+      `}</style>
+
+      <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+>>>>>>> Stashed changes
 
       <div className="mb-4">
         <LogoUserdoc />
@@ -193,7 +217,11 @@ export default function DescribeProject() {
               : `${titleName} description...`
           }
           disabled={isSuggesting}
+<<<<<<< Updated upstream
           className="w-full bg-transparent text-white placeholder-white/40 text-sm focus:outline-none resize-none mb-4 pr-8 disabled:opacity-70"
+=======
+          className="w-full bg-blue-950/40 border border-blue-500/30 rounded-2xl p-4 text-white placeholder-white/40 text-xs sm:text-sm focus:outline-none focus:border-blue-400 resize-none mb-4 disabled:opacity-70 leading-relaxed transparent-scroll"
+>>>>>>> Stashed changes
         />
 
         <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-blue-400/25 relative">
@@ -213,7 +241,14 @@ export default function DescribeProject() {
             </button>
 
             {isDropdownOpen && (
+<<<<<<< Updated upstream
               <div className="absolute left-0 bottom-full mb-2 w-56 bg-white border border-blue-400/30 rounded-xl shadow-2xl py-2 z-50 flex flex-col">
+=======
+              <div className="absolute left-0 bottom-full mb-2 w-56 max-h-48 overflow-y-auto bg-slate-900/90 border border-blue-400/30 rounded-2xl shadow-2xl py-2 z-50 flex flex-col backdrop-blur-2xl transparent-scroll">
+                <div className="px-4 py-1 text-[10px] font-semibold text-blue-400 uppercase tracking-wider sticky top-0 bg-slate-900/90 backdrop-blur-md">
+                  Select Platform Type
+                </div>
+>>>>>>> Stashed changes
                 {platforms.map((item) => (
                   <button
                     key={item}
@@ -249,7 +284,11 @@ export default function DescribeProject() {
             </button>
 
             {isAttachOpen && (
+<<<<<<< Updated upstream
               <div className="absolute left-0 bottom-full mb-2 w-64 bg-white border border-blue-400/30 rounded-xl shadow-2xl py-2 z-50 flex flex-col">
+=======
+              <div className="absolute left-0 bottom-full mb-2 w-64 bg-slate-900/90 border border-blue-400/30 rounded-2xl shadow-2xl py-2 z-50 flex flex-col backdrop-blur-2xl transparent-scroll">
+>>>>>>> Stashed changes
                 <div className="px-4 py-1 text-[10px] font-semibold text-blue-400 uppercase tracking-wider">
                   Select Attachment Type
                 </div>
@@ -296,14 +335,31 @@ export default function DescribeProject() {
         </div>
       )}
 
+<<<<<<< Updated upstream
       {!error && !actionError && <div className="mb-4"></div>}
 
       <div className="w-full flex justify-start">
+=======
+      <div className="w-full flex items-center justify-between">
+        <button
+          type="button"
+          onClick={prevStep}
+          disabled={isBusy}
+          className="bg-transparent hover:bg-white/10 text-white border border-white/20 px-5 py-3 rounded-2xl font-medium transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 text-sm"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back
+        </button>
+
+>>>>>>> Stashed changes
         <button
           type="button"
           onClick={handleNext}
           disabled={isBusy}
+<<<<<<< Updated upstream
           className="bg-white text-blue-500 hover:bg-blue-50 px-4 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-md text-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+=======
+          className="bg-white text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-xl font-bold transition-all duration-300 flex items-center gap-2.5 shadow-xl text-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+>>>>>>> Stashed changes
         >
           {isCreatingProject ? (
             <>
