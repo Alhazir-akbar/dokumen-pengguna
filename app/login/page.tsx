@@ -35,11 +35,34 @@ export default function LoginPage() {
         throw new Error(data.detail || 'Email atau password salah');
       }
 
-      // Simpan token dan data user ke localStorage
+      // 1. Simpan token dan data user
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('user', JSON.stringify(data.user));
-
-      // Redirect ke halaman project-setup / dashboard utama setelah sukses
+      // 2. Cek apakah user sudah punya workspace & proyek di database
+      try {
+        const wsRes = await fetch(`${apiUrl}/api/workspaces`, {
+          headers: { 'Authorization': `Bearer ${data.access_token}` }
+        });
+        const workspaces = await wsRes.json();
+        if (workspaces && workspaces.length > 0) {
+          const firstWsId = workspaces[0].id;
+          localStorage.setItem('active_workspace_id', String(firstWsId));
+          // Ambil proyek di workspace ini
+          const projRes = await fetch(`${apiUrl}/api/projects?workspace_id=${firstWsId}`, {
+            headers: { 'Authorization': `Bearer ${data.access_token}` }
+          });
+          const projects = await projRes.json();
+          if (projects && projects.length > 0) {
+            // 🎉 JIKA SUDAH ADA PROYEK -> Langsung ke halaman Stories proyek tersebut!
+            localStorage.setItem('active_project_id', String(projects[0].id));
+            router.push(`/stories?project_id=${projects[0].id}`);
+            return;
+          }
+        }
+      } catch (checkErr) {
+        console.log("Gagal memeriksa proyek, fallback ke wizard:", checkErr);
+      }
+      // 🚀 JIKA BELUM PUNYA PROYEK (USER BARU) -> Arahkan ke wizard setup
       router.push('/project-setup');
     } catch (err: any) {
       setError(err.message || 'Terjadi kesalahan sistem. Silakan coba lagi.');
