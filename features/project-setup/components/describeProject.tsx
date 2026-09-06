@@ -10,6 +10,7 @@ export default function DescribeProject() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isAttachOpen, setIsAttachOpen] = useState(false);
   const [attachedFile, setAttachedFile] = useState<string | null>(null);
+  const [error, setError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const titleName = projectName.trim() ? projectName : 'your project';
@@ -43,10 +44,8 @@ export default function DescribeProject() {
         fileInputRef.current.click();
       }
     } else if (option.type === 'link') {
-      // Memunculkan prompt untuk memasukkan URL web
       const url = prompt('Enter Web Link / URL:', 'https://');
       if (url && url.trim() !== '' && url !== 'https://') {
-        // Membersihkan protokol agar tampilannya lebih rapi pada badge
         setAttachedFile(url.trim());
       }
     }
@@ -58,6 +57,16 @@ export default function DescribeProject() {
     if (files && files.length > 0) {
       setAttachedFile(files[0].name);
     }
+  };
+
+  const handleNext = () => {
+    // Validasi: jika kosong atau hanya spasi, batalkan dan tampilkan error
+    if (!projectDescription || projectDescription.trim() === "") {
+      setError(true);
+      return;
+    }
+    setError(false);
+    nextStep();
   };
 
   return (
@@ -86,12 +95,17 @@ export default function DescribeProject() {
       </p>
 
       {/* Kotak Input / Textarea Container */}
-      <div className="bg-white/20 border border-blue-400/30 rounded-2xl p-4 w-full mb-6 backdrop-blur-sm shadow-xl text-left relative flex flex-col">
+      <div className={`bg-white/20 border rounded-2xl p-4 w-full mb-2 backdrop-blur-sm shadow-xl text-left relative flex flex-col transition-all ${
+        error ? 'border-red-400 ring-2 ring-red-400/50' : 'border-blue-400/30'
+      }`}>
         
         {/* Tombol AI Suggestion */}
         <button 
           type="button" 
-          onClick={() => setProjectDescription(`${titleName} is a comprehensive digital platform designed to optimize workflow management, track real-time analytics, and streamline team collaboration efficiently.`)}
+          onClick={() => {
+            setProjectDescription(`${titleName} is a comprehensive digital platform designed to optimize workflow management, track real-time analytics, and streamline team collaboration efficiently.`);
+            if (error) setError(false);
+          }}
           className="absolute top-4 right-4 text-blue-200 hover:text-white transition-colors p-1 cursor-pointer"
           title="Get AI suggestion"
         >
@@ -102,7 +116,10 @@ export default function DescribeProject() {
         <textarea
           rows={7}
           value={projectDescription}
-          onChange={(e) => setProjectDescription(e.target.value)}
+          onChange={(e) => {
+            setProjectDescription(e.target.value);
+            if (error) setError(false); // Hilangkan pesan error saat user mengetik
+          }}
           placeholder={`${titleName} description...`}
           className="w-full bg-transparent text-white placeholder-white/40 text-sm focus:outline-none resize-none mb-4 pr-8"
         />
@@ -204,11 +221,22 @@ export default function DescribeProject() {
         </div>
       </div>
 
+      {/* Pesan Peringatan Jika Kosong */}
+      {error && (
+        <div className="w-full text-left mb-4">
+          <p className="text-red-300 text-xs">
+            ⚠️ Deskripsi proyek wajib diisi sebelum melanjutkan.
+          </p>
+        </div>
+      )}
+
+      {!error && <div className="mb-4"></div>}
+
       {/* Tombol Next */}
       <div className="w-full flex justify-start">
         <button
           type="button"
-          onClick={nextStep}
+          onClick={handleNext}
           className="bg-white text-blue-500 hover:bg-blue-50 px-4 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-md text-sm cursor-pointer"
         >
           Next <ArrowRight className="w-4 h-4" />

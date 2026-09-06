@@ -34,12 +34,15 @@ export interface UserStoryItem {
   description: string;
 }
 
+// Perbarui tipe projectType agar mendukung 'generate', 'translate', dan 'example'
+export type ProjectTypeEnum = 'generate' | 'translate' | 'example' | null;
+
 interface WizardState {
   step: number;
   teamName: string;
   projectName: string;
   useAi: boolean | null;
-  projectType: string | null;
+  projectType: ProjectTypeEnum;
   projectDescription: string;
   platformType: string;
   userTypes: UserTypeItem[];
@@ -54,12 +57,13 @@ interface WizardState {
   updateTeamName: (name: string) => void;
   updateProjectName: (name: string) => void;
   setUseAi: (choice: boolean) => void;
-  setProjectType: (type: string) => void;
+  setProjectType: (type: ProjectTypeEnum) => void;
   setProjectDescription: (desc: string) => void;
   setPlatformType: (platform: string) => void;
   
   addUserType: (item: UserTypeItem) => void;
   removeUserType: (id: string) => void;
+  updateUserTypeDescription: (id: string, description: string) => void;
   
   updateUserGoal: (userTypeName: string, goals: string, frustrations: string) => void;
 
@@ -73,7 +77,7 @@ interface WizardState {
   removeUserStory: (id: string) => void;
 
   updateEpic: (id: string, updatedData: Partial<EpicItem>) => void;
-  resetStore: () => void; // Fungsi untuk mengosongkan data saat mode manual
+  resetStore: () => void;
 }
 
 export const useWizardStore = create<WizardState>((set) => ({
@@ -85,7 +89,6 @@ export const useWizardStore = create<WizardState>((set) => ({
   projectDescription: '',
   platformType: 'Web Application',
   
-  // Dikosongkan agar mode manual bersih dari awal
   userTypes: [],
   userGoals: [],
   epics: [],
@@ -99,18 +102,34 @@ export const useWizardStore = create<WizardState>((set) => ({
   updateTeamName: (name) => set({ teamName: name }),
   updateProjectName: (name) => set({ projectName: name }),
   setUseAi: (choice: boolean) => set({ useAi: choice }),
-  setProjectType: (type: string) => set({ projectType: type }),
+  setProjectType: (type: ProjectTypeEnum) => set({ projectType: type }),
   setProjectDescription: (desc: string) => set({ projectDescription: desc }),
   setPlatformType: (platform: string) => set({ platformType: platform }),
   
   addUserType: (item: UserTypeItem) => set((state) => ({ userTypes: [...state.userTypes, item] })),
   removeUserType: (id: string) => set((state) => ({ userTypes: state.userTypes.filter((u) => u.id !== id) })),
-  
-  updateUserGoal: (userTypeName, goals, frustrations) => set((state) => ({
-    userGoals: state.userGoals.map((g) => 
-      g.userTypeName === userTypeName ? { ...g, goals, frustrations } : g
-    )
+  updateUserTypeDescription: (id: string, description: string) => set((state) => ({
+    userTypes: state.userTypes.map((ut) =>
+      ut.id === id ? { ...ut, description } : ut
+    ),
   })),
+  
+  updateUserGoal: (userTypeName, goals, frustrations) => set((state) => {
+    const existingGoalIndex = state.userGoals.findIndex((g) => g.userTypeName === userTypeName);
+    
+    if (existingGoalIndex !== -1) {
+      const updatedGoals = [...state.userGoals];
+      updatedGoals[existingGoalIndex] = { ...updatedGoals[existingGoalIndex], goals, frustrations };
+      return { userGoals: updatedGoals };
+    } else {
+      return { 
+        userGoals: [
+          ...state.userGoals, 
+          { id: Date.now().toString(), userTypeName, goals, frustrations }
+        ] 
+      };
+    }
+  }),
 
   addEpic: (item: EpicItem) => set((state) => ({ epics: [...state.epics, item] })),
   removeEpic: (id: string) => set((state) => ({ epics: state.epics.filter((e) => e.id !== id) })),
@@ -126,6 +145,13 @@ export const useWizardStore = create<WizardState>((set) => ({
   })),
 
   resetStore: () => set({
+    step: 1,
+    teamName: '',
+    projectName: '',
+    useAi: null,
+    projectType: null,
+    projectDescription: '',
+    platformType: 'Web Application',
     userTypes: [],
     userGoals: [],
     epics: [],
