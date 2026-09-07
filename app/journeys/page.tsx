@@ -1,74 +1,10 @@
 'use client';
 
-<<<<<<< HEAD
-import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-=======
 import { useState } from 'react';
->>>>>>> origin/dev
 import AppSidebar from '@/features/common/components/AppSidebar';
 import JourneysSidebar from '@/features/journeys/components/journeySidebar';
 import EmptyJourneyPanel from '@/features/journeys/components/emptyJourneyPanel';
 import JourneyDetailPanel from '@/features/journeys/components/journeyDetailPanel';
-<<<<<<< HEAD
-import { Upload, Download, X, Loader2 } from 'lucide-react';
-import { journeysApi } from '@/services/journeysApi';
-import { projectApi } from '@/services/projectsApi';
-import { getAuthToken } from '@/lib/auth';
-
-function JourneysPageContent() {
-  const searchParams = useSearchParams();
-  const projectId = searchParams.get('project_id');
-
-  const [projectName, setProjectName] = useState('');
-  const [journeys, setJourneys] = useState<any[]>([]);
-  const [selectedJourney, setSelectedJourney] = useState<any | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newDesc, setNewDesc] = useState('');
-
-  // Fetch journeys + nama project asli dari backend (bukan dummy/local state lagi)
-  useEffect(() => {
-    const loadData = async () => {
-      if (!projectId) {
-        setLoadError('project_id tidak ditemukan di URL.');
-        setIsLoading(false);
-        return;
-      }
-      const token = getAuthToken();
-      if (!token) {
-        setLoadError('Sesi habis, silakan login kembali.');
-        setIsLoading(false);
-        return;
-      }
-
-      setIsLoading(true);
-      try {
-        const [journeyData, projectData] = await Promise.all([
-          journeysApi.fetchJourneys(Number(projectId), token),
-          projectApi.getProjectById(Number(projectId), token),
-        ]);
-        setJourneys(journeyData);
-        setProjectName(projectData.name);
-        setSelectedJourney(journeyData[0] || null);
-      } catch (err: any) {
-        console.error('Gagal memuat data journeys:', err);
-        setLoadError(err.message || 'Gagal memuat data dari server.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
-  }, [projectId]);
-
-=======
 import { Upload, Download, X } from 'lucide-react';
 import { useWizardStore } from '@/features/project-setup/store/wizard-store';
 
@@ -97,7 +33,6 @@ export default function JourneysPage() {
   const [newDesc, setNewDesc] = useState('');
 
   // Handler Buka Modal Create Baru
->>>>>>> origin/dev
   const handleOpenCreateModal = () => {
     setIsEditMode(false);
     setNewTitle('');
@@ -105,10 +40,7 @@ export default function JourneysPage() {
     setIsModalOpen(true);
   };
 
-<<<<<<< HEAD
-=======
   // Handler Buka Modal Edit
->>>>>>> origin/dev
   const handleOpenEditModal = () => {
     if (!selectedJourney) return;
     setIsEditMode(true);
@@ -117,72 +49,6 @@ export default function JourneysPage() {
     setIsModalOpen(true);
   };
 
-<<<<<<< HEAD
-  // Create/update journey (title & description) via backend beneran
-  const handleSaveJourney = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle.trim() || !projectId) return;
-
-    const token = getAuthToken();
-    if (!token) {
-      alert('Sesi habis, silakan login kembali.');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      if (isEditMode && selectedJourney) {
-        const updated = await journeysApi.updateJourney(
-          Number(selectedJourney.id),
-          { name: newTitle, description: newDesc },
-          token
-        );
-        setJourneys(journeys.map((j) => (j.id === updated.id ? { ...updated, steps: selectedJourney.steps } : j)));
-        setSelectedJourney({ ...updated, steps: selectedJourney.steps });
-      } else {
-        const created = await journeysApi.createJourney(
-          { name: newTitle, description: newDesc || 'Deskripsi user journey baru...', project_id: Number(projectId) },
-          token
-        );
-        setJourneys([created, ...journeys]);
-        setSelectedJourney(created);
-      }
-      setNewTitle('');
-      setNewDesc('');
-      setIsModalOpen(false);
-    } catch (err: any) {
-      console.error('Gagal menyimpan journey:', err);
-      alert(err.message || 'Gagal menyimpan journey ke server.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // Dipanggil dari JourneyDetailPanel saat user edit judul/deskripsi/steps journey.
-  // Kita simpan title+description lewat updateJourney, lalu steps lewat saveSteps
-  // (replace-all), supaya seluruh perubahan di panel benar-benar tersimpan.
-  const handleSaveJourneyDetail = async (updated: any) => {
-    const token = getAuthToken();
-    if (!token) return;
-
-    setIsSaving(true);
-    try {
-      await journeysApi.updateJourney(
-        Number(updated.id),
-        { name: updated.title, description: updated.description },
-        token
-      );
-      const withSteps = await journeysApi.saveSteps(Number(updated.id), updated.steps || [], token);
-
-      setJourneys(journeys.map((j) => (j.id === withSteps.id ? withSteps : j)));
-      setSelectedJourney(withSteps);
-    } catch (err: any) {
-      console.error('Gagal menyimpan detail journey:', err);
-      alert(err.message || 'Gagal menyimpan perubahan journey ke server.');
-    } finally {
-      setIsSaving(false);
-    }
-=======
   // Handler Simpan (Create atau Update)
   const handleSaveJourney = (e: React.FormEvent) => {
     e.preventDefault();
@@ -212,7 +78,6 @@ export default function JourneysPage() {
     setNewTitle('');
     setNewDesc('');
     setIsModalOpen(false);
->>>>>>> origin/dev
   };
 
   const handleUpload = () => {
@@ -246,47 +111,11 @@ export default function JourneysPage() {
     downloadAnchor.remove();
   };
 
-<<<<<<< HEAD
-  if (isLoading) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-          <p className="text-sm text-gray-500">Memuat data journeys...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
-        <div className="text-center max-w-md px-6">
-          <p className="text-red-600 font-medium mb-2">Gagal memuat data</p>
-          <p className="text-sm text-gray-500">{loadError}</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex h-screen w-screen overflow-hidden bg-gray-50 font-sans relative">
-      {isSaving && (
-        <div className="absolute inset-0 bg-black/40 z-50 flex items-center justify-center text-white font-medium">
-          <Loader2 className="w-5 h-5 mr-2 animate-spin" /> Menyimpan ke server...
-        </div>
-      )}
-
-      <AppSidebar activeMenu="journeys" projectId={projectId} />
-
-      <JourneysSidebar
-=======
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-50 font-sans relative">
       <AppSidebar activeMenu="journeys" />
 
       <JourneysSidebar 
->>>>>>> origin/dev
         journeys={journeys}
         selectedJourneyId={selectedJourney?.id}
         searchQuery={searchQuery}
@@ -298,38 +127,21 @@ export default function JourneysPage() {
       <main className="flex-1 flex flex-col h-full bg-white overflow-hidden">
         <div className="h-14 border-b border-gray-200 px-6 flex items-center justify-between bg-white shrink-0">
           <span className="text-xs font-medium text-gray-600 flex items-center gap-2">
-<<<<<<< HEAD
-            {/* Nama project asli dari backend, bukan dummy "alalal" lagi */}
-            {projectName || 'Untitled Project'} <span className="text-gray-400">/</span>
-=======
             {projectName || 'alalal'} <span className="text-gray-400">/</span>
->>>>>>> origin/dev
           </span>
 
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 text-gray-500">
-<<<<<<< HEAD
-              <button
-                onClick={handleUpload}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 cursor-pointer"
-=======
               <button 
                 onClick={handleUpload}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 cursor-pointer" 
->>>>>>> origin/dev
                 title="Upload Document"
               >
                 <Upload className="w-4 h-4" />
               </button>
-<<<<<<< HEAD
-              <button
-                onClick={handleDownload}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 cursor-pointer"
-=======
               <button 
                 onClick={handleDownload}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 cursor-pointer" 
->>>>>>> origin/dev
                 title="Download / Export JSON"
               >
                 <Download className="w-4 h-4" />
@@ -343,12 +155,6 @@ export default function JourneysPage() {
         </div>
 
         {selectedJourney ? (
-<<<<<<< HEAD
-          <JourneyDetailPanel
-            journey={selectedJourney}
-            onClose={() => setSelectedJourney(null)}
-            onSave={handleSaveJourneyDetail}
-=======
           <JourneyDetailPanel 
             journey={selectedJourney} 
             onClose={() => setSelectedJourney(null)} 
@@ -356,17 +162,13 @@ export default function JourneysPage() {
               setJourneys(journeys.map(j => j.id === updated.id ? updated : j));
               setSelectedJourney(updated);
             }}
->>>>>>> origin/dev
           />
         ) : (
           <EmptyJourneyPanel onOpenAddModal={handleOpenCreateModal} />
         )}
       </main>
 
-<<<<<<< HEAD
-=======
       {/* Modal Form Create & Edit */}
->>>>>>> origin/dev
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden border border-gray-100 animate-in fade-in zoom-in duration-200">
@@ -374,11 +176,7 @@ export default function JourneysPage() {
               <h3 className="font-bold text-gray-800 text-base">
                 {isEditMode ? 'Edit Journey' : 'Create New Journey'}
               </h3>
-<<<<<<< HEAD
-              <button
-=======
               <button 
->>>>>>> origin/dev
                 onClick={() => setIsModalOpen(false)}
                 className="text-gray-400 hover:text-gray-600 p-1 rounded-lg transition-colors cursor-pointer"
               >
@@ -389,15 +187,9 @@ export default function JourneysPage() {
             <form onSubmit={handleSaveJourney} className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Journey Title</label>
-<<<<<<< HEAD
-                <input
-                  type="text"
-                  placeholder="Contoh: Checkout flow & Payment gateway"
-=======
                 <input 
                   type="text" 
                   placeholder="Contoh: Checkout flow & Payment gateway" 
->>>>>>> origin/dev
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   required
@@ -407,13 +199,8 @@ export default function JourneysPage() {
 
               <div>
                 <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Description</label>
-<<<<<<< HEAD
-                <textarea
-                  placeholder="Deskripsi singkat mengenai alur journey ini..."
-=======
                 <textarea 
                   placeholder="Deskripsi singkat mengenai alur journey ini..." 
->>>>>>> origin/dev
                   value={newDesc}
                   onChange={(e) => setNewDesc(e.target.value)}
                   rows={3}
@@ -422,25 +209,15 @@ export default function JourneysPage() {
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
-<<<<<<< HEAD
-                <button
-                  type="button"
-=======
                 <button 
                   type="button" 
->>>>>>> origin/dev
                   onClick={() => setIsModalOpen(false)}
                   className="px-4 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors cursor-pointer"
                 >
                   Batal
                 </button>
-<<<<<<< HEAD
-                <button
-                  type="submit"
-=======
                 <button 
                   type="submit" 
->>>>>>> origin/dev
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm cursor-pointer"
                 >
                   {isEditMode ? 'Simpan Perubahan' : 'Simpan Journey'}
@@ -452,19 +229,4 @@ export default function JourneysPage() {
       )}
     </div>
   );
-<<<<<<< HEAD
-}
-
-export default function JourneysPage() {
-  return (
-    <Suspense fallback={
-      <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
-        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-      </div>
-    }>
-      <JourneysPageContent />
-    </Suspense>
-  );
-=======
->>>>>>> origin/dev
 }

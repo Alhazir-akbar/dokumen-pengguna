@@ -1,9 +1,5 @@
-<<<<<<< HEAD
-// services/workspacesApi.ts
-=======
 // services/workspaceApi.ts
 import { formatApiError } from '@/lib/api-error';
->>>>>>> 23ab38d (add file)
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -22,11 +18,7 @@ export interface WorkspaceMemberResponse {
   user_id: number;
   username: string;
   email: string;
-<<<<<<< HEAD
-  role: string;
-=======
   role: 'owner' | 'editor' | 'viewer';
->>>>>>> 23ab38d (add file)
   joined_at: string;
 }
 
@@ -36,10 +28,6 @@ const getAuthHeaders = (token: string) => ({
 });
 
 export const workspaceApi = {
-<<<<<<< HEAD
-  // Membuat workspace baru (user pembuat otomatis jadi owner-nya di backend)
-=======
->>>>>>> 23ab38d (add file)
   createWorkspace: async (data: WorkspaceCreate, token: string): Promise<WorkspaceResponse> => {
     const response = await fetch(`${API_BASE_URL}/api/workspaces`, {
       method: 'POST',
@@ -48,19 +36,11 @@ export const workspaceApi = {
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-<<<<<<< HEAD
-      throw new Error(errorData.detail || 'Gagal membuat ruang kerja');
-=======
-      throw new Error(formatApiError(errorData));
->>>>>>> 23ab38d (add file)
+      throw new Error(formatApiError(errorData, 'Gagal membuat ruang kerja'));
     }
     return response.json();
   },
 
-<<<<<<< HEAD
-  // Mendapatkan seluruh workspace yang diikuti user yang sedang login
-=======
->>>>>>> 23ab38d (add file)
   getMyWorkspaces: async (token: string): Promise<WorkspaceResponse[]> => {
     const response = await fetch(`${API_BASE_URL}/api/workspaces`, {
       method: 'GET',
@@ -68,11 +48,7 @@ export const workspaceApi = {
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-<<<<<<< HEAD
-      throw new Error(errorData.detail || 'Gagal mengambil daftar ruang kerja');
-=======
-      throw new Error(formatApiError(errorData));
->>>>>>> 23ab38d (add file)
+      throw new Error(formatApiError(errorData, 'Gagal mengambil daftar ruang kerja'));
     }
     return response.json();
   },
@@ -84,17 +60,12 @@ export const workspaceApi = {
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-<<<<<<< HEAD
-      throw new Error(errorData.detail || 'Gagal mengambil daftar anggota ruang kerja');
-    }
-    return response.json();
-  },
-=======
-      throw new Error(formatApiError(errorData));
+      throw new Error(formatApiError(errorData, 'Gagal mengambil daftar anggota ruang kerja'));
     }
     return response.json();
   },
 
+  // TAMBAHAN: rename & hapus team (dipakai Team Settings)
   updateWorkspace: async (id: number, data: { name: string }, token: string): Promise<WorkspaceResponse> => {
     const response = await fetch(`${API_BASE_URL}/api/workspaces/${id}`, {
       method: 'PUT',
@@ -103,7 +74,7 @@ export const workspaceApi = {
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(formatApiError(errorData));
+      throw new Error(formatApiError(errorData, 'Gagal memperbarui nama team'));
     }
     return response.json();
   },
@@ -113,27 +84,22 @@ export const workspaceApi = {
       method: 'DELETE',
       headers: getAuthHeaders(token),
     });
-    
     const data = await response.json().catch(() => ({}));
-    
     if (!response.ok) {
-      console.error('API deleteWorkspace error details:', {
-        status: response.status,
-        statusText: response.statusText,
-        errorData: data,
-      });
-      throw new Error(formatApiError(data));
+      throw new Error(formatApiError(data, 'Gagal menghapus team'));
     }
     return data;
   },
 
+  // TAMBAHAN: AI Rules tingkat workspace/team (endpoint backend sudah ada sejak awal,
+  // baru sekarang dibungkus di service layer)
   getWorkspaceAIRules: async (workspaceId: number, token: string): Promise<any[]> => {
     const response = await fetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/ai-rules`, {
       headers: getAuthHeaders(token),
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(formatApiError(errorData));
+      throw new Error(formatApiError(errorData, 'Gagal mengambil AI Rules team'));
     }
     return response.json();
   },
@@ -146,7 +112,7 @@ export const workspaceApi = {
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(formatApiError(errorData));
+      throw new Error(formatApiError(errorData, 'Gagal menambahkan AI Rule team'));
     }
     return response.json();
   },
@@ -158,10 +124,13 @@ export const workspaceApi = {
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(formatApiError(errorData));
+      throw new Error(formatApiError(errorData, 'Gagal menghapus AI Rule team'));
     }
   },
 
+  // TAMBAHAN: endpoint-nya sudah ada di backend (routers/workspaces.py) sejak awal,
+  // tapi belum pernah dibungkus di service ini — sebelumnya Team page memanggilnya
+  // lewat fetch manual langsung dari komponen.
   addWorkspaceMember: async (
     workspaceId: number,
     email: string,
@@ -174,7 +143,7 @@ export const workspaceApi = {
     );
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(formatApiError(data));
+      throw new Error(formatApiError(data, 'Gagal mengundang anggota'));
     }
     return data;
   },
@@ -186,9 +155,8 @@ export const workspaceApi = {
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(formatApiError(data));
+      throw new Error(formatApiError(data, 'Gagal menghapus anggota'));
     }
     return data;
   },
->>>>>>> 23ab38d (add file)
 };

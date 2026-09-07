@@ -1,32 +1,18 @@
 // app/users/page.tsx
 'use client';
 
-<<<<<<< HEAD
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-=======
-<<<<<<< Updated upstream
-import { useState } from 'react';
-=======
-import { useState, useEffect, Suspense, useCallback } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
->>>>>>> Stashed changes
->>>>>>> 23ab38d (add file)
 import AppSidebar from '@/features/common/components/AppSidebar';
 import UsersSidebar from '@/features/users/components/userSidebar';
 import UserDetailPanel from '@/features/users/components/userDetailPanel';
 import EmptyUserPanel from '@/features/users/components/emptyUserPanel';
 import UserFormPanel from '@/features/users/components/userFormPanel';
 import { UserType } from '@/features/users/types';
-<<<<<<< HEAD
 import { usersApi } from '@/services/userApi';
 import { projectApi } from '@/services/projectsApi';
 import { getAuthToken } from '@/lib/auth';
 import { MessageSquare, Loader2 } from 'lucide-react';
-=======
-<<<<<<< Updated upstream
-import { MessageSquare } from 'lucide-react';
->>>>>>> 23ab38d (add file)
 
 function UsersPageContent() {
   const searchParams = useSearchParams();

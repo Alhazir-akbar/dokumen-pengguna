@@ -2,12 +2,6 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-<<<<<<< HEAD
-=======
-// TAMBAHAN: FastAPI mengembalikan error validasi (422) sebagai `detail: [{loc, msg, type}, ...]`,
-// bukan string. Kalau langsung dilempar ke `new Error(errorData.detail)`, JS mengubah array
-// jadi "[object Object],[object Object],..." yang tidak berguna untuk debugging. Helper ini
-// mengubahnya jadi pesan yang menyebutkan field mana saja yang bermasalah dan kenapa.
 function formatApiError(errorData: any, fallback: string): string {
   const detail = errorData?.detail;
   if (typeof detail === 'string') return detail;
@@ -22,7 +16,6 @@ function formatApiError(errorData: any, fallback: string): string {
   return fallback;
 }
 
->>>>>>> 23ab38d (add file)
 // ============ Interfaces ============
 
 export interface ProjectCreate {
@@ -69,31 +62,6 @@ export interface SuggestDescriptionResponse {
   description: string;
 }
 
-<<<<<<< HEAD
-export interface SuggestJourneyPayload {
-  project_name: string;
-  journey_context: string;
-}
-
-export interface SuggestJourneyResponse {
-  journey: string;
-}
-
-export interface RequirementsPayload {
-  user_types: Array<{ name: string; description: string }>;
-  epics: Array<{ name: string; description: string }>;
-  user_stories: Array<{
-    epic_name: string;
-    story_name: string;
-    user_type: string;
-    description: string;
-    acceptance_criteria: string[];
-    tech_notes: string[];
-    test_cases: string[];
-  }>;
-  nfrs: Array<{ category: string; description: string }>;
-=======
-// TAMBAHAN: dipakai tombol AI Suggest di step UserTypeGoals
 export interface SuggestUserGoalsPayload {
   project_name: string;
   user_type_name: string;
@@ -105,7 +73,6 @@ export interface SuggestUserGoalsResponse {
   frustrations: string;
 }
 
-// TAMBAHAN: dipakai tombol AI Suggestion di step UserJourney
 export interface SuggestUserJourneyPayload {
   project_name: string;
   project_description?: string;
@@ -120,7 +87,6 @@ export interface SuggestUserJourneyStepItem {
 export interface SuggestUserJourneyResponse {
   journey: string;
   steps: SuggestUserJourneyStepItem[];
->>>>>>> 23ab38d (add file)
 }
 
 // ============ Helper ============
@@ -133,10 +99,6 @@ const getAuthHeaders = (token: string) => ({
 // ============ API ============
 
 export const projectApi = {
-<<<<<<< HEAD
-  // 1. Membuat proyek baru
-=======
->>>>>>> 23ab38d (add file)
   createProject: async (data: ProjectCreate, token: string): Promise<ProjectResponse> => {
     const response = await fetch(`${API_BASE_URL}/api/projects`, {
       method: 'POST',
@@ -144,60 +106,69 @@ export const projectApi = {
       body: JSON.stringify(data),
     });
     if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      }
       const errorData = await response.json().catch(() => ({}));
-<<<<<<< HEAD
-      throw new Error(errorData.detail || 'Gagal membuat proyek');
-=======
       throw new Error(formatApiError(errorData, 'Gagal membuat proyek'));
->>>>>>> 23ab38d (add file)
     }
     return response.json();
   },
 
-<<<<<<< HEAD
-  // 2. Mengambil semua proyek di workspace
-=======
->>>>>>> 23ab38d (add file)
-  getProjects: async (workspaceId: number, token: string): Promise<ProjectResponse[]> => {
-    const response = await fetch(`${API_BASE_URL}/api/projects?workspace_id=${workspaceId}`, {
+  getProjects: async (workspaceIdOrToken?: any, tokenArg?: string): Promise<ProjectResponse[]> => {
+    let url = `${API_BASE_URL}/api/projects`;
+    let token = '';
+    let workspaceId: any = null;
+
+    if (typeof workspaceIdOrToken === 'number') {
+      workspaceId = workspaceIdOrToken;
+      token = tokenArg || '';
+    } else if (typeof workspaceIdOrToken === 'string') {
+      token = workspaceIdOrToken;
+    }
+
+    if (!workspaceId) {
+      workspaceId = localStorage.getItem('workspace_id') || localStorage.getItem('team_id');
+    }
+
+    if (workspaceId) {
+      url += `?workspace_id=${workspaceId}`;
+    }
+
+    const response = await fetch(url, {
       method: 'GET',
       headers: getAuthHeaders(token),
     });
+
     if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+        return [];
+      }
       const errorData = await response.json().catch(() => ({}));
-<<<<<<< HEAD
-      throw new Error(errorData.detail || 'Gagal mengambil daftar proyek');
-=======
       throw new Error(formatApiError(errorData, 'Gagal mengambil daftar proyek'));
->>>>>>> 23ab38d (add file)
     }
     return response.json();
   },
 
-<<<<<<< HEAD
-  // 3. Mendapatkan detail proyek
-=======
->>>>>>> 23ab38d (add file)
   getProjectById: async (id: number, token: string): Promise<ProjectResponse> => {
     const response = await fetch(`${API_BASE_URL}/api/projects/${id}`, {
       method: 'GET',
       headers: getAuthHeaders(token),
     });
     if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      }
       const errorData = await response.json().catch(() => ({}));
-<<<<<<< HEAD
-      throw new Error(errorData.detail || 'Proyek tidak ditemukan');
-=======
       throw new Error(formatApiError(errorData, 'Proyek tidak ditemukan'));
->>>>>>> 23ab38d (add file)
     }
     return response.json();
   },
 
-<<<<<<< HEAD
-  // 4. Update proyek
-=======
->>>>>>> 23ab38d (add file)
   updateProject: async (id: number, data: ProjectUpdate, token: string): Promise<ProjectResponse> => {
     const response = await fetch(`${API_BASE_URL}/api/projects/${id}`, {
       method: 'PUT',
@@ -206,19 +177,11 @@ export const projectApi = {
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-<<<<<<< HEAD
-      throw new Error(errorData.detail || 'Gagal memperbarui proyek');
-=======
       throw new Error(formatApiError(errorData, 'Gagal memperbarui proyek'));
->>>>>>> 23ab38d (add file)
     }
     return response.json();
   },
 
-<<<<<<< HEAD
-  // 5. Hapus proyek
-=======
->>>>>>> 23ab38d (add file)
   deleteProject: async (id: number, token: string) => {
     const response = await fetch(`${API_BASE_URL}/api/projects/${id}`, {
       method: 'DELETE',
@@ -226,19 +189,11 @@ export const projectApi = {
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-<<<<<<< HEAD
-      throw new Error(errorData.detail || 'Gagal menghapus proyek');
-=======
       throw new Error(formatApiError(errorData, 'Gagal menghapus proyek'));
->>>>>>> 23ab38d (add file)
     }
     return response.json();
   },
 
-<<<<<<< HEAD
-  // 6. Integrasi AI: saran deskripsi proyek singkat
-=======
->>>>>>> 23ab38d (add file)
   suggestDescription: async (
     data: SuggestDescriptionPayload,
     token: string
@@ -250,46 +205,27 @@ export const projectApi = {
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-<<<<<<< HEAD
-      throw new Error(errorData.detail || 'AI gagal memberikan saran deskripsi');
-=======
       throw new Error(formatApiError(errorData, 'AI gagal memberikan saran deskripsi'));
->>>>>>> 23ab38d (add file)
     }
     return response.json();
   },
 
-<<<<<<< HEAD
-  // 7. Integrasi AI: saran user journey
-  suggestJourney: async (
-    data: SuggestJourneyPayload,
-    token: string
-  ): Promise<SuggestJourneyResponse> => {
-    const response = await fetch(`${API_BASE_URL}/api/projects/suggest-journey`, {
-=======
-  // 7. Integrasi AI: Generate Requirements (epics, user stories, user types, NFRs)
-  // TAMBAHAN: dipanggil tombol AI Suggest (Sparkles) di step UserTypeGoals wizard
   suggestUserGoals: async (
     data: SuggestUserGoalsPayload,
     token: string
   ): Promise<SuggestUserGoalsResponse> => {
     const response = await fetch(`${API_BASE_URL}/api/projects/suggest-user-goals`, {
->>>>>>> 23ab38d (add file)
       method: 'POST',
       headers: getAuthHeaders(token),
       body: JSON.stringify(data),
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-<<<<<<< HEAD
-      throw new Error(errorData.detail || 'AI gagal memberikan saran user journey');
-=======
       throw new Error(formatApiError(errorData, 'AI gagal memberikan saran goals & frustrations'));
     }
     return response.json();
   },
 
-  // TAMBAHAN: dipanggil tombol AI Suggestion di step UserJourney wizard
   suggestUserJourney: async (
     data: SuggestUserJourneyPayload,
     token: string
@@ -302,15 +238,10 @@ export const projectApi = {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(formatApiError(errorData, 'AI gagal memberikan saran user journey'));
->>>>>>> 23ab38d (add file)
     }
     return response.json();
   },
 
-<<<<<<< HEAD
-  // 8. Integrasi AI: Generate Requirements
-=======
->>>>>>> 23ab38d (add file)
   generateRequirements: async (id: number, token: string) => {
     const response = await fetch(`${API_BASE_URL}/api/projects/${id}/generate-requirements`, {
       method: 'POST',
@@ -318,57 +249,10 @@ export const projectApi = {
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-<<<<<<< HEAD
-      throw new Error(errorData.detail || 'AI gagal memproses data');
-=======
       throw new Error(formatApiError(errorData, 'AI gagal memproses data'));
->>>>>>> 23ab38d (add file)
     }
     return response.json();
   },
-
-<<<<<<< HEAD
-  // 9. Integrasi AI: Simpan hasil requirements ke DB dengan sanitasi payload yang aman
-  saveRequirements: async (id: number, rawData: any, token: string) => {
-    // Normalisasi struktur data agar sesuai dengan Pydantic Schema backend
-    const sanitizedPayload: RequirementsPayload = {
-      user_types: (rawData.user_types || []).map((ut: any) => ({
-        name: ut.name || 'General User',
-        description: ut.description || 'No description provided',
-      })),
-      epics: (rawData.epics || []).map((ep: any) => ({
-        name: ep.name || ep.title || 'Core Module',
-        description: ep.description || 'No description provided',
-      })),
-      user_stories: (rawData.user_stories || []).map((st: any) => ({
-        epic_name: st.epic_name || st.epicTitle || 'Core Module',
-        story_name: st.story_name || st.storyName || 'Manage Feature',
-        user_type: st.user_type || st.userType || 'User',
-        description: st.description || 'System feature requirement',
-        acceptance_criteria: st.acceptance_criteria || ['Given user is active, When interacting, Then system processes.'],
-        tech_notes: st.tech_notes || ['Implement standard API and database storage.'],
-        test_cases: st.test_cases || ['Functional Test: Verify feature works as expected.'],
-      })),
-      nfrs: (rawData.nfrs || []).map((nfr: any) => ({
-        category: nfr.category || 'Performance',
-        description: nfr.description || 'System should perform efficiently under normal load.',
-      })),
-    };
-
-    const response = await fetch(`${API_BASE_URL}/api/projects/${id}/save-requirements`, {
-      method: 'POST',
-      headers: getAuthHeaders(token),
-      body: JSON.stringify(sanitizedPayload),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || 'Gagal menyimpan draf kebutuhan');
-    }
-    return response.json();
-  },
-=======
-  // 8. Integrasi AI: Simpan hasil requirements (yang sudah diedit user) ke DB
 
   saveRequirements: async (id: number, aiRequirementsData: any, token: string) => {
     const response = await fetch(`${API_BASE_URL}/api/projects/${id}/save-requirements`, {
@@ -382,5 +266,4 @@ export const projectApi = {
     }
     return response.json();
   }
->>>>>>> 23ab38d (add file)
 };

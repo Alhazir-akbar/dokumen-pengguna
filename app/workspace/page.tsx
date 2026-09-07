@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import LogoUserdoc from '@/public/logoUserDoc';
 import AccountMenu from '@/features/common/components/accountMenu';
 import { workspaceApi, WorkspaceResponse } from '@/services/workspaceApi';
@@ -10,22 +10,19 @@ import { projectApi, ProjectResponse } from '@/services/projectsApi';
 import { getAuthToken } from '@/lib/auth';
 import { setStoredProjectId, clearStoredProjectId, getStoredProjectId } from '@/lib/project-context';
 import { useWizardStore } from '@/features/project-setup/store/wizard-store';
-import { FolderKanban, Plus, Trash2, Loader2, RefreshCw, Users, Pencil, Check, X } from 'lucide-react';
+import { FolderKanban, Plus, Trash2, Loader2, RefreshCw, Users, Settings } from 'lucide-react';
 
 const CARD_ACCENTS = [
-  'bg-blue-500/20 text-blue-300 border-blue-400/30',
-  'bg-purple-500/20 text-purple-300 border-purple-400/30',
-  'bg-emerald-500/20 text-emerald-300 border-emerald-400/30',
-  'bg-amber-500/20 text-amber-300 border-amber-400/30',
-  'bg-rose-500/20 text-rose-300 border-rose-400/30',
-  'bg-cyan-500/20 text-cyan-300 border-cyan-400/30',
+  'bg-blue-50 text-blue-600',
+  'bg-purple-50 text-purple-600',
+  'bg-emerald-50 text-emerald-600',
+  'bg-amber-50 text-amber-600',
+  'bg-rose-50 text-rose-600',
+  'bg-cyan-50 text-cyan-600',
 ];
 
 export default function WorkspacePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const urlWorkspaceId = searchParams.get('workspace_id');
-
   const resetStore = useWizardStore((s: any) => s.resetStore);
 
   const [workspace, setWorkspace] = useState<WorkspaceResponse | null>(null);
@@ -35,10 +32,7 @@ export default function WorkspacePage() {
   const [reloadToken, setReloadToken] = useState(0);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  const [isEditingTeam, setIsEditingTeam] = useState(false);
-  const [teamNameInput, setTeamNameInput] = useState('');
-  const [isUpdatingTeam, setIsUpdatingTeam] = useState(false);
-
+  // Di dalam app/workspace/page.tsx (pada blok useEffect untuk load data)
   useEffect(() => {
     const load = async () => {
       const token = getAuthToken();
@@ -51,24 +45,20 @@ export default function WorkspacePage() {
       setIsLoading(true);
       setLoadError('');
       try {
-        const workspaceList = await workspaceApi.getMyWorkspaces(token);
-        if (!workspaceList || workspaceList.length === 0) {
+        const workspaces = await workspaceApi.getMyWorkspaces(token);
+        if (!workspaces || workspaces.length === 0) {
           router.replace('/project-setup');
           return;
         }
 
-        // Tentukan workspace aktif berdasarkan query param dari AccountMenu
-        let activeWs = workspaceList[0];
-        if (urlWorkspaceId) {
-          const found = workspaceList.find((w: any) => String(w.id) === String(urlWorkspaceId));
-          if (found) activeWs = found;
-        }
+        const activeWorkspace = workspaces[0];
+        setWorkspace(activeWorkspace);
 
-        setWorkspace(activeWs);
-        setTeamNameInput(activeWs.name);
+        // PENTING: Simpan ke localStorage agar service API proyek lain tidak kehilangan ID workspace
+        localStorage.setItem('workspace_id', String(activeWorkspace.id));
+        localStorage.setItem('team_id', String(activeWorkspace.id));
 
-        // Ambil data proyek terbaru dari backend berdasarkan ID workspace yang aktif
-        const projectList = await projectApi.getProjects(activeWs.id, token);
+        const projectList = await projectApi.getProjects(activeWorkspace.id, token);
         setProjects(projectList);
       } catch (err: any) {
         console.error('Gagal memuat data workspace:', err);
@@ -79,8 +69,7 @@ export default function WorkspacePage() {
     };
 
     load();
-  }, [urlWorkspaceId, reloadToken, router]);
-
+  }, [reloadToken, router]);
   const handleOpenProject = (id: number) => {
     setStoredProjectId(id);
     router.push(`/stories?project_id=${id}`);
@@ -91,29 +80,9 @@ export default function WorkspacePage() {
     router.push('/project-setup');
   };
 
-  const handleUpdateWorkspaceName = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!workspace || !teamNameInput.trim()) return;
-
-    const token = getAuthToken();
-    if (!token) return;
-
-    setIsUpdatingTeam(true);
-    try {
-      const updated = await workspaceApi.updateWorkspace(workspace.id, { name: teamNameInput.trim() }, token);
-      setWorkspace(updated);
-      setIsEditingTeam(false);
-    } catch (err: any) {
-      console.error('Gagal memperbarui nama workspace:', err);
-      alert(err.message || 'Gagal memperbarui nama tim.');
-    } finally {
-      setIsUpdatingTeam(false);
-    }
-  };
-
-  const handleDeleteProject = async (e: React.MouseEvent, project: ProjectResponse) => {
+  const handleDelete = async (e: React.MouseEvent, project: ProjectResponse) => {
     e.stopPropagation();
-    if (!confirm(`Hapus project "${project.name}"? Seluruh data requirements akan terhapus permanen.`)) return;
+    if (!confirm(`Hapus project "${project.name}"? Seluruh data akan terhapus permanen.`)) return;
 
     const token = getAuthToken();
     if (!token) return;
@@ -138,21 +107,21 @@ export default function WorkspacePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
       </div>
     );
   }
 
   if (loadError) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-white">
-        <div className="text-center max-w-md bg-white/10 p-6 rounded-2xl border border-white/20 backdrop-blur-md">
-          <p className="font-medium mb-2 text-red-300">Gagal memuat data</p>
-          <p className="text-blue-200 text-sm mb-4">{loadError}</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <div className="text-center max-w-md">
+          <p className="text-gray-800 font-medium mb-2">Gagal memuat data</p>
+          <p className="text-gray-500 text-sm mb-4">{loadError}</p>
           <button
             onClick={handleRetry}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-white text-blue-700 text-sm font-semibold rounded-xl transition-colors cursor-pointer hover:bg-blue-50"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5" /> Coba lagi
           </button>
@@ -162,83 +131,40 @@ export default function WorkspacePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <style jsx global>{`
-        ::-webkit-scrollbar {
-          width: 5px;
-          height: 5px;
-        }
-        ::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 9999px;
-        }
-      `}</style>
-
-      {/* Header Navigasi */}
-      <header className="h-16 border-b border-white/10 bg-slate-900/80 backdrop-blur-md flex items-center justify-between px-6 sm:px-10 sticky top-0 z-20">
-        <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-gray-50">
+      {/* Top bar -- konsisten dengan header di halaman lain (Stories/Users/dst), bukan
+          latar biru penuh seperti sebelumnya, supaya tidak terasa "halaman terpisah". */}
+      <header className="h-14 border-b border-gray-200 bg-white flex items-center justify-between px-6 sticky top-0 z-10">
+        <div className="flex items-center gap-2.5">
           <LogoUserdoc />
-          {isEditingTeam ? (
-            <form onSubmit={handleUpdateWorkspaceName} className="flex items-center gap-2">
-              <input
-                type="text"
-                value={teamNameInput}
-                onChange={(e) => setTeamNameInput(e.target.value)}
-                className="bg-white/10 border border-blue-300/40 rounded-lg px-2.5 py-1 text-white text-xs font-semibold focus:outline-none"
-                autoFocus
-              />
-              <button type="submit" disabled={isUpdatingTeam} className="text-green-300 hover:text-white p-1 cursor-pointer">
-                {isUpdatingTeam ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-4 h-4" />}
-              </button>
-              <button type="button" onClick={() => setIsEditingTeam(false)} className="text-red-300 hover:text-white p-1 cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </form>
-          ) : (
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-white tracking-wide">{workspace?.name || 'Your Team'}</span>
-              <button
-                onClick={() => {
-                  setTeamNameInput(workspace?.name || '');
-                  setIsEditingTeam(true);
-                }}
-                className="text-blue-300/60 hover:text-white p-1 transition-colors cursor-pointer"
-                title="Edit Team Name"
-              >
-                <Pencil className="w-3 h-3" />
-              </button>
-            </div>
-          )}
+          <span className="text-sm font-semibold text-gray-800">{workspace?.name || 'Your Team'}</span>
         </div>
-
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => router.push('/team-settings')}
-            className="text-xs text-blue-200 bg-white/5 hover:bg-white/10 border border-white/15 px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-sm font-medium cursor-pointer"
+            className="text-xs text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm font-medium cursor-pointer"
           >
-            <Users className="w-3.5 h-3.5 text-blue-300" /> Team Settings
+            <Users className="w-3.5 h-3.5 text-gray-500" /> Team Settings
           </button>
           <AccountMenu />
         </div>
       </header>
 
-      {/* Konten Utama Workspace */}
-      <main className="max-w-5xl mx-auto px-6 sm:px-10 py-12">
-        <div className="flex items-center justify-between mb-8">
+      <main className="max-w-5xl mx-auto px-6 sm:px-10 py-10">
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Projects Dashboard</h1>
-            <p className="text-blue-200 text-xs sm:text-sm mt-1">
-              {projects.length} active project{projects.length !== 1 ? 's' : ''} in workspace <span className="text-white font-semibold">{workspace?.name}</span>
+            <h1 className="text-xl font-bold text-gray-900">Projects</h1>
+            <p className="text-gray-500 text-sm mt-0.5">
+              {projects.length} project{projects.length !== 1 ? 's' : ''} in this team
             </p>
           </div>
-
+          {/* PERBAIKAN: tombol "New Project" sekarang cuma muncul SEKALI di sini kalau
+              daftar project tidak kosong -- sebelumnya ada 2 tombol serupa (di header
+              dan di empty state) yang tampil bersamaan, terasa duplikat. */}
           {projects.length > 0 && (
             <button
               onClick={handleCreateNew}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-sm font-semibold shadow-xl transition-all cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" /> New Project
             </button>
@@ -246,55 +172,46 @@ export default function WorkspacePage() {
         </div>
 
         {projects.length === 0 ? (
-          <div className="bg-white/10 border-2 border-dashed border-blue-400/30 rounded-3xl p-14 text-center backdrop-blur-xl shadow-2xl">
-            <div className="w-16 h-16 rounded-2xl bg-blue-600/20 border border-blue-400/30 flex items-center justify-center mx-auto mb-4 shadow-inner">
-              <FolderKanban className="w-7 h-7 text-blue-300" />
+          <div className="bg-white border-2 border-dashed border-gray-200 rounded-2xl p-14 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto mb-4">
+              <FolderKanban className="w-6 h-6 text-blue-600" />
             </div>
-            <h3 className="text-white font-bold text-base mb-1">Belum ada project di tim {workspace?.name}</h3>
-            <p className="text-blue-200/80 text-xs sm:text-sm mb-6 max-w-md mx-auto">
-              Workspace ini bersih dari proyek. Buat project baru untuk mulai menyusun spesifikasi dan AI requirements.
-            </p>
+            <p className="text-gray-900 font-semibold mb-1">Belum ada project di team ini</p>
+            <p className="text-gray-500 text-sm mb-6">Buat project pertama untuk mulai menyusun requirements.</p>
             <button
               onClick={handleCreateNew}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-sm font-semibold shadow-xl transition-all cursor-pointer"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" /> Create Your First Project
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {projects.map((project, index) => {
               const accent = CARD_ACCENTS[index % CARD_ACCENTS.length];
               return (
                 <div
                   key={project.id}
                   onClick={() => handleOpenProject(project.id)}
-                  className="group relative bg-white/10 hover:bg-white/15 border border-blue-300/30 hover:border-blue-300/60 rounded-2xl p-5 backdrop-blur-md shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col justify-between"
+                  className="bg-white hover:shadow-md border border-gray-200 hover:border-gray-300 rounded-2xl p-5 transition-all cursor-pointer group relative"
                 >
-                  <div>
-                    <div className="flex items-start justify-between mb-4">
-                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 border shadow-sm ${accent}`}>
-                        <FolderKanban className="w-5 h-5" />
-                      </div>
-                      <button
-                        onClick={(e) => handleDeleteProject(e, project)}
-                        disabled={deletingId === project.id}
-                        title="Delete project"
-                        className="p-2 text-blue-200/70 hover:text-red-300 hover:bg-red-500/20 rounded-xl transition-colors cursor-pointer opacity-0 group-hover:opacity-100 disabled:opacity-50 border border-transparent hover:border-red-500/30"
-                      >
-                        {deletingId === project.id ? <Loader2 className="w-4 h-4 animate-spin text-red-300" /> : <Trash2 className="w-4 h-4" />}
-                      </button>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${accent}`}>
+                      <FolderKanban className="w-5 h-5" />
                     </div>
-                    <h3 className="text-white font-bold text-base mb-1.5 truncate">{project.name}</h3>
-                    <p className="text-blue-200/80 text-xs line-clamp-3 leading-relaxed mb-4">
-                      {project.description || 'No description provided for this project.'}
-                    </p>
+                    <button
+                      onClick={(e) => handleDelete(e, project)}
+                      disabled={deletingId === project.id}
+                      title="Delete project"
+                      className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                    >
+                      {deletingId === project.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                    </button>
                   </div>
-
-                  <div className="pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-blue-300 font-medium">
-                    <span>Buka Workspace</span>
-                    <span className="group-hover:translate-x-1 transition-transform">→</span>
-                  </div>
+                  <h3 className="text-gray-900 font-semibold text-sm mb-1 truncate">{project.name}</h3>
+                  <p className="text-gray-500 text-xs line-clamp-2 leading-relaxed">
+                    {project.description || 'No description yet.'}
+                  </p>
                 </div>
               );
             })}

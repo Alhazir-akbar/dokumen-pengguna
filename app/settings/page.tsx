@@ -1,28 +1,6 @@
 // app/settings/page.tsx
 'use client';
 
-<<<<<<< HEAD
-import { useState, useEffect } from 'react';
-import AppSidebar from '@/features/common/components/AppSidebar';
-import { MessageSquare, Settings as SettingsIcon, Brain, Save, Trash2, Plus, AlertCircle } from 'lucide-react';
-
-interface AIRule {
-  id: number;
-  name: string;
-  content: string;
-}
-
-export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<'general' | 'ai-rules'>('general');
-  const [projectId, setProjectId] = useState<string | null>(null);
-  
-  // State General Settings
-  const [projectName, setProjectName] = useState('');
-  const [projectDesc, setProjectDesc] = useState('');
-  const [memberEmail, setMemberEmail] = useState('');
-  
-  // State AI Rules
-=======
 import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import AppSidebar from '@/features/common/components/AppSidebar';
@@ -45,61 +23,11 @@ function SettingsPageContent() {
   const [projectName, setProjectName] = useState('');
   const [projectDesc, setProjectDesc] = useState('');
 
->>>>>>> 23ab38d (add file)
   const [aiRules, setAiRules] = useState<AIRule[]>([]);
   const [showAddRuleModal, setShowAddRuleModal] = useState(false);
   const [newRuleName, setNewRuleName] = useState('');
   const [newRuleContent, setNewRuleContent] = useState('');
 
-<<<<<<< HEAD
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
-
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
-  // Ambil ID Proyek aktif (misal dari LocalStorage setelah login/setup)
-  useEffect(() => {
-    // Simulasi pengambilan project ID aktif. Sesuaikan dengan penyimpanan state proyekmu.
-    const activeProjectId = localStorage.getItem('active_project_id') || '1'; 
-    setProjectId(activeProjectId);
-    
-    if (activeProjectId) {
-      fetchProjectDetails(activeProjectId);
-      fetchAIRules(activeProjectId);
-    }
-  }, []);
-
-  const fetchProjectDetails = async (id: string) => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${apiUrl}/api/projects/${id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setProjectName(data.name);
-        setProjectDesc(data.description || '');
-      }
-    } catch (err) {
-      console.error('Gagal mengambil data proyek', err);
-    }
-  };
-
-  const fetchAIRules = async (id: string) => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${apiUrl}/api/projects/${id}/ai-rules`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setAiRules(data);
-      }
-    } catch (err) {
-      console.error('Gagal mengambil aturan AI', err);
-    }
-  };
-=======
   // TAMBAHAN: saran AI Rules yang belum disimpan, ditampilkan untuk dipilih user
   const [suggestions, setSuggestions] = useState<{ name: string; content: string }[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -158,33 +86,11 @@ function SettingsPageContent() {
   }, [projectIdParam, reloadToken, router]);
 
   const handleRetry = useCallback(() => setReloadToken((n) => n + 1), []);
->>>>>>> 23ab38d (add file)
 
   const handleSaveGeneral = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage({ type: '', text: '' });
-<<<<<<< HEAD
-    
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${apiUrl}/api/projects/${projectId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ name: projectName, description: projectDesc })
-      });
-
-      if (res.ok) {
-        setMessage({ type: 'success', text: 'Pengaturan proyek berhasil disimpan!' });
-      } else {
-        throw new Error('Gagal memperbarui proyek');
-      }
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.message });
-=======
 
     const token = getAuthToken();
     if (!token || !projectIdParam) {
@@ -200,7 +106,6 @@ function SettingsPageContent() {
       setMessage({ type: 'success', text: 'Pengaturan proyek berhasil disimpan!' });
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Gagal memperbarui proyek' });
->>>>>>> 23ab38d (add file)
     } finally {
       setLoading(false);
     }
@@ -208,30 +113,6 @@ function SettingsPageContent() {
 
   const handleAddAIRule = async (e: React.FormEvent) => {
     e.preventDefault();
-<<<<<<< HEAD
-    if (!newRuleName.trim() || !newRuleContent.trim()) return;
-
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${apiUrl}/api/projects/${projectId}/ai-rules`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ name: newRuleName, content: newRuleContent })
-      });
-
-      if (res.ok) {
-        const newRule = await res.json();
-        setAiRules([...aiRules, newRule]);
-        setNewRuleName('');
-        setNewRuleContent('');
-        setShowAddRuleModal(false);
-      }
-    } catch (err) {
-      console.error('Gagal menambahkan aturan AI', err);
-=======
     if (!newRuleName.trim() || !newRuleContent.trim() || !projectIdParam) return;
 
     const token = getAuthToken();
@@ -253,38 +134,11 @@ function SettingsPageContent() {
     } catch (err: any) {
       console.error('Gagal menambahkan aturan AI', err);
       setMessage({ type: 'error', text: err.message || 'Gagal menambahkan aturan AI' });
->>>>>>> 23ab38d (add file)
     }
   };
 
   const handleDeleteRule = async (ruleId: number) => {
     if (!confirm('Apakah Anda yakin ingin menghapus aturan AI ini?')) return;
-<<<<<<< HEAD
-    
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${apiUrl}/api/ai-rules/${ruleId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (res.ok) {
-        setAiRules(aiRules.filter(r => r.id !== ruleId));
-      }
-    } catch (err) {
-      console.error('Gagal menghapus aturan AI', err);
-    }
-  };
-
-  return (
-    <div className="flex h-screen w-screen overflow-hidden bg-gray-50 font-sans">
-      {/* Sidebar Navigasi Utama */}
-      <AppSidebar activeMenu="settings" />
-
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col h-full bg-white overflow-hidden">
-        {/* Header Atas */}
-=======
     const token = getAuthToken();
     if (!token) return;
 
@@ -381,7 +235,6 @@ function SettingsPageContent() {
       <AppSidebar activeMenu="settings" projectId={projectIdParam} />
 
       <main className="flex-1 flex flex-col h-full bg-white overflow-hidden">
->>>>>>> 23ab38d (add file)
         <div className="h-14 border-b border-gray-200 px-6 flex items-center justify-between bg-white shrink-0">
           <span className="text-xs font-semibold text-gray-500">
             {projectName || 'Nama Proyek'} <span className="text-gray-300">/</span> Pengaturan
@@ -396,10 +249,6 @@ function SettingsPageContent() {
           </div>
         </div>
 
-<<<<<<< HEAD
-        {/* Tab Selector */}
-=======
->>>>>>> 23ab38d (add file)
         <div className="border-b border-gray-200 px-8 flex gap-6 shrink-0 bg-gray-50/50">
           <button
             onClick={() => setActiveTab('general')}
@@ -419,10 +268,6 @@ function SettingsPageContent() {
           </button>
         </div>
 
-<<<<<<< HEAD
-        {/* Area Form & Pengaturan */}
-=======
->>>>>>> 23ab38d (add file)
         <div className="flex-1 overflow-y-auto p-8 max-w-3xl">
           {message.text && (
             <div className={`mb-6 p-4 rounded-xl flex items-start gap-2.5 text-sm ${
@@ -456,15 +301,6 @@ function SettingsPageContent() {
                 />
               </div>
 
-<<<<<<< HEAD
-              <div>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm shadow-xs transition-colors cursor-pointer"
-                >
-                  <Save className="w-4 h-4" /> Simpan Pengaturan
-=======
               <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                 <button
                   type="button"
@@ -480,7 +316,6 @@ function SettingsPageContent() {
                   className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm shadow-xs transition-colors cursor-pointer disabled:opacity-50"
                 >
                   <Save className="w-4 h-4" /> {loading ? 'Menyimpan...' : 'Simpan Pengaturan'}
->>>>>>> 23ab38d (add file)
                 </button>
               </div>
             </form>
@@ -491,16 +326,6 @@ function SettingsPageContent() {
                   <h3 className="font-bold text-gray-900 text-base">Aturan AI Proyek</h3>
                   <p className="text-xs text-gray-500">Aturan ini akan memandu AI dalam memformulasikan dokumen kebutuhan proyek Anda.</p>
                 </div>
-<<<<<<< HEAD
-                <button
-                  onClick={() => setShowAddRuleModal(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs shadow-xs transition-colors cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Tambah Aturan
-                </button>
-              </div>
-
-=======
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleGenerateSuggestions}
@@ -539,16 +364,11 @@ function SettingsPageContent() {
                 </div>
               )}
 
->>>>>>> 23ab38d (add file)
               {aiRules.length === 0 ? (
                 <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-2xl">
                   <Brain className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                   <p className="text-sm font-semibold text-gray-700">Belum ada aturan AI khusus</p>
-<<<<<<< HEAD
-                  <p className="text-xs text-gray-500">Buat aturan baru untuk menyesuaikan gaya penulisan AI.</p>
-=======
                   <p className="text-xs text-gray-500">Buat aturan baru manual, atau klik "Generate" untuk saran dari AI.</p>
->>>>>>> 23ab38d (add file)
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -568,23 +388,16 @@ function SettingsPageContent() {
                   ))}
                 </div>
               )}
-<<<<<<< HEAD
-=======
 
               <p className="text-[11px] text-gray-400">
                 Aturan di sini akan otomatis diikutsertakan setiap kali AI men-generate requirements
                 untuk project ini (di step Describe Project pada wizard).
               </p>
->>>>>>> 23ab38d (add file)
             </div>
           )}
         </div>
       </main>
 
-<<<<<<< HEAD
-      {/* Modal Popup Tambah Aturan AI */}
-=======
->>>>>>> 23ab38d (add file)
       {showAddRuleModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl overflow-hidden border border-gray-100 animate-in fade-in zoom-in duration-200">
@@ -635,8 +448,6 @@ function SettingsPageContent() {
       )}
     </div>
   );
-<<<<<<< HEAD
-=======
 }
 
 export default function SettingsPage() {
@@ -649,5 +460,4 @@ export default function SettingsPage() {
       <SettingsPageContent />
     </Suspense>
   );
->>>>>>> 23ab38d (add file)
 }

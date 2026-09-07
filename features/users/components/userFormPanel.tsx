@@ -3,29 +3,29 @@
 
 import { useState } from 'react';
 import { UserType, Persona } from '../types';
-import { Plus, Trash2, Sparkles, User as UserIcon } from 'lucide-react';
+import { Plus, Trash2, Sparkles, User as UserIcon, Loader2 } from 'lucide-react';
+import { projectApi } from '@/services/projectsApi';
+import { getAuthToken } from '@/lib/auth';
 
 interface UserFormPanelProps {
   initialData?: UserType | null;
   onSubmit: (data: UserType) => void;
   onCancel: () => void;
+  projectId?: string | null; // Ditambahkan agar bisa pakai AI berdasarkan project
 }
 
-export default function UserFormPanel({ initialData, onSubmit, onCancel }: UserFormPanelProps) {
+export default function UserFormPanel({ initialData, onSubmit, onCancel, projectId }: UserFormPanelProps) {
   const [name, setName] = useState(initialData?.name || '');
   const [description, setDescription] = useState(initialData?.description || '');
   const [personas, setPersonas] = useState<Persona[]>(initialData?.personas || []);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
-  // Simpan id persona yang sudah ada sejak awal form dibuka.
-  // Dipakai untuk mendeteksi persona mana yang dihapus user selama sesi edit ini,
-  // supaya nanti bisa benar-benar dihapus di backend (bukan cuma hilang dari state lokal).
   const [initialPersonaIds] = useState<number[]>(
     (initialData?.personas || []).map((p) => p.id).filter((id): id is number => !!id)
   );
 
   const handleAddPersona = () => {
     const newPersona: Persona = {
-      // sengaja tanpa id -> menandakan persona baru, belum ada di database
       name: 'New Persona',
       workTitle: '',
       age: '',
@@ -48,17 +48,55 @@ export default function UserFormPanel({ initialData, onSubmit, onCancel }: UserF
     setPersonas(updated);
   };
 
+  // FUNGSI AI: Generate/Suggest Persona goals & frustrations via AI backend
+  const handleAIGeneratePersona = async (index: number) => {
+    const token = getAuthToken();
+    if (!token) {
+      alert('Sesi habis, silakan login kembali.');
+      return;
+    }
+    if (!name.trim()) {
+      alert('Mohon isi nama User Type terlebih dahulu.');
+      return;
+    }
+
+    setIsGeneratingAI(true);
+    try {
+      const personaName = personas[index].name || 'User';
+      const response = await projectApi.suggestUserGoals(
+        {
+          project_name: name,
+          user_type_name: personaName,
+          user_type_description: description,
+        },
+        token
+      );
+
+      // Masukkan hasil suggest AI ke persona terkait
+      const updated = [...personas];
+      updated[index] = {
+        ...updated[index],
+        goals: response.goals || updated[index].goals,
+        frustrations: response.frustrations || updated[index].frustrations,
+      };
+      setPersonas(updated);
+    } catch (err: any) {
+      console.error('Gagal generate AI persona:', err);
+      alert(err.message || 'AI gagal menghasilkan saran.');
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
-    // Persona yang id-nya ada di initialPersonaIds tapi sudah tidak ada lagi
-    // di array `personas` saat ini berarti sengaja dihapus user selama edit.
     const remainingIds = personas.map((p) => p.id).filter((id): id is number => !!id);
     const deletedPersonaIds = initialPersonaIds.filter((id) => !remainingIds.includes(id));
 
     const savedUserType: UserType = {
-      id: initialData?.id || '', // id asli akan diisi backend saat create; page yang handle ini
+      id: initialData?.id || '',
       name,
       description,
       storiesCount: initialData?.storiesCount || 0,
@@ -141,7 +179,22 @@ export default function UserFormPanel({ initialData, onSubmit, onCancel }: UserF
                     className="text-sm font-bold text-gray-900 border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none px-1 py-0.5"
                   />
                 </div>
-                <Sparkles className="w-4 h-4 text-amber-500" />
+                
+                {/* Tombol AI Generate di tiap card Persona */}
+                <button
+                  type="button"
+                  onClick={() => handleAIGeneratePersona(index)}
+                  disabled={isGeneratingAI}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
+                  title="Generate goals & frustrations with AI"
+                >
+                  {isGeneratingAI ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  )}
+                  <span>AI Suggest Goals</span>
+                </button>
               </div>
 
               {/* Grid Atribut Persona */}

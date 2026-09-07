@@ -1,27 +1,22 @@
+// app/stories/page.tsx
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { UserStory, Epic } from '@/features/stories/types';
 import StoriesSidebar from '@/features/stories/components/StoriesSidebar';
 import EmptyDetailPanel from '@/features/stories/components/EmptyDetailPanel';
-import EpicDetailPanel from '@/features/stories/components/EpicDetailPanel';
-<<<<<<< HEAD
 import ManualStoryDetailPanel from '@/features/stories/components/ManualStoryDetailPanel';
 import AppSidebar from '@/features/common/components/AppSidebar';
+import AccountMenu from '@/features/common/components/accountMenu';
 import { MessageSquare, Upload, Download, X, Lightbulb, Loader2 } from 'lucide-react';
 import { fetchEpics, fetchStories } from '@/services/storiesApi';
 import { projectApi } from '@/services/projectsApi';
 import { getAuthToken } from '@/lib/auth';
-=======
-import ManualStoryDetailPanel from '@/features/stories/components/ManualStoryDetailPanel'; 
-import AppSidebar from '@/features/common/components/AppSidebar';
-import { MessageSquare, Upload, Download, X, Lightbulb } from 'lucide-react';
-import { useWizardStore } from '@/features/project-setup/store/wizard-store';
->>>>>>> origin/dev
 
 function StoriesPageContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const projectId = searchParams.get('project_id');
 
   const [rawEpics, setRawEpics] = useState<any[]>([]);
@@ -224,15 +219,7 @@ function StoriesPageContent() {
     input.onchange = (e: any) => {
       const file = e.target.files?.[0];
       if (file) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          try {
-            alert(`File "${file.name}" berhasil di-upload dan dibaca!`);
-          } catch (err) {
-            alert('Format file tidak valid.');
-          }
-        };
-        reader.readAsText(file);
+        alert(`File "${file.name}" berhasil di-upload!`);
       }
     };
     input.click();
@@ -290,6 +277,8 @@ function StoriesPageContent() {
           setSelectedStory(null);
         }}
         onAddNew={() => setIsModalOpen(true)}
+        projectName={projectName}
+        projectId={projectId}
       />
 
       <main className="flex-1 flex flex-col h-full bg-white overflow-hidden">
@@ -325,24 +314,15 @@ function StoriesPageContent() {
               </button>
             </div>
 
-            <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-sm ml-1">
-              UD
-            </div>
+            <AccountMenu />
           </div>
         </div>
 
         <div className="flex-1 flex flex-col overflow-hidden">
-<<<<<<< HEAD
           {formattedEpics.length === 0 && (
             <div className="bg-amber-50 border-b border-amber-100 px-6 py-2.5 flex items-center gap-2 text-xs text-amber-800 shrink-0">
               <Lightbulb className="w-4 h-4 text-amber-600 shrink-0" />
               <span>Belum ada Epic atau User Story. Silakan buat yang pertama.</span>
-=======
-          {!useAi && userStories.length === 0 && (
-            <div className="bg-amber-50 border-b border-amber-100 px-6 py-2.5 flex items-center gap-2 text-xs text-amber-800 shrink-0">
-              <Lightbulb className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>Anda sedang berada di Mode Manual. Silakan buat Epic dan User Story pertama Anda secara mandiri.</span>
->>>>>>> origin/dev
             </div>
           )}
 

@@ -4,13 +4,10 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWizardStore } from '@/features/project-setup/store/wizard-store';
 
-<<<<<<< HEAD
 import { projectApi } from '@/services/projectsApi';
+import { buildApi } from '@/services/buildApi';
 import { getAuthToken } from '@/lib/auth';
 
-=======
-// Import komponen umum (Generate / Base)
->>>>>>> origin/dev
 import TeamName from '@/features/project-setup/components/teamName';
 import NameProject from '@/features/project-setup/components/nameProject';
 import ProjectType from '@/features/project-setup/components/projectType';
@@ -23,10 +20,6 @@ import UserStoriesList from '@/features/project-setup/components/userStoriesList
 import UserTypeGoals from '@/features/project-setup/components/userTypeGoals';
 import UserJourney from '@/features/project-setup/components/userJourney';
 
-<<<<<<< HEAD
-=======
-// Import komponen khusus untuk alur Translate (Software Analysis)
->>>>>>> origin/dev
 import SoftwareIntro from '@/features/project-setup/components/softwareIntro';
 import SoftwareName from '@/features/project-setup/components/softwareName';
 import SoftwareOverview from '@/features/project-setup/components/softwareOverview';
@@ -36,7 +29,6 @@ import SoftwareTechnologies from '@/features/project-setup/components/softwareTe
 
 export default function WizardPage() {
   const router = useRouter();
-<<<<<<< HEAD
 
   const {
     step,
@@ -79,6 +71,21 @@ export default function WizardPage() {
           user_types: (userTypes || []).map((ut: any) => ({
             name: ut.name,
             description: ut.description || '',
+            // PERBAIKAN: sebelumnya "personas" tidak dikirim sama sekali, padahal backend
+            // mewajibkan field ini (List[PersonaSuggestion], tanpa default) di schema
+            // UserTypeSuggestion -> request ditolak dengan 422 Unprocessable Entity.
+            // Kalau user type ini tidak punya persona (misal ditambahkan manual, bukan
+            // dari AI generate), kirim array kosong supaya validasi tetap lolos.
+            personas: (ut.personas || []).map((p: any) => ({
+              name: p.name || 'Persona',
+              age: p.age || 25,
+              location: p.location || '-',
+              family_status: p.familyStatus || '-',
+              job_title: p.jobTitle || '-',
+              about: p.about || '-',
+              goals: p.goals || '-',
+              frustrations: p.frustrations || '-',
+            })),
           })),
           epics: (epics || []).map((e: any) => ({
             name: e.title,
@@ -89,10 +96,9 @@ export default function WizardPage() {
             story_name: s.storyName,
             user_type: s.userType,
             description: s.description || '',
-            // Wizard saat ini belum punya UI untuk acceptance criteria manual,
-            // jadi dikirim kosong. Kalau nanti field ini ditambahkan di
-            // userStoriesList.tsx, tinggal map ke sini.
             acceptance_criteria: s.acceptanceCriteria || [],
+            tech_notes: s.techNotes || [],
+            test_cases: s.testCases || [],
           })),
           nfrs: (nonFunctionals || []).map((n: any) => ({
             category: n.category,
@@ -101,6 +107,16 @@ export default function WizardPage() {
         };
 
         await projectApi.saveRequirements(projectId, payload, token);
+
+        // TAMBAHAN: begitu requirements tersimpan, langsung generate draf Build
+        // (Tech Stack, Coding Guidelines, Dev Plan) via AI supaya halaman Build tidak
+        // kosong. Best-effort -- kalau ini gagal, tetap lanjutkan ke halaman Stories,
+        // jangan sampai user terjebak gara-gara langkah tambahan ini.
+        try {
+          await buildApi.generateDefaults(projectId, token);
+        } catch (buildErr) {
+          console.error('Gagal auto-generate Build defaults (non-fatal):', buildErr);
+        }
       }
 
       resetStore();
@@ -122,28 +138,14 @@ export default function WizardPage() {
         </div>
       )}
 
-=======
-  const { step, projectType } = useWizardStore();
-
-  return (
-    <main className="min-h-screen bg-blue-600 flex items-center justify-center p-6">
-      {/* Langkah Umum (Step 1 & 2) */}
->>>>>>> origin/dev
       {step === 1 && <TeamName />}
       {step === 2 && <NameProject />}
-      
-      {/* Step 3: Pilihan Tipe Project (Generate / Translate / Example) */}
       {step === 3 && <ProjectType />}
 
-<<<<<<< HEAD
-=======
-      {/* --- JALUR 1: GENERATE NEW SOFTWARE --- */}
->>>>>>> origin/dev
       {projectType === 'generate' && (
         <>
           {step === 4 && <AiIntro />}
           {step === 5 && <DescribeProject />}
-<<<<<<< HEAD
           {/* Step "AiChoice" dihapus — DescribeProject sekarang otomatis men-generate
               rekomendasi AI begitu user klik Next, tanpa perlu pilihan manual/AI lagi. */}
           {step === 6 && <UserTypes />}
@@ -155,25 +157,6 @@ export default function WizardPage() {
         </>
       )}
 
-=======
-          {step === 6 && <AiChoice />}
-          {step === 7 && <UserTypes />}
-          {step === 8 && <EpicsList />}
-          {step === 9 && <NonFunctionalList />}
-          {step === 10 && <UserStoriesList />}
-          {step === 11 && <UserTypeGoals />}
-          {step === 12 && (
-            <UserJourney 
-              onFinishProject={() => {
-                router.push('/stories');
-              }} 
-            />
-          )}
-        </>
-      )}
-
-      {/* --- JALUR 2: TRANSLATE SOURCE CODE --- */}
->>>>>>> origin/dev
       {projectType === 'translate' && (
         <>
           {step === 4 && <SoftwareIntro />}
@@ -182,7 +165,6 @@ export default function WizardPage() {
           {step === 7 && <SoftwareScale />}
           {step === 8 && <SoftwareDetails />}
           {step === 9 && <SoftwareTechnologies />}
-<<<<<<< HEAD
           {step === 10 && <UserJourney onFinishProject={handleFinishWizard} />}
         </>
       )}
@@ -190,28 +172,6 @@ export default function WizardPage() {
       {projectType === 'example' && (
         <>
           {step === 4 && <UserJourney onFinishProject={handleFinishWizard} />}
-=======
-          {step === 10 && (
-            <UserJourney 
-              onFinishProject={() => {
-                router.push('/stories');
-              }} 
-            />
-          )}
-        </>
-      )}
-
-      {/* --- JALUR 3: EXPLORE EXAMPLE PROJECT --- */}
-      {projectType === 'example' && (
-        <>
-          {step === 4 && (
-            <UserJourney 
-              onFinishProject={() => {
-                router.push('/stories');
-              }} 
-            />
-          )}
->>>>>>> origin/dev
         </>
       )}
     </main>
