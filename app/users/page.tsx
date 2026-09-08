@@ -79,12 +79,6 @@ function UsersPageContent() {
     setIsEditing(true);
   };
 
-  // Menyimpan UserType + Personas ke backend beneran.
-  // Alurnya:
-  // 1. Create/update UserType dulu -> dapat id-nya
-  // 2. Loop personas: yang punya id -> update, yang tidak punya id -> create
-  // 3. Hapus persona yang ditandai deletedPersonaIds oleh UserFormPanel
-  // 4. Reload seluruh daftar dari backend supaya data & id selalu sinkron
   const handleSaveUserType = async (formData: UserType) => {
     if (!projectId) return;
     const token = getAuthToken();
@@ -112,7 +106,6 @@ function UsersPageContent() {
         userTypeId = updated.id;
       }
 
-      // Simpan personas (create baru / update yang sudah ada)
       for (const persona of formData.personas || []) {
         if (persona.id) {
           await usersApi.updatePersona(persona.id, persona, userTypeId, token);
@@ -121,12 +114,10 @@ function UsersPageContent() {
         }
       }
 
-      // Hapus personas yang sengaja dihapus user saat edit
       for (const deletedId of formData.deletedPersonaIds || []) {
         await usersApi.deletePersona(deletedId, token);
       }
 
-      // Refresh dari backend supaya id, personasCount, dll selalu akurat
       const refreshed = await usersApi.fetchUserTypes(Number(projectId), token);
       setUserTypes(refreshed);
       setSelectedUserType(refreshed.find((u) => u.id === String(userTypeId)) || refreshed[0] || null);

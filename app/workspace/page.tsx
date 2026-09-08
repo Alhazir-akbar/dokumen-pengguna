@@ -8,37 +8,27 @@ import AccountMenu from '@/features/common/components/accountMenu';
 import { workspaceApi, WorkspaceResponse } from '@/services/workspaceApi';
 import { projectApi, ProjectResponse } from '@/services/projectsApi';
 import { getAuthToken } from '@/lib/auth';
-import { setStoredProjectId, clearStoredProjectId, getStoredProjectId } from '@/lib/project-context';
+import { setStoredProjectId } from '@/lib/project-context';
 import { useWizardStore } from '@/features/project-setup/store/wizard-store';
-import { FolderKanban, Plus, Trash2, Loader2, RefreshCw, Users, Settings } from 'lucide-react';
-
-const CARD_ACCENTS = [
-  'bg-blue-50 text-blue-600',
-  'bg-purple-50 text-purple-600',
-  'bg-emerald-50 text-emerald-600',
-  'bg-amber-50 text-amber-600',
-  'bg-rose-50 text-rose-600',
-  'bg-cyan-50 text-cyan-600',
-];
+import { FolderKanban, Plus, Loader2, RefreshCw, Users } from 'lucide-react';
 
 export default function WorkspacePage() {
   const router = useRouter();
   const resetStore = useWizardStore((s: any) => s.resetStore);
+  const setWorkspaceId = useWizardStore((s: any) => s.setWorkspaceId);
+  const updateTeamName = useWizardStore((s: any) => s.updateTeamName);
 
   const [workspace, setWorkspace] = useState<WorkspaceResponse | null>(null);
-  const [projects, setProjects] = useState<ProjectResponse[]>([]);
+  const [hasNoProjects, setHasNoProjects] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  // Di dalam app/workspace/page.tsx (pada blok useEffect untuk load data)
   useEffect(() => {
     const load = async () => {
       const token = getAuthToken();
       if (!token) {
-        setLoadError('Sesi habis, silakan login kembali.');
-        setIsLoading(false);
+        router.replace('/login');
         return;
       }
 
@@ -54,12 +44,25 @@ export default function WorkspacePage() {
         const activeWorkspace = workspaces[0];
         setWorkspace(activeWorkspace);
 
-        // PENTING: Simpan ke localStorage agar service API proyek lain tidak kehilangan ID workspace
+        // Simpan ke localStorage agar service API lain tidak kehilangan ID workspace
         localStorage.setItem('workspace_id', String(activeWorkspace.id));
         localStorage.setItem('team_id', String(activeWorkspace.id));
 
         const projectList = await projectApi.getProjects(activeWorkspace.id, token);
-        setProjects(projectList);
+
+        if (projectList && projectList.length > 0) {
+          // Auto-buka project yang paling baru dibuat, tanpa menampilkan daftar dulu.
+          const latestProject = [...projectList].sort(
+            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )[0];
+          setStoredProjectId(latestProject.id);
+          router.replace(`/stories?project_id=${latestProject.id}`);
+          return;
+        }
+
+        // Workspace ada, tapi belum punya project sama sekali -> tampilkan
+        // layar "buat project pertama" (skip TeamName, karena workspace sudah ada).
+        setHasNoProjects(true);
       } catch (err: any) {
         console.error('Gagal memuat data workspace:', err);
         setLoadError(err.message || 'Gagal memuat data workspace.');
@@ -70,37 +73,17 @@ export default function WorkspacePage() {
 
     load();
   }, [reloadToken, router]);
-  const handleOpenProject = (id: number) => {
-    setStoredProjectId(id);
-    router.push(`/stories?project_id=${id}`);
-  };
 
-  const handleCreateNew = () => {
+  const handleCreateFirstProject = () => {
     resetStore();
-    router.push('/project-setup');
-  };
-
-  const handleDelete = async (e: React.MouseEvent, project: ProjectResponse) => {
-    e.stopPropagation();
-    if (!confirm(`Hapus project "${project.name}"? Seluruh data akan terhapus permanen.`)) return;
-
-    const token = getAuthToken();
-    if (!token) return;
-
-    setDeletingId(project.id);
-    try {
-      await projectApi.deleteProject(project.id, token);
-      setProjects((prev) => prev.filter((p) => p.id !== project.id));
-
-      if (getStoredProjectId() === String(project.id)) {
-        clearStoredProjectId();
-      }
-    } catch (err: any) {
-      console.error('Gagal menghapus project:', err);
-      alert(err.message || 'Gagal menghapus project.');
-    } finally {
-      setDeletingId(null);
+    if (workspace) {
+      // Isi workspaceId & teamName di wizard store SEBELUM masuk /project-setup,
+      // supaya komponen TeamName mendeteksi workspace sudah ada dan otomatis
+      // skip ke step NameProject (tidak perlu isi nama team lagi).
+      setWorkspaceId(workspace.id);
+      updateTeamName(workspace.name);
     }
+    router.push('/project-setup');
   };
 
   const handleRetry = () => setReloadToken((n) => n + 1);
@@ -130,10 +113,10 @@ export default function WorkspacePage() {
     );
   }
 
+  // Kalau sampai sini, artinya hasNoProjects true (kasus lain sudah di-redirect
+  // duluan di dalam useEffect sebelum render sempat sampai sini).
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Top bar -- konsisten dengan header di halaman lain (Stories/Users/dst), bukan
-          latar biru penuh seperti sebelumnya, supaya tidak terasa "halaman terpisah". */}
       <header className="h-14 border-b border-gray-200 bg-white flex items-center justify-between px-6 sticky top-0 z-10">
         <div className="flex items-center gap-2.5">
           <LogoUserdoc />
@@ -151,72 +134,19 @@ export default function WorkspacePage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-6 sm:px-10 py-10">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Projects</h1>
-            <p className="text-gray-500 text-sm mt-0.5">
-              {projects.length} project{projects.length !== 1 ? 's' : ''} in this team
-            </p>
+        <div className="bg-white border-2 border-dashed border-gray-200 rounded-2xl p-14 text-center max-w-lg mx-auto mt-10">
+          <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto mb-4">
+            <FolderKanban className="w-6 h-6 text-blue-600" />
           </div>
-          {/* PERBAIKAN: tombol "New Project" sekarang cuma muncul SEKALI di sini kalau
-              daftar project tidak kosong -- sebelumnya ada 2 tombol serupa (di header
-              dan di empty state) yang tampil bersamaan, terasa duplikat. */}
-          {projects.length > 0 && (
-            <button
-              onClick={handleCreateNew}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-colors cursor-pointer"
-            >
-              <Plus className="w-4 h-4" /> New Project
-            </button>
-          )}
+          <p className="text-gray-900 font-semibold mb-1">Belum ada project di team ini</p>
+          <p className="text-gray-500 text-sm mb-6">Buat project pertama untuk mulai menyusun requirements.</p>
+          <button
+            onClick={handleCreateFirstProject}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-colors cursor-pointer"
+          >
+            <Plus className="w-4 h-4" /> Create Your First Project
+          </button>
         </div>
-
-        {projects.length === 0 ? (
-          <div className="bg-white border-2 border-dashed border-gray-200 rounded-2xl p-14 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto mb-4">
-              <FolderKanban className="w-6 h-6 text-blue-600" />
-            </div>
-            <p className="text-gray-900 font-semibold mb-1">Belum ada project di team ini</p>
-            <p className="text-gray-500 text-sm mb-6">Buat project pertama untuk mulai menyusun requirements.</p>
-            <button
-              onClick={handleCreateNew}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-colors cursor-pointer"
-            >
-              <Plus className="w-4 h-4" /> Create Your First Project
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projects.map((project, index) => {
-              const accent = CARD_ACCENTS[index % CARD_ACCENTS.length];
-              return (
-                <div
-                  key={project.id}
-                  onClick={() => handleOpenProject(project.id)}
-                  className="bg-white hover:shadow-md border border-gray-200 hover:border-gray-300 rounded-2xl p-5 transition-all cursor-pointer group relative"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${accent}`}>
-                      <FolderKanban className="w-5 h-5" />
-                    </div>
-                    <button
-                      onClick={(e) => handleDelete(e, project)}
-                      disabled={deletingId === project.id}
-                      title="Delete project"
-                      className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer opacity-0 group-hover:opacity-100 disabled:opacity-50"
-                    >
-                      {deletingId === project.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                  <h3 className="text-gray-900 font-semibold text-sm mb-1 truncate">{project.name}</h3>
-                  <p className="text-gray-500 text-xs line-clamp-2 leading-relaxed">
-                    {project.description || 'No description yet.'}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </main>
     </div>
   );

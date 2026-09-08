@@ -6,12 +6,23 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { User, Users, LogOut, Loader2, Plus, Building2, Trash2 } from 'lucide-react';
 import { profileApi, UserProfile } from '@/services/profileApi';
 import { workspaceApi, WorkspaceResponse } from '@/services/workspaceApi';
+import { projectApi } from '@/services/projectsApi';
 import { getAuthToken, clearAuthToken } from '@/lib/auth';
 
-export default function AccountMenu() {
+interface AccountMenuProps {
+  // Opsional: kirim ini dari halaman yang sudah tahu workspace_id project aktif
+  // (misal dari ProjectResponse.workspace_id di stories/page.tsx) supaya highlight
+  // "workspace aktif" akurat walau URL tidak punya query param workspace_id.
+  currentWorkspaceId?: number | string | null;
+}
+
+export default function AccountMenu({ currentWorkspaceId: currentWorkspaceIdProp }: AccountMenuProps = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const currentWorkspaceId = searchParams.get('workspace_id');
+  const currentWorkspaceIdFromUrl = searchParams.get('workspace_id');
+
+  // Prioritaskan prop dari parent (lebih akurat), fallback ke query param URL
+  const currentWorkspaceId = currentWorkspaceIdProp ?? currentWorkspaceIdFromUrl;
 
   const [isOpen, setIsOpen] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -19,6 +30,7 @@ export default function AccountMenu() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [deletingWsId, setDeletingWsId] = useState<number | null>(null);
+  const [switchingWsId, setSwitchingWsId] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -80,7 +92,8 @@ export default function AccountMenu() {
       const updatedWorkspaces = await workspaceApi.getMyWorkspaces(token);
       setWorkspaces(updatedWorkspaces);
       setIsOpen(false);
-      router.push(`/workspace?workspace_id=${newWs.id}`);
+      // Workspace baru pasti belum punya project, arahkan langsung ke pembuatan project pertama
+      router.push(`/project-setup?workspace_id=${newWs.id}`);
     } catch (err: any) {
       console.error('Gagal membuat workspace:', err);
       alert(err.message || 'Gagal membuat workspace baru.');
@@ -89,7 +102,7 @@ export default function AccountMenu() {
 
   const handleDeleteWorkspace = async (e: React.MouseEvent, ws: WorkspaceResponse) => {
     e.stopPropagation();
-    
+
     if (workspaces.length <= 1) {
       alert('Anda harus memiliki setidaknya satu tim aktif. Tim terakhir tidak dapat dihapus.');
       return;
@@ -102,21 +115,48 @@ export default function AccountMenu() {
 
     setDeletingWsId(ws.id);
     try {
-      // Memanggil fungsi deleteWorkspace dari workspaceApi yang sudah diperbarui
       await workspaceApi.deleteWorkspace(ws.id, token);
       const updatedWorkspaces = workspaces.filter((w) => w.id !== ws.id);
       setWorkspaces(updatedWorkspaces);
 
-      // Jika tim yang dihapus adalah tim yang sedang dibuka, arahkan ke tim lain yang tersisa
-      if (String(currentWorkspaceId) === String(ws.id) || (!currentWorkspaceId && workspaces[0]?.id === ws.id)) {
+      // Jika tim yang dihapus adalah tim yang sedang aktif, pindah ke tim lain yang tersisa
+      if (String(currentWorkspaceId) === String(ws.id)) {
         const nextWs = updatedWorkspaces[0];
-        router.push(`/workspace?workspace_id=${nextWs.id}`);
+        if (nextWs) {
+          await handleSwitchWorkspace(nextWs);
+        } else {
+          router.push('/project-setup');
+        }
       }
     } catch (err: any) {
       console.error('Gagal menghapus workspace:', err);
       alert(err.message || 'Gagal menghapus tim.');
     } finally {
       setDeletingWsId(null);
+    }
+  };
+
+  // Pindah workspace: ambil daftar project di workspace tsb, lalu buka project pertamanya.
+  // Kalau workspace itu belum punya project sama sekali, arahkan ke project-setup.
+  const handleSwitchWorkspace = async (ws: WorkspaceResponse) => {
+    const token = getAuthToken();
+    if (!token) return;
+
+    setSwitchingWsId(ws.id);
+    try {
+      const projects = await projectApi.getProjects(ws.id, token);
+
+      if (projects && projects.length > 0) {
+        router.push(`/stories?project_id=${projects[0].id}`);
+      } else {
+        router.push(`/project-setup?workspace_id=${ws.id}`);
+      }
+      setIsOpen(false);
+    } catch (err: any) {
+      console.error('Gagal pindah workspace:', err);
+      alert(err.message || 'Gagal memuat project pada tim ini.');
+    } finally {
+      setSwitchingWsId(null);
     }
   };
 
@@ -186,8 +226,9 @@ export default function AccountMenu() {
                 <div className="max-h-40 overflow-y-auto account-dropdown-scroll px-1">
                   {workspaces.map((ws) => {
                     const isDeleting = deletingWsId === ws.id;
+                    const isSwitching = switchingWsId === ws.id;
                     const isCurrentActive = String(currentWorkspaceId) === String(ws.id) || (!currentWorkspaceId && workspaces[0]?.id === ws.id);
-                    
+
                     return (
                       <div
                         key={ws.id}
@@ -196,19 +237,21 @@ export default function AccountMenu() {
                         }`}
                       >
                         <button
-                          onClick={() => {
-                            setIsOpen(false);
-                            router.push(`/workspace?workspace_id=${ws.id}`);
-                          }}
-                          className="flex items-center gap-2 text-xs text-left truncate flex-grow cursor-pointer"
+                          onClick={() => handleSwitchWorkspace(ws)}
+                          disabled={isSwitching}
+                          className="flex items-center gap-2 text-xs text-left truncate flex-grow cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <Building2 className={`w-3.5 h-3.5 shrink-0 ${isCurrentActive ? 'text-blue-600' : 'text-gray-400'}`} />
+                          {isSwitching ? (
+                            <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin text-blue-600" />
+                          ) : (
+                            <Building2 className={`w-3.5 h-3.5 shrink-0 ${isCurrentActive ? 'text-blue-600' : 'text-gray-400'}`} />
+                          )}
                           <span className="truncate">{ws.name}</span>
                         </button>
 
                         <button
                           onClick={(e) => handleDeleteWorkspace(e, ws)}
-                          disabled={isDeleting || workspaces.length <= 1}
+                          disabled={isDeleting || isSwitching || workspaces.length <= 1}
                           title={workspaces.length <= 1 ? 'Tim terakhir tidak dapat dihapus' : 'Hapus Tim'}
                           className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer opacity-0 group-hover/item:opacity-100 disabled:opacity-30 disabled:cursor-not-allowed shrink-0 ml-1"
                         >

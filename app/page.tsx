@@ -3,8 +3,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { projectApi } from '@/services/projectsApi';
-import { workspaceApi } from '@/services/workspaceApi';
+import { resolvePostLoginRoute } from '@/lib/post-login-redirect';
 import { getAuthToken } from '@/lib/auth';
 
 export default function Home() {
@@ -13,52 +12,20 @@ export default function Home() {
   useEffect(() => {
     const handleEntrypoint = async () => {
       const token = getAuthToken() || localStorage.getItem('token');
-      
+
       if (!token) {
         console.log('Entrypoint: Token tidak ditemukan, lempar ke login.');
         router.push('/login');
         return;
       }
 
-      try {
-        const workspaces = await workspaceApi.getMyWorkspaces(token);
-        console.log('Entrypoint Workspaces:', workspaces);
-        
-        const hasWorkspace = Array.isArray(workspaces) && workspaces.length > 0;
-
-        if (!hasWorkspace) {
-          console.log('Entrypoint: Belum punya workspace, ke /workspace');
-          router.push('/workspace');
-          return;
-        }
-
-        const activeWorkspace = workspaces[0];
-        localStorage.setItem('workspace_id', String(activeWorkspace.id));
-        localStorage.setItem('team_id', String(activeWorkspace.id));
-
-        const projectsResponse: any = await projectApi.getProjects(activeWorkspace.id, token);
-        console.log('Entrypoint Projects Response:', projectsResponse);
-
-        const projectsList = Array.isArray(projectsResponse) 
-          ? projectsResponse 
-          : projectsResponse?.data || projectsResponse?.projects || [];
-
-        console.log('Entrypoint Projects List Parsed:', projectsList);
-
-        if (projectsList.length > 0) {
-          const activeProjectId = projectsList[0].id;
-          console.log(`Entrypoint: Project ditemukan! Meluncur ke /stories?project_id=${activeProjectId}`);
-          router.push(`/stories?project_id=${activeProjectId}`);
-          return;
-        }
-
-        console.log('Entrypoint: Workspace ada tapi project kosong, ke /workspace');
-        router.push('/workspace');
-
-      } catch (err) {
-        console.error('Gagal memuat entrypoint:', err);
-        router.push('/login');
-      }
+      // Semua logika 3 kondisi entrypoint (belum punya team / punya team tapi
+      // belum ada project / sudah punya project) dipusatkan di satu tempat
+      // (lib/post-login-redirect.ts) supaya tidak ada dua implementasi yang
+      // bisa saling beda hasil.
+      const destination = await resolvePostLoginRoute(token);
+      console.log(`Entrypoint: Meluncur ke ${destination}`);
+      router.push(destination);
     };
 
     handleEntrypoint();

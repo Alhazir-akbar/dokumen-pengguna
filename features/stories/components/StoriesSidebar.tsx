@@ -18,6 +18,11 @@ interface StoriesSidebarProps {
   onAddNew?: () => void;
   projectName?: string;
   projectId?: string | null;
+  // BARU: workspace_id dari project yang lagi dibuka (didapat dari getProjectById
+  // di app/stories/page.tsx). Ini WAJIB dikirim eksplisit -- jangan andalkan
+  // localStorage untuk ini, soalnya localStorage 'workspace_id' bisa kosong/stale
+  // (misal user baru selesai wizard dan belum pernah mampir ke halaman /workspace).
+  workspaceId?: number | null;
 }
 
 export default function StoriesSidebar({
@@ -25,6 +30,7 @@ export default function StoriesSidebar({
   selectedStoryId,
   currentProjectId,
   projectId,
+  workspaceId,
   onSelectStory,
   onSelectEpic,
   onAddNew,
@@ -39,10 +45,15 @@ export default function StoriesSidebar({
 
   useEffect(() => {
     const fetchProjects = async () => {
+      // Tunggu sampai workspaceId project aktif diketahui dari parent -- jangan
+      // fetch dengan workspace_id yang salah/kosong (itu penyebab bug 403
+      // sebelumnya).
+      if (!workspaceId) return;
+
       const token = getAuthToken();
       if (!token) return;
       try {
-        const response: any = await projectApi.getProjects(token);
+        const response: any = await projectApi.getProjects(workspaceId, token);
         const projectsList = Array.isArray(response) ? response : response?.data || response?.projects || [];
         setAllProjects(projectsList);
       } catch (err) {
@@ -50,7 +61,7 @@ export default function StoriesSidebar({
       }
     };
     fetchProjects();
-  }, [activeProjId]);
+  }, [activeProjId, workspaceId]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -134,24 +145,19 @@ export default function StoriesSidebar({
             />
           </div>
 
-          <div className="flex items-center bg-blue-600 rounded-lg text-white overflow-hidden shadow-sm shrink-0">
-            <button
-              type="button"
-              onClick={onAddNew}
-              className="p-2 hover:bg-blue-700 transition-colors flex items-center justify-center border-r border-blue-500/40 cursor-pointer"
-              title="Create New Story/Epic"
-            >
+          <button
+            type="button"
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex items-center bg-blue-600 hover:bg-blue-700 rounded-lg text-white overflow-hidden shadow-sm shrink-0 transition-colors cursor-pointer"
+            title="Project Menu & Options"
+          >
+            <span className="p-2 flex items-center justify-center border-r border-blue-500/40">
               <Edit3 className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="p-2 hover:bg-blue-700 transition-colors flex items-center justify-center cursor-pointer"
-              title="Project Menu & Options"
-            >
+            </span>
+            <span className="p-2 flex items-center justify-center">
               <ChevronDown className="w-3.5 h-3.5" />
-            </button>
-          </div>
+            </span>
+          </button>
         </div>
 
         <div className="text-[11px] text-gray-400 font-medium px-0.5">
@@ -164,7 +170,7 @@ export default function StoriesSidebar({
               <button
                 onClick={() => {
                   setIsDropdownOpen(false);
-                  router.push(`/project-setup${activeProjId ? `?workspace_id=${activeProjId}` : ''}`);
+                  router.push(`/project-setup${workspaceId ? `?workspace_id=${workspaceId}` : ''}`);
                 }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer text-left"
               >

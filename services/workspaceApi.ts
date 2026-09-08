@@ -27,6 +27,19 @@ const getAuthHeaders = (token: string) => ({
   'Authorization': `Bearer ${token}`,
 });
 
+// 401 = token invalid/expired -> paksa logout.
+// 403 = user login VALID tapi ditolak akses ke resource spesifik (misal bukan
+// anggota workspace ini) -> BUKAN soal token, jangan logout paksa. Biarkan
+// errornya tampil sebagai pesan biasa ke user.
+const handleUnauthorized = (status: number): boolean => {
+  if (status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return true;
+  }
+  return false;
+};
+
 export const workspaceApi = {
   createWorkspace: async (data: WorkspaceCreate, token: string): Promise<WorkspaceResponse> => {
     const response = await fetch(`${API_BASE_URL}/api/workspaces`, {
@@ -35,6 +48,7 @@ export const workspaceApi = {
       body: JSON.stringify(data),
     });
     if (!response.ok) {
+      handleUnauthorized(response.status);
       const errorData = await response.json().catch(() => ({}));
       throw new Error(formatApiError(errorData, 'Gagal membuat ruang kerja'));
     }
@@ -47,6 +61,7 @@ export const workspaceApi = {
       headers: getAuthHeaders(token),
     });
     if (!response.ok) {
+      if (handleUnauthorized(response.status)) return [];
       const errorData = await response.json().catch(() => ({}));
       throw new Error(formatApiError(errorData, 'Gagal mengambil daftar ruang kerja'));
     }
@@ -59,13 +74,13 @@ export const workspaceApi = {
       headers: getAuthHeaders(token),
     });
     if (!response.ok) {
+      if (handleUnauthorized(response.status)) return [];
       const errorData = await response.json().catch(() => ({}));
       throw new Error(formatApiError(errorData, 'Gagal mengambil daftar anggota ruang kerja'));
     }
     return response.json();
   },
 
-  // TAMBAHAN: rename & hapus team (dipakai Team Settings)
   updateWorkspace: async (id: number, data: { name: string }, token: string): Promise<WorkspaceResponse> => {
     const response = await fetch(`${API_BASE_URL}/api/workspaces/${id}`, {
       method: 'PUT',
@@ -73,6 +88,7 @@ export const workspaceApi = {
       body: JSON.stringify(data),
     });
     if (!response.ok) {
+      handleUnauthorized(response.status);
       const errorData = await response.json().catch(() => ({}));
       throw new Error(formatApiError(errorData, 'Gagal memperbarui nama team'));
     }
@@ -86,18 +102,18 @@ export const workspaceApi = {
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
+      handleUnauthorized(response.status);
       throw new Error(formatApiError(data, 'Gagal menghapus team'));
     }
     return data;
   },
 
-  // TAMBAHAN: AI Rules tingkat workspace/team (endpoint backend sudah ada sejak awal,
-  // baru sekarang dibungkus di service layer)
   getWorkspaceAIRules: async (workspaceId: number, token: string): Promise<any[]> => {
     const response = await fetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/ai-rules`, {
       headers: getAuthHeaders(token),
     });
     if (!response.ok) {
+      if (handleUnauthorized(response.status)) return [];
       const errorData = await response.json().catch(() => ({}));
       throw new Error(formatApiError(errorData, 'Gagal mengambil AI Rules team'));
     }
@@ -111,6 +127,7 @@ export const workspaceApi = {
       body: JSON.stringify(data),
     });
     if (!response.ok) {
+      handleUnauthorized(response.status);
       const errorData = await response.json().catch(() => ({}));
       throw new Error(formatApiError(errorData, 'Gagal menambahkan AI Rule team'));
     }
@@ -123,14 +140,12 @@ export const workspaceApi = {
       headers: getAuthHeaders(token),
     });
     if (!response.ok) {
+      handleUnauthorized(response.status);
       const errorData = await response.json().catch(() => ({}));
       throw new Error(formatApiError(errorData, 'Gagal menghapus AI Rule team'));
     }
   },
 
-  // TAMBAHAN: endpoint-nya sudah ada di backend (routers/workspaces.py) sejak awal,
-  // tapi belum pernah dibungkus di service ini — sebelumnya Team page memanggilnya
-  // lewat fetch manual langsung dari komponen.
   addWorkspaceMember: async (
     workspaceId: number,
     email: string,
@@ -143,6 +158,7 @@ export const workspaceApi = {
     );
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
+      handleUnauthorized(response.status);
       throw new Error(formatApiError(data, 'Gagal mengundang anggota'));
     }
     return data;
@@ -155,6 +171,7 @@ export const workspaceApi = {
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
+      handleUnauthorized(response.status);
       throw new Error(formatApiError(data, 'Gagal menghapus anggota'));
     }
     return data;

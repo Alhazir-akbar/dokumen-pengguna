@@ -22,6 +22,10 @@ function StoriesPageContent() {
   const [rawEpics, setRawEpics] = useState<any[]>([]);
   const [rawStories, setRawStories] = useState<any[]>([]);
   const [projectName, setProjectName] = useState('');
+  // BARU: workspace_id dari project yang lagi dibuka. Sumbernya langsung dari
+  // getProjectById (bukan localStorage) supaya selalu akurat, lalu dilempar
+  // ke StoriesSidebar buat fetch daftar project di dropdown "Change Project".
+  const [projectWorkspaceId, setProjectWorkspaceId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
@@ -51,6 +55,7 @@ function StoriesPageContent() {
         setRawEpics(epicsData);
         setRawStories(storiesData);
         setProjectName(projectData.name);
+        setProjectWorkspaceId(projectData.workspace_id);
       } catch (err: any) {
         console.error('Gagal memuat data stories:', err);
         setLoadError(err.message || 'Gagal memuat data dari server.');
@@ -268,6 +273,7 @@ function StoriesPageContent() {
       <StoriesSidebar
         epics={formattedEpics}
         selectedStoryId={selectedStory?.id as string}
+        workspaceId={projectWorkspaceId}
         onSelectStory={(story: UserStory) => {
           setSelectedStory(story);
           setSelectedEpic(null);
@@ -314,7 +320,7 @@ function StoriesPageContent() {
               </button>
             </div>
 
-            <AccountMenu />
+            <AccountMenu currentWorkspaceId={projectWorkspaceId} />
           </div>
         </div>
 

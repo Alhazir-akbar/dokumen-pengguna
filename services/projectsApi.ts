@@ -16,6 +16,20 @@ function formatApiError(errorData: any, fallback: string): string {
   return fallback;
 }
 
+// 401 = token invalid/expired -> memang sesi habis, paksa logout.
+// 403 = user login VALID tapi gak punya akses ke resource spesifik ini
+// (misal: bukan anggota workspace tsb) -> BUKAN soal token, jangan logout
+// paksa. Biarkan errornya dilempar biasa supaya UI bisa nampilin pesan
+// yang sesuai ("Anda tidak memiliki akses...") tanpa nendang user ke /login.
+function handleUnauthorized(status: number): boolean {
+  if (status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return true;
+  }
+  return false;
+}
+
 // ============ Interfaces ============
 
 export interface ProjectCreate {
@@ -106,16 +120,19 @@ export const projectApi = {
       body: JSON.stringify(data),
     });
     if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem('token');
-        window.location.href = '/login';
-      }
+      handleUnauthorized(response.status);
       const errorData = await response.json().catch(() => ({}));
       throw new Error(formatApiError(errorData, 'Gagal membuat proyek'));
     }
     return response.json();
   },
 
+  /**
+   * PENTING: selalu kirim workspaceId secara eksplisit kalau kamu tahu nilainya
+   * (jangan andalkan fallback localStorage di bawah -- itu cuma jaring pengaman
+   * untuk pemanggilan lama, tapi rawan salah/kosong kalau localStorage belum
+   * sempat keisi di alur tertentu, misal baru selesai wizard).
+   */
   getProjects: async (workspaceIdOrToken?: any, tokenArg?: string): Promise<ProjectResponse[]> => {
     let url = `${API_BASE_URL}/api/projects`;
     let token = '';
@@ -142,11 +159,7 @@ export const projectApi = {
     });
 
     if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem('token');
-        window.location.href = '/login';
-        return [];
-      }
+      if (handleUnauthorized(response.status)) return [];
       const errorData = await response.json().catch(() => ({}));
       throw new Error(formatApiError(errorData, 'Gagal mengambil daftar proyek'));
     }
@@ -159,10 +172,7 @@ export const projectApi = {
       headers: getAuthHeaders(token),
     });
     if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem('token');
-        window.location.href = '/login';
-      }
+      handleUnauthorized(response.status);
       const errorData = await response.json().catch(() => ({}));
       throw new Error(formatApiError(errorData, 'Proyek tidak ditemukan'));
     }
@@ -176,6 +186,7 @@ export const projectApi = {
       body: JSON.stringify(data),
     });
     if (!response.ok) {
+      handleUnauthorized(response.status);
       const errorData = await response.json().catch(() => ({}));
       throw new Error(formatApiError(errorData, 'Gagal memperbarui proyek'));
     }
@@ -188,6 +199,7 @@ export const projectApi = {
       headers: getAuthHeaders(token),
     });
     if (!response.ok) {
+      handleUnauthorized(response.status);
       const errorData = await response.json().catch(() => ({}));
       throw new Error(formatApiError(errorData, 'Gagal menghapus proyek'));
     }
@@ -204,6 +216,7 @@ export const projectApi = {
       body: JSON.stringify(data),
     });
     if (!response.ok) {
+      handleUnauthorized(response.status);
       const errorData = await response.json().catch(() => ({}));
       throw new Error(formatApiError(errorData, 'AI gagal memberikan saran deskripsi'));
     }
@@ -220,6 +233,7 @@ export const projectApi = {
       body: JSON.stringify(data),
     });
     if (!response.ok) {
+      handleUnauthorized(response.status);
       const errorData = await response.json().catch(() => ({}));
       throw new Error(formatApiError(errorData, 'AI gagal memberikan saran goals & frustrations'));
     }
@@ -236,6 +250,7 @@ export const projectApi = {
       body: JSON.stringify(data),
     });
     if (!response.ok) {
+      handleUnauthorized(response.status);
       const errorData = await response.json().catch(() => ({}));
       throw new Error(formatApiError(errorData, 'AI gagal memberikan saran user journey'));
     }
@@ -248,6 +263,7 @@ export const projectApi = {
       headers: getAuthHeaders(token),
     });
     if (!response.ok) {
+      handleUnauthorized(response.status);
       const errorData = await response.json().catch(() => ({}));
       throw new Error(formatApiError(errorData, 'AI gagal memproses data'));
     }
@@ -261,6 +277,7 @@ export const projectApi = {
       body: JSON.stringify(aiRequirementsData),
     });
     if (!response.ok) {
+      handleUnauthorized(response.status);
       const errorData = await response.json().catch(() => ({}));
       throw new Error(formatApiError(errorData, 'Gagal menyimpan draf kebutuhan'));
     }
