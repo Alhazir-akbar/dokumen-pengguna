@@ -26,6 +26,7 @@ import SoftwareOverview from '@/features/project-setup/components/softwareOvervi
 import SoftwareDetails from '@/features/project-setup/components/softwareDetails';
 import SoftwareScale from '@/features/project-setup/components/softwareScale';
 import SoftwareTechnologies from '@/features/project-setup/components/softwareTechnologies';
+import { LogOut, FastForward, Loader2 } from 'lucide-react';
 
 export default function WizardPage() {
   const router = useRouter();
@@ -42,7 +43,48 @@ export default function WizardPage() {
   } = useWizardStore() as any;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSkipping, setIsSkipping] = useState(false);
 
+  // 🚪 Fungsi Logout
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('active_workspace_id');
+    localStorage.removeItem('active_project_id');
+    localStorage.removeItem('userdoc-wizard-storage');
+    resetStore();
+    router.push('/login');
+  };
+
+  // ⏩ Fungsi Skip Langsung ke Stories
+  const handleSkip = async () => {
+    setIsSkipping(true);
+    const token = getAuthToken();
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+
+    try {
+      const { createWorkspaceIfNeeded, createProjectIfNeeded } = useWizardStore.getState() as any;
+      const wsId = await createWorkspaceIfNeeded(token);
+      const projId = await createProjectIfNeeded(token);
+
+      if (projId) {
+        localStorage.setItem('active_project_id', String(projId));
+        if (wsId) localStorage.setItem('active_workspace_id', String(wsId));
+        resetStore();
+        router.push(`/stories?project_id=${projId}`);
+      } else {
+        router.push('/stories');
+      }
+    } catch (e) {
+      console.error("Gagal skip setup:", e);
+      router.push('/stories');
+    } finally {
+      setIsSkipping(false);
+    }
+  };
   const handleFinishWizard = async () => {
     setIsSubmitting(true);
     const token = getAuthToken();
@@ -137,6 +179,33 @@ export default function WizardPage() {
           Menyimpan spesifikasi proyek ke server...
         </div>
       )}
+    
+      <div className="absolute top-6 right-6 flex items-center gap-3 z-40">
+        <button
+          type="button"
+          onClick={handleSkip}
+          disabled={isSkipping}
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-blue-100 hover:text-white text-xs font-medium backdrop-blur-md border border-white/20 transition-all cursor-pointer shadow-sm disabled:opacity-50"
+          title="Lewati setup dan langsung ke workspace"
+        >
+          {isSkipping ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <FastForward className="w-3.5 h-3.5" />
+          )}
+          <span>Skip Setup</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-100 hover:text-white text-xs font-medium backdrop-blur-md border border-red-300/30 transition-all cursor-pointer shadow-sm"
+          title="Keluar dari akun"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          <span>Logout</span>
+        </button>
+      </div>  
 
       {step === 1 && <TeamName />}
       {step === 2 && <NameProject />}
