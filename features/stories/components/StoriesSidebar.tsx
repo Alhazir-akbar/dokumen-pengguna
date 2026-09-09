@@ -8,6 +8,7 @@ import EpicListItem from './EpicListItem';
 import { Search, Edit3, ChevronDown, Plus, Settings, Folder, Trash2 } from 'lucide-react';
 import { projectApi } from '@/services/projectsApi';
 import { getAuthToken } from '@/lib/auth';
+import { useWizardStore } from '@/features/project-setup/store/wizard-store';
 
 interface StoriesSidebarProps {
   epics: Epic[];
@@ -18,7 +19,7 @@ interface StoriesSidebarProps {
   onAddNew?: () => void;
   projectName?: string;
   projectId?: string | null;
-  // BARU: workspace_id dari project yang lagi dibuka (didapat dari getProjectById
+  // workspace_id dari project yang lagi dibuka (didapat dari getProjectById
   // di app/stories/page.tsx). Ini WAJIB dikirim eksplisit -- jangan andalkan
   // localStorage untuk ini, soalnya localStorage 'workspace_id' bisa kosong/stale
   // (misal user baru selesai wizard dan belum pernah mampir ke halaman /workspace).
@@ -36,6 +37,9 @@ export default function StoriesSidebar({
   onAddNew,
 }: StoriesSidebarProps) {
   const router = useRouter();
+  const resetStore = useWizardStore((s: any) => s.resetStore);
+  const setWizardWorkspaceId = useWizardStore((s: any) => s.setWorkspaceId);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [allProjects, setAllProjects] = useState<any[]>([]);
@@ -72,6 +76,21 @@ export default function StoriesSidebar({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Workspace SUDAH pasti ada di titik ini (user lagi buka halaman Stories di
+  // dalamnya). Jadi wizard harus langsung mulai dari NameProject, TeamName
+  // di-skip. Caranya SAMA seperti di app/workspace/page.tsx
+  // (handleCreateFirstProject): isi workspaceId ke WIZARD STORE-nya langsung,
+  // bukan cuma nitip lewat query string URL -- karena TeamName.tsx membaca
+  // workspaceId dari useWizardStore, bukan dari URL.
+  const handleCreateNewProject = () => {
+    setIsDropdownOpen(false);
+    resetStore();
+    if (workspaceId) {
+      setWizardWorkspaceId(workspaceId);
+    }
+    router.push('/project-setup');
+  };
 
   const handleDeleteProject = async (e: React.MouseEvent, pId: number, pName: string) => {
     e.stopPropagation();
@@ -168,10 +187,7 @@ export default function StoriesSidebar({
           <div className="absolute left-4 right-4 top-full mt-1 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 py-2">
             <div className="px-3 py-2 border-b border-gray-100">
               <button
-                onClick={() => {
-                  setIsDropdownOpen(false);
-                  router.push(`/project-setup${workspaceId ? `?workspace_id=${workspaceId}` : ''}`);
-                }}
+                onClick={handleCreateNewProject}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer text-left"
               >
                 <Plus className="w-4 h-4 text-blue-600" /> Create new Project

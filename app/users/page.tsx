@@ -11,14 +11,17 @@ import UserFormPanel from '@/features/users/components/userFormPanel';
 import { UserType } from '@/features/users/types';
 import { usersApi } from '@/services/userApi';
 import { projectApi } from '@/services/projectsApi';
+import { fetchStories } from '@/services/storiesApi';
 import { getAuthToken } from '@/lib/auth';
-import { MessageSquare, Loader2 } from 'lucide-react';
+import { MessageSquare, Upload, Download, Loader2 } from 'lucide-react';
+import AccountMenu from '@/features/common/components/accountMenu';
 
 function UsersPageContent() {
   const searchParams = useSearchParams();
   const projectId = searchParams.get('project_id');
 
   const [projectName, setProjectName] = useState('');
+  const [projectWorkspaceId, setProjectWorkspaceId] = useState<number | null>(null);
   const [userTypes, setUserTypes] = useState<UserType[]>([]);
   const [selectedUserType, setSelectedUserType] = useState<UserType | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -27,39 +30,61 @@ function UsersPageContent() {
   const [loadError, setLoadError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Ambil data user types dari backend (bukan mock lagi)
+  const attachStoriesCount = (types: UserType[], rawStories: any[]): UserType[] => {
+    const countMap = new Map<string, number>();
+    for (const story of rawStories) {
+      const userTypeId = story.user_type_id != null ? String(story.user_type_id) : null;
+      if (!userTypeId) continue;
+      countMap.set(userTypeId, (countMap.get(userTypeId) || 0) + 1);
+    }
+    return types.map((ut) => ({
+      ...ut,
+      storiesCount: countMap.get(ut.id) || 0,
+    }));
+  };
+
+  const loadData = async (currentSelectedId?: string) => {
+    if (!projectId) {
+      setLoadError('project_id tidak ditemukan di URL.');
+      setIsLoading(false);
+      return;
+    }
+    const token = getAuthToken();
+    if (!token) {
+      setLoadError('Sesi habis, silakan login kembali.');
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const [userTypesData, storiesData, projectData] = await Promise.all([
+        usersApi.fetchUserTypes(Number(projectId), token),
+        fetchStories(Number(projectId), token),
+        projectApi.getProjectById(Number(projectId), token),
+      ]);
+
+      const merged = attachStoriesCount(userTypesData, storiesData);
+      setUserTypes(merged);
+      setProjectName(projectData.name);
+      setProjectWorkspaceId(projectData.workspace_id);
+
+      if (currentSelectedId) {
+        setSelectedUserType(merged.find((u) => u.id === currentSelectedId) || merged[0] || null);
+      } else {
+        setSelectedUserType(merged[0] || null);
+      }
+    } catch (err: any) {
+      console.error('Gagal memuat user types:', err);
+      setLoadError(err.message || 'Gagal memuat data dari server.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadData = async () => {
-      if (!projectId) {
-        setLoadError('project_id tidak ditemukan di URL.');
-        setIsLoading(false);
-        return;
-      }
-      const token = getAuthToken();
-      if (!token) {
-        setLoadError('Sesi habis, silakan login kembali.');
-        setIsLoading(false);
-        return;
-      }
-
-      setIsLoading(true);
-      try {
-        const [data, projectData] = await Promise.all([
-          usersApi.fetchUserTypes(Number(projectId), token),
-          projectApi.getProjectById(Number(projectId), token),
-        ]);
-        setUserTypes(data);
-        setProjectName(projectData.name);
-        setSelectedUserType(data[0] || null);
-      } catch (err: any) {
-        console.error('Gagal memuat user types:', err);
-        setLoadError(err.message || 'Gagal memuat data dari server.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
   const handleSelectUser = (user: UserType) => {
@@ -118,9 +143,7 @@ function UsersPageContent() {
         await usersApi.deletePersona(deletedId, token);
       }
 
-      const refreshed = await usersApi.fetchUserTypes(Number(projectId), token);
-      setUserTypes(refreshed);
-      setSelectedUserType(refreshed.find((u) => u.id === String(userTypeId)) || refreshed[0] || null);
+      await loadData(String(userTypeId));
     } catch (err: any) {
       console.error('Gagal menyimpan user type:', err);
       alert(err.message || 'Gagal menyimpan data ke server.');
@@ -156,6 +179,30 @@ function UsersPageContent() {
     if (!selectedUserType && userTypes.length > 0) {
       setSelectedUserType(userTypes[0]);
     }
+  };
+
+  const handleUpload = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,.txt';
+    input.onchange = (e: any) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        alert(`File "${file.name}" berhasil di-upload!`);
+      }
+    };
+    input.click();
+  };
+
+  const handleDownload = () => {
+    const dataStr =
+      'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(userTypes, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', dataStr);
+    downloadAnchor.setAttribute('download', `${projectName || 'project'}-user-types.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
   };
 
   if (isLoading) {
@@ -203,14 +250,33 @@ function UsersPageContent() {
       <main className="flex-1 flex flex-col h-full bg-white overflow-hidden">
         {/* Top Navbar */}
         <div className="h-14 border-b border-gray-200 px-6 flex items-center justify-between bg-white shrink-0">
-          <span className="text-xs font-medium text-gray-500">{projectName || 'Untitled Project'} <span className="text-gray-300">/</span></span>
+          <span className="text-xs font-medium text-gray-500">
+            {projectName || 'Untitled Project'} <span className="text-gray-300">/</span>
+          </span>
+
           <div className="flex items-center gap-3">
             <button className="text-xs text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm font-medium cursor-pointer">
               <MessageSquare className="w-3.5 h-3.5 text-blue-600" /> Chat to Userdoc Assistant
             </button>
-            <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
-              UD
+
+            <div className="flex items-center gap-1.5 text-gray-500">
+              <button
+                onClick={handleUpload}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 cursor-pointer"
+                title="Upload Document"
+              >
+                <Upload className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleDownload}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 cursor-pointer"
+                title="Download / Export JSON"
+              >
+                <Download className="w-4 h-4" />
+              </button>
             </div>
+
+            <AccountMenu currentWorkspaceId={projectWorkspaceId} />
           </div>
         </div>
 

@@ -96,8 +96,14 @@ export const journeysApi = {
     return response.json();
   },
 
-  // Memperbarui user journey yang sudah ada
-  updateJourney: async (journeyId: number, data: Partial<CreateJourneyPayload>, token: string): Promise<UserJourneyResponse> => {
+  // Memperbarui user journey yang sudah ada (nama & deskripsi saja -- untuk
+  // step-nya pakai replaceSteps di bawah, sesuai endpoint PUT /{id}/steps
+  // yang terpisah di backend).
+  updateJourney: async (
+    journeyId: number,
+    data: { name: string; description?: string },
+    token: string
+  ): Promise<UserJourneyResponse> => {
     const response = await fetch(`${API_BASE_URL}/api/journeys/${journeyId}`, {
       method: 'PUT',
       headers: getAuthHeaders(token),
@@ -106,6 +112,40 @@ export const journeysApi = {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(formatApiError(errorData, 'Gagal memperbarui user journey'));
+    }
+    return response.json();
+  },
+
+  // BARU: Mengganti seluruh steps sebuah journey (dipakai saat user edit
+  // steps secara manual lewat JourneyDetailPanel). Cocok dengan endpoint
+  // backend PUT /api/journeys/{id}/steps.
+  replaceSteps: async (
+    journeyId: number,
+    steps: Array<{ step_order: number; title: string; description?: string; persona_id?: number | null }>,
+    token: string
+  ): Promise<UserJourneyResponse> => {
+    const response = await fetch(`${API_BASE_URL}/api/journeys/${journeyId}/steps`, {
+      method: 'PUT',
+      headers: getAuthHeaders(token),
+      body: JSON.stringify({ steps }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(formatApiError(errorData, 'Gagal menyimpan langkah-langkah journey'));
+    }
+    return response.json();
+  },
+
+  // BARU: Trigger AI untuk generate steps sebuah journey. Cocok dengan
+  // endpoint backend POST /api/journeys/{id}/generate-ai-steps.
+  generateAiSteps: async (journeyId: number, token: string): Promise<UserJourneyResponse> => {
+    const response = await fetch(`${API_BASE_URL}/api/journeys/${journeyId}/generate-ai-steps`, {
+      method: 'POST',
+      headers: getAuthHeaders(token),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(formatApiError(errorData, 'Gagal men-generate langkah journey dengan AI'));
     }
     return response.json();
   },
@@ -123,4 +163,3 @@ export const journeysApi = {
     return response.json();
   },
 };
-
