@@ -3,13 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWizardStore } from '@/features/project-setup/store/wizard-store';
-
-<<<<<<< Updated upstream
 import { submitWizardBatch } from '@/services/storiesApi';
-=======
 import { projectApi } from '@/services/projectsApi';
 import { buildApi } from '@/services/buildApi';
->>>>>>> Stashed changes
 import { getAuthToken } from '@/lib/auth';
 
 import TeamName from '@/features/project-setup/components/teamName';
@@ -58,48 +54,11 @@ export default function WizardPage() {
 
     try {
       if (projectType === 'generate') {
-<<<<<<< Updated upstream
-        // Transform data store -> bentuk yang backend (WizardBatchCreateSchema) minta.
-        // Store pakai "title" untuk epic; backend minta "name". Stories perlu di-nest per epic.
-        const payloadEpics = (epics || []).map((epic: any) => ({
-          name: epic.title,
-          description: epic.description || '',
-          stories: (userStories || [])
-            .filter((s: any) => s.epicId === epic.id || s.epicTitle === epic.title)
-            .map((s: any) => ({
-              storyName: s.storyName,
-              userType: s.userType,
-              description: s.description || '',
-            })),
-        }));
 
-        const payloadUserStories = (userStories || []).map((s: any) => ({
-          storyName: s.storyName,
-          userType: s.userType,
-          description: s.description || '',
-        }));
-
-        console.log('Payload dikirim ke /stories/batch:', {
-          epics: payloadEpics,
-          userStories: payloadUserStories,
-        });
-
-        await submitWizardBatch(projectId, {
-          epics: payloadEpics,
-          userStories: payloadUserStories,
-        }, token);
-=======
-        // Payload ini HARUS cocok persis dengan skema ProjectRequirementsOutput
-        // di backend (services/ai.py), karena divalidasi oleh Pydantic.
         const payload = {
           user_types: (userTypes || []).map((ut: any) => ({
             name: ut.name,
             description: ut.description || '',
-            // PERBAIKAN: sebelumnya "personas" tidak dikirim sama sekali, padahal backend
-            // mewajibkan field ini (List[PersonaSuggestion], tanpa default) di schema
-            // UserTypeSuggestion -> request ditolak dengan 422 Unprocessable Entity.
-            // Kalau user type ini tidak punya persona (misal ditambahkan manual, bukan
-            // dari AI generate), kirim array kosong supaya validasi tetap lolos.
             personas: (ut.personas || []).map((p: any) => ({
               name: p.name || 'Persona',
               age: p.age || 25,
@@ -131,17 +90,12 @@ export default function WizardPage() {
         };
 
         await projectApi.saveRequirements(projectId, payload, token);
-
-        // TAMBAHAN: begitu requirements tersimpan, langsung generate draf Build
-        // (Tech Stack, Coding Guidelines, Dev Plan) via AI supaya halaman Build tidak
-        // kosong. Best-effort -- kalau ini gagal, tetap lanjutkan ke halaman Stories,
-        // jangan sampai user terjebak gara-gara langkah tambahan ini.
+        
         try {
           await buildApi.generateDefaults(projectId, token);
         } catch (buildErr) {
           console.error('Gagal auto-generate Build defaults (non-fatal):', buildErr);
         }
->>>>>>> Stashed changes
       }
 
       resetStore();

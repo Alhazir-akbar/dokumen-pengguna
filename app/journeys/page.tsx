@@ -6,76 +6,109 @@ import AppSidebar from '@/features/common/components/AppSidebar';
 import JourneysSidebar from '@/features/journeys/components/journeySidebar';
 import EmptyJourneyPanel from '@/features/journeys/components/emptyJourneyPanel';
 import JourneyDetailPanel from '@/features/journeys/components/journeyDetailPanel';
-import { Upload, Download, X, Loader2, RefreshCw } from 'lucide-react';
-import { journeysApi } from '@/services/journeysApi';
+import AccountMenu from '@/features/common/components/accountMenu';
+import { Upload, Download, X, MessageSquare, Loader2 } from 'lucide-react';
+import { journeysApi, UserJourneyResponse } from '@/services/journeysApi';
 import { projectApi } from '@/services/projectsApi';
 import { getAuthToken } from '@/lib/auth';
-import { getStoredProjectId, setStoredProjectId } from '@/lib/project-context';
+
+interface JourneyStepVM {
+  id: number | string;
+  title: string;
+  description: string;
+}
+
+interface JourneyVM {
+  id: string;
+  title: string;
+  description: string;
+  steps: JourneyStepVM[];
+  stepsCount: number;
+  personasCount: number;
+  storiesCount: number;
+}
+
+function mapJourneyFromBackend(j: UserJourneyResponse): JourneyVM {
+  const sortedSteps = [...(j.steps || [])].sort((a, b) => a.step_order - b.step_order);
+  return {
+    id: String(j.id),
+    title: j.name,
+    description: j.description || '',
+    steps: sortedSteps.map((s, idx) => ({
+      id: s.id ?? `${j.id}-${idx}`,
+      title: s.title,
+      description: s.description || '',
+    })),
+    stepsCount: sortedSteps.length,
+    personasCount: 0,
+    storiesCount: 0,
+  };
+}
 
 function JourneysPageContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const projectId = searchParams.get('project_id');
 
   const [projectName, setProjectName] = useState('');
-  const [journeys, setJourneys] = useState<any[]>([]);
-  const [selectedJourney, setSelectedJourney] = useState<any | null>(null);
+  const [projectWorkspaceId, setProjectWorkspaceId] = useState<number | null>(null);
+  const [journeys, setJourneys] = useState<JourneyVM[]>([]);
+  const [selectedJourney, setSelectedJourney] = useState<JourneyVM | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-  const [reloadToken, setReloadToken] = useState(0);
 
+  // Modal & Edit States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
 
-  useEffect(() => {
+  const loadData = async (selectId?: string) => {
     if (!projectId) {
-      const stored = getStoredProjectId();
-      if (stored) {
-        router.replace(`/journeys?project_id=${stored}`);
-        return;
-      }
+      setLoadError('project_id tidak ditemukan di URL.');
+      setIsLoading(false);
+      return;
+    }
+    const token = getAuthToken();
+    if (!token) {
+      setLoadError('Sesi habis, silakan login kembali.');
+      setIsLoading(false);
+      return;
     }
 
-    const loadData = async () => {
-      if (!projectId) {
-        setLoadError('project_id tidak ditemukan di URL.');
-        setIsLoading(false);
-        return;
-      }
-      const token = getAuthToken();
-      if (!token) {
-        setLoadError('Sesi habis, silakan login kembali.');
-        setIsLoading(false);
-        return;
-      }
+    setIsLoading(true);
+    try {
+      const [journeysData, projectData] = await Promise.all([
+        journeysApi.getJourneysByProject(Number(projectId), token),
+        projectApi.getProjectById(Number(projectId), token),
+      ]);
 
-      setIsLoading(true);
-      setLoadError('');
-      try {
-        const [journeyData, projectData] = await Promise.all([
-          journeysApi.fetchJourneys(Number(projectId), token),
-          projectApi.getProjectById(Number(projectId), token),
-        ]);
-        setJourneys(journeyData);
-        setProjectName(projectData.name);
-        setSelectedJourney(journeyData[0] || null);
-        setStoredProjectId(projectId);
-      } catch (err: any) {
-        console.error('Gagal memuat data journeys:', err);
-        setLoadError(err.message || 'Gagal memuat data dari server.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      const mapped = journeysData.map(mapJourneyFromBackend);
+      setJourneys(mapped);
+      setProjectName(projectData.name);
+      setProjectWorkspaceId(projectData.workspace_id);
 
+      if (selectId) {
+        setSelectedJourney(mapped.find((j) => j.id === selectId) || mapped[0] || null);
+      } else if (mapped.length > 0) {
+        setSelectedJourney((prev) => (prev ? mapped.find((j) => j.id === prev.id) || mapped[0] : mapped[0]));
+      } else {
+        setSelectedJourney(null);
+      }
+    } catch (err: any) {
+      console.error('Gagal memuat data journeys:', err);
+      setLoadError(err.message || 'Gagal memuat data dari server.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadData();
-  }, [projectId, reloadToken, router]);
-
-  const handleRetry = useCallback(() => setReloadToken((n) => n + 1), []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
 
   const handleOpenCreateModal = () => {
     setIsEditMode(false);
@@ -84,15 +117,6 @@ function JourneysPageContent() {
     setIsModalOpen(true);
   };
 
-  const handleOpenEditModal = () => {
-    if (!selectedJourney) return;
-    setIsEditMode(true);
-    setNewTitle(selectedJourney.title || '');
-    setNewDesc(selectedJourney.description || '');
-    setIsModalOpen(true);
-  };
-
-  // Create/update journey (title & description) via backend beneran
   const handleSaveJourney = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !projectId) return;
@@ -103,62 +127,72 @@ function JourneysPageContent() {
       return;
     }
 
-    setIsSaving(true);
     try {
       if (isEditMode && selectedJourney) {
+        // Update journey yang sudah ada (nama & deskripsi)
         const updated = await journeysApi.updateJourney(
           Number(selectedJourney.id),
           { name: newTitle, description: newDesc },
           token
         );
-        // PERBAIKAN: sebelumnya di sini steps hasil update ditimpa dengan
-        // selectedJourney.steps (data lama di state lokal), padahal response dari
-        // updateJourney() sudah membawa steps yang akurat langsung dari backend
-        // (endpoint PUT /journeys/{id} mengembalikan journey lengkap dengan steps-nya).
-        setJourneys(journeys.map((j) => (j.id === updated.id ? updated : j)));
-        setSelectedJourney(updated);
+        await loadData(String(updated.id));
       } else {
+        // 1. Buat journey baru dulu (steps kosong)
         const created = await journeysApi.createJourney(
-          { name: newTitle, description: newDesc || 'Deskripsi user journey baru...', project_id: Number(projectId) },
+          {
+            project_id: Number(projectId),
+            name: newTitle,
+            description: newDesc || 'Deskripsi user journey baru...',
+            steps: [],
+          },
           token
         );
-        setJourneys([created, ...journeys]);
-        setSelectedJourney(created);
+
+        // 2. Trigger AI untuk generate steps step-by-step
+        setIsGenerating(true);
+        const withAiSteps = await journeysApi.generateAiSteps(created.id, token);
+        setIsGenerating(false);
+
+        // 3. Refresh dari server supaya steps hasil AI ikut tampil
+        await loadData(String(withAiSteps.id));
       }
+
       setNewTitle('');
       setNewDesc('');
       setIsModalOpen(false);
-    } catch (err: any) {
-      console.error('Gagal menyimpan journey:', err);
-      alert(err.message || 'Gagal menyimpan journey ke server.');
-    } finally {
-      setIsSaving(false);
+    } catch (error: any) {
+      console.error('Error saving/generating journey:', error);
+      alert(error.message || 'Terjadi kesalahan saat menyimpan atau men-generate journey.');
+      setIsGenerating(false);
     }
   };
 
-  // Dipanggil dari JourneyDetailPanel saat user edit judul/deskripsi/steps journey.
-  // Kita simpan title+description lewat updateJourney, lalu steps lewat saveSteps
-  // (replace-all), supaya seluruh perubahan di panel benar-benar tersimpan.
-  const handleSaveJourneyDetail = async (updated: any) => {
+  const handleUpdateJourneyDetail = async (updated: JourneyVM) => {
     const token = getAuthToken();
-    if (!token) return;
+    if (!token) {
+      alert('Sesi habis, silakan login kembali.');
+      return;
+    }
 
-    setIsSaving(true);
     try {
       await journeysApi.updateJourney(
         Number(updated.id),
         { name: updated.title, description: updated.description },
         token
       );
-      const withSteps = await journeysApi.saveSteps(Number(updated.id), updated.steps || [], token);
-
-      setJourneys(journeys.map((j) => (j.id === withSteps.id ? withSteps : j)));
-      setSelectedJourney(withSteps);
+      await journeysApi.replaceSteps(
+        Number(updated.id),
+        updated.steps.map((s, index) => ({
+          step_order: index + 1,
+          title: s.title,
+          description: s.description,
+        })),
+        token
+      );
+      await loadData(updated.id);
     } catch (err: any) {
-      console.error('Gagal menyimpan detail journey:', err);
+      console.error('Gagal menyimpan perubahan journey:', err);
       alert(err.message || 'Gagal menyimpan perubahan journey ke server.');
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -169,25 +203,17 @@ function JourneysPageContent() {
     input.onchange = (e: any) => {
       const file = e.target.files?.[0];
       if (file) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          try {
-            alert(`Journey file "${file.name}" berhasil di-upload!`);
-          } catch (err) {
-            alert('Format file tidak valid.');
-          }
-        };
-        reader.readAsText(file);
+        alert(`Journey file "${file.name}" berhasil di-upload!`);
       }
     };
     input.click();
   };
 
   const handleDownload = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(journeys, null, 2));
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(journeys, null, 2));
     const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `${projectName || 'project'}-journeys.json`);
+    downloadAnchor.setAttribute('href', dataStr);
+    downloadAnchor.setAttribute('download', `${projectName || 'project'}-journeys.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -209,13 +235,7 @@ function JourneysPageContent() {
       <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
         <div className="text-center max-w-md px-6">
           <p className="text-red-600 font-medium mb-2">Gagal memuat data</p>
-          <p className="text-sm text-gray-500 mb-4">{loadError}</p>
-          <button
-            onClick={handleRetry}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer"
-          >
-            <RefreshCw className="w-3.5 h-3.5" /> Coba lagi
-          </button>
+          <p className="text-sm text-gray-500">{loadError}</p>
         </div>
       </div>
     );
@@ -223,12 +243,6 @@ function JourneysPageContent() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-50 font-sans relative">
-      {isSaving && (
-        <div className="absolute inset-0 bg-black/40 z-50 flex items-center justify-center text-white font-medium">
-          <Loader2 className="w-5 h-5 mr-2 animate-spin" /> Menyimpan ke server...
-        </div>
-      )}
-
       <AppSidebar activeMenu="journeys" projectId={projectId} />
 
       <JourneysSidebar
@@ -241,13 +255,17 @@ function JourneysPageContent() {
       />
 
       <main className="flex-1 flex flex-col h-full bg-white overflow-hidden">
+        {/* Top Navbar */}
         <div className="h-14 border-b border-gray-200 px-6 flex items-center justify-between bg-white shrink-0">
-          <span className="text-xs font-medium text-gray-600 flex items-center gap-2">
-            {/* Nama project asli dari backend, bukan dummy "alalal" lagi */}
-            {projectName || 'Untitled Project'} <span className="text-gray-400">/</span>
+          <span className="text-xs font-medium text-gray-500">
+            {projectName || 'Untitled Project'} <span className="text-gray-300">/</span>
           </span>
 
           <div className="flex items-center gap-3">
+            <button className="text-xs text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm font-medium cursor-pointer">
+              <MessageSquare className="w-3.5 h-3.5 text-blue-600" /> Chat to Userdoc Assistant
+            </button>
+
             <div className="flex items-center gap-1.5 text-gray-500">
               <button
                 onClick={handleUpload}
@@ -265,17 +283,16 @@ function JourneysPageContent() {
               </button>
             </div>
 
-            <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-sm ml-1">
-              UD
-            </div>
+            <AccountMenu currentWorkspaceId={projectWorkspaceId} />
           </div>
         </div>
 
+        {/* Main Content Area */}
         {selectedJourney ? (
           <JourneyDetailPanel
             journey={selectedJourney}
             onClose={() => setSelectedJourney(null)}
-            onSave={handleSaveJourneyDetail}
+            onSave={handleUpdateJourneyDetail}
           />
         ) : (
           <EmptyJourneyPanel onOpenAddModal={handleOpenCreateModal} />
@@ -292,6 +309,7 @@ function JourneysPageContent() {
               <button
                 onClick={() => setIsModalOpen(false)}
                 className="text-gray-400 hover:text-gray-600 p-1 rounded-lg transition-colors cursor-pointer"
+                disabled={isGenerating}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -306,7 +324,8 @@ function JourneysPageContent() {
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   required
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500"
+                  disabled={isGenerating}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500 disabled:opacity-50"
                 />
               </div>
 
@@ -317,7 +336,8 @@ function JourneysPageContent() {
                   value={newDesc}
                   onChange={(e) => setNewDesc(e.target.value)}
                   rows={3}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500"
+                  disabled={isGenerating}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500 disabled:opacity-50"
                 />
               </div>
 
@@ -325,15 +345,26 @@ function JourneysPageContent() {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+                  disabled={isGenerating}
+                  className="px-4 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors cursor-pointer disabled:opacity-50"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm cursor-pointer"
+                  disabled={isGenerating}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm cursor-pointer disabled:opacity-50 flex items-center gap-2"
                 >
-                  {isEditMode ? 'Simpan Perubahan' : 'Simpan Journey'}
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      AI Generating...
+                    </>
+                  ) : isEditMode ? (
+                    'Simpan Perubahan'
+                  ) : (
+                    'Simpan & Generate AI'
+                  )}
                 </button>
               </div>
             </form>
@@ -346,11 +377,13 @@ function JourneysPageContent() {
 
 export default function JourneysPage() {
   return (
-    <Suspense fallback={
-      <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
-        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
+          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+        </div>
+      }
+    >
       <JourneysPageContent />
     </Suspense>
   );

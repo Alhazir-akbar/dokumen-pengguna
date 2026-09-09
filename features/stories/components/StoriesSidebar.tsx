@@ -1,24 +1,117 @@
 // features/stories/components/StoriesSidebar.tsx
 import { Epic, UserStory } from '../types';
 import EpicListItem from './EpicListItem';
-<<<<<<< Updated upstream
-=======
-import { Search, Pencil } from 'lucide-react';
-import ProjectSwitcher from '@/features/common/components/projectSwitcher';
->>>>>>> Stashed changes
+import { Search, Edit3, ChevronDown, Plus, Settings, Folder, Trash2 } from 'lucide-react';
+import { projectApi } from '@/services/projectsApi';
+import { getAuthToken } from '@/lib/auth';
+import { useWizardStore } from '@/features/project-setup/store/wizard-store';
 
 interface StoriesSidebarProps {
   epics: Epic[];
   selectedStoryId?: string;
   currentProjectId?: string | null;
   onSelectStory: (story: UserStory) => void;
+  onSelectEpic?: (epic: Epic) => void;
+  onAddNew?: () => void;
+  projectName?: string;
+  projectId?: string | null;
+  // workspace_id dari project yang lagi dibuka (didapat dari getProjectById
+  // di app/stories/page.tsx). Ini WAJIB dikirim eksplisit -- jangan andalkan
+  // localStorage untuk ini, soalnya localStorage 'workspace_id' bisa kosong/stale
+  // (misal user baru selesai wizard dan belum pernah mampir ke halaman /workspace).
+  workspaceId?: number | null;
 }
 
-<<<<<<< Updated upstream
-export default function StoriesSidebar({ epics, selectedStoryId, onSelectStory }: StoriesSidebarProps) {
-=======
-export default function StoriesSidebar({ epics, selectedStoryId, currentProjectId, onSelectStory, onSelectEpic, onAddNew }: StoriesSidebarProps) {
+export default function StoriesSidebar({
+  epics,
+  selectedStoryId,
+  currentProjectId,
+  projectId,
+  workspaceId,
+  onSelectStory,
+  onSelectEpic,
+  onAddNew,
+}: StoriesSidebarProps) {
+  const router = useRouter();
+  const resetStore = useWizardStore((s: any) => s.resetStore);
+  const setWizardWorkspaceId = useWizardStore((s: any) => s.setWorkspaceId);
+
   const [searchQuery, setSearchQuery] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [allProjects, setAllProjects] = useState<any[]>([]);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const activeProjId = currentProjectId || projectId;
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      // Tunggu sampai workspaceId project aktif diketahui dari parent -- jangan
+      // fetch dengan workspace_id yang salah/kosong (itu penyebab bug 403
+      // sebelumnya).
+      if (!workspaceId) return;
+
+      const token = getAuthToken();
+      if (!token) return;
+      try {
+        const response: any = await projectApi.getProjects(workspaceId, token);
+        const projectsList = Array.isArray(response) ? response : response?.data || response?.projects || [];
+        setAllProjects(projectsList);
+      } catch (err) {
+        console.error('Gagal memuat list project:', err);
+      }
+    };
+    fetchProjects();
+  }, [activeProjId, workspaceId]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Workspace SUDAH pasti ada di titik ini (user lagi buka halaman Stories di
+  // dalamnya). Jadi wizard harus langsung mulai dari NameProject, TeamName
+  // di-skip. Caranya SAMA seperti di app/workspace/page.tsx
+  // (handleCreateFirstProject): isi workspaceId ke WIZARD STORE-nya langsung,
+  // bukan cuma nitip lewat query string URL -- karena TeamName.tsx membaca
+  // workspaceId dari useWizardStore, bukan dari URL.
+  const handleCreateNewProject = () => {
+    setIsDropdownOpen(false);
+    resetStore();
+    if (workspaceId) {
+      setWizardWorkspaceId(workspaceId);
+    }
+    router.push('/project-setup');
+  };
+
+  const handleDeleteProject = async (e: React.MouseEvent, pId: number, pName: string) => {
+    e.stopPropagation();
+    if (!confirm(`Hapus project "${pName}"? Seluruh data di dalamnya akan terhapus permanen.`)) return;
+
+    const token = getAuthToken();
+    if (!token) return;
+
+    try {
+      await projectApi.deleteProject(pId, token);
+      const remaining = allProjects.filter((p) => p.id !== pId);
+      setAllProjects(remaining);
+
+      if (String(pId) === String(activeProjId)) {
+        if (remaining.length > 0) {
+          router.push(`/stories?project_id=${remaining[0].id}`);
+        } else {
+          router.push('/workspace');
+        }
+      }
+    } catch (err: any) {
+      console.error('Gagal menghapus project:', err);
+      alert(err.message || 'Gagal menghapus project.');
+    }
+  };
 
   const filteredEpics = useMemo(() => {
     if (!searchQuery.trim()) return epics;
@@ -91,7 +184,67 @@ export default function StoriesSidebar({ epics, selectedStoryId, currentProjectI
         <div className="text-[11px] text-gray-400 font-medium px-0.5">
           Showing {totalStories} stories, {epics.length} epics
         </div>
->>>>>>> Stashed changes
+
+        {isDropdownOpen && (
+          <div className="absolute left-4 right-4 top-full mt-1 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 py-2">
+            <div className="px-3 py-2 border-b border-gray-100">
+              <button
+                onClick={handleCreateNewProject}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer text-left"
+              >
+                <Plus className="w-4 h-4 text-blue-600" /> Create new Project
+              </button>
+              <button
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  router.push(`/settings?project_id=${activeProjId}`);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer text-left"
+              >
+                <Settings className="w-4 h-4 text-gray-400" /> Project Settings
+              </button>
+            </div>
+
+            <div className="px-3 py-1.5">
+              <p className="text-[10px] text-gray-400 uppercase tracking-wider font-bold px-2 py-1">CHANGE PROJECT</p>
+              <div className="max-h-48 overflow-y-auto space-y-1 mt-1">
+                {allProjects.length === 0 ? (
+                  <p className="text-xs text-gray-400 px-2 py-1 italic">Memuat project...</p>
+                ) : (
+                  allProjects.map((p) => {
+                    const isCurrent = String(p.id) === String(activeProjId);
+                    return (
+                      <div
+                        key={p.id}
+                        className={`group/item flex items-center justify-between w-full px-3 py-2 rounded-xl transition-colors ${
+                          isCurrent ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-700 hover:bg-gray-100 font-medium'
+                        }`}
+                      >
+                        <button
+                          onClick={() => {
+                            setIsDropdownOpen(false);
+                            router.push(`/stories?project_id=${p.id}`);
+                          }}
+                          className="flex items-center gap-2 text-xs text-left truncate flex-1 cursor-pointer"
+                        >
+                          <Folder className={`w-3.5 h-3.5 shrink-0 ${isCurrent ? 'text-blue-600' : 'text-gray-400'}`} />
+                          <span className="truncate">{p.name}</span>
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteProject(e, p.id, p.name)}
+                          title="Hapus Project"
+                          className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors cursor-pointer opacity-0 group-hover/item:opacity-100 shrink-0 ml-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* List Content */}

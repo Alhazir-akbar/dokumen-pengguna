@@ -22,6 +22,7 @@ function StoriesPageContent() {
   const [rawEpics, setRawEpics] = useState<any[]>([]);
   const [rawStories, setRawStories] = useState<any[]>([]);
   const [projectName, setProjectName] = useState('');
+  const [projectWorkspaceId, setProjectWorkspaceId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [reloadToken, setReloadToken] = useState(0);

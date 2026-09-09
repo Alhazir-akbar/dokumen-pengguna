@@ -11,6 +11,7 @@ export default function TeamName() {
     teamName,
     workspaceId,
     updateTeamName,
+    setStep,
     nextStep,
     createWorkspaceIfNeeded,
     isCreatingWorkspace,
@@ -19,11 +20,20 @@ export default function TeamName() {
   const [error, setError] = useState(false);
   const [actionError, setActionError] = useState('');
 
-  // TAMBAHAN: kalau workspace/team sudah ada (user sedang membuat project KEDUA dst.
-  // di team yang sama), langsung lewati step ini tanpa perlu isi nama tim lagi.
+  // Kalau workspace SUDAH ada (mis. user datang dari tombol "Create New Project"
+  // di /workspace, yang sudah nge-set workspaceId sebelum masuk sini), langsung
+  // arahkan ke step NameProject (step 2).
+  //
+  // PENTING: pakai setStep(2) yang deterministik, BUKAN nextStep() (step + 1).
+  // Next.js App Router jalan di React Strict Mode saat development, yang
+  // sengaja me-mount & menjalankan useEffect dua kali. Kalau pakai nextStep(),
+  // efek yang terpanggil dua kali bikin step lompat dari 1 -> 2 -> 3, sehingga
+  // step 2 (NameProject) langsung terlewat ke step 3 (ProjectType). Dengan
+  // setStep(2), berapa kali pun efek ini terpanggil ulang, hasilnya tetap
+  // konsisten di step 2.
   useEffect(() => {
     if (workspaceId) {
-      nextStep();
+      setStep(2);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

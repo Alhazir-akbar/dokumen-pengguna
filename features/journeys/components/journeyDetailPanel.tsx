@@ -1,7 +1,8 @@
+// features/journeys/components/journeyDetailPanel.tsx
 'use client';
 
-import { useState } from 'react';
-import { Edit3, ArrowDown, Sparkles, Trash2, Plus, Save, X, Map } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Edit3, ArrowDown, Sparkles, Trash2, Plus, Save, X } from 'lucide-react';
 
 interface Step {
   id: number | string;
@@ -21,6 +22,8 @@ export interface JourneyDetailPanelProps {
   onSave: (updatedJourney: any) => void;
 }
 
+const DEFAULT_STEP: Step = { id: 1, title: 'Step name', description: 'Description of this Step' };
+
 export default function JourneyDetailPanel({ journey, isEditingInitially = false, onClose, onSave }: JourneyDetailPanelProps) {
   const safeJourney = journey || {
     id: '',
@@ -34,19 +37,26 @@ export default function JourneyDetailPanel({ journey, isEditingInitially = false
   const [title, setTitle] = useState(safeJourney.title || '');
   const [description, setDescription] = useState(safeJourney.description || '');
 
-  // Data ASLI dari backend, dipakai untuk tampilan VIEW (bukan edit). Sengaja tidak
-  // di-fallback ke placeholder dummy di sini — kalau journey memang belum punya step,
-  // tampilan harus jujur menunjukkan itu (lihat empty state di bawah), bukan pura-pura
-  // ada 1 step "Step name" yang menyesatkan.
-  const realSteps: Step[] = safeJourney.steps || [];
-
-  // Untuk mode EDIT, tetap pre-fill 1 template step kosong kalau belum ada step sama
-  // sekali, supaya user punya titik awal yang gampang diedit alih-alih form kosong total.
   const [steps, setSteps] = useState<Step[]>(
-    realSteps.length > 0 ? realSteps : [
-      { id: Date.now(), title: 'Step name', description: 'Description of this Step' }
-    ]
+    safeJourney.steps && safeJourney.steps.length > 0 ? safeJourney.steps : [DEFAULT_STEP]
   );
+
+  // PENTING: useState di atas cuma jalan sekali waktu mount pertama. Kalau
+  // parent (app/journeys/page.tsx) reload data journey ini dari server --
+  // misalnya setelah AI selesai generate steps -- prop `journey` berubah,
+  // tapi komponen ini TIDAK remount (masih instance React yang sama), jadi
+  // state `steps`/`title`/`description` di atas gak pernah ke-update dan
+  // tetap nyangkut di nilai awal (placeholder "Step name"). Efek di bawah
+  // ini yang nge-sync ulang state internal setiap kali data journey dari
+  // parent berubah. Di-skip saat sedang mode edit supaya draf yang lagi
+  // diketik user tidak ketiban reload dari server.
+  useEffect(() => {
+    if (isEditing) return;
+    setTitle(safeJourney.title || '');
+    setDescription(safeJourney.description || '');
+    setSteps(safeJourney.steps && safeJourney.steps.length > 0 ? safeJourney.steps : [DEFAULT_STEP]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [journey]);
 
   const handleStepChange = (id: number | string, field: 'title' | 'description', value: string) => {
     setSteps(steps.map(s => s.id === id ? { ...s, [field]: value } : s));
