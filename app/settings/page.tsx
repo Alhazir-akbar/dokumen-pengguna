@@ -4,9 +4,9 @@
 import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import AppSidebar from '@/features/common/components/AppSidebar';
-import { MessageSquare, Settings as SettingsIcon, Brain, Save, Trash2, Plus, AlertCircle, Loader2, RefreshCw, Sparkles } from 'lucide-react';
+import { MessageSquare, Settings as SettingsIcon, Brain, Save, Trash2, Plus, AlertCircle, Loader2, RefreshCw, Sparkles, Coins, Zap, History } from 'lucide-react';
 import { projectApi } from '@/services/projectsApi';
-import { settingsApi, AIRule } from '@/services/settingsApi';
+import { settingsApi, AIRule, TokenUsageData } from '@/services/settingsApi';
 import { getAuthToken } from '@/lib/auth';
 import { getStoredProjectId, setStoredProjectId, clearStoredProjectId } from '@/lib/project-context';
 
@@ -15,7 +15,7 @@ function SettingsPageContent() {
   const router = useRouter();
   const projectIdParam = searchParams.get('project_id');
 
-  const [activeTab, setActiveTab] = useState<'general' | 'ai-rules'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'ai-rules' | 'token-usage'>('general');
   const [isPageLoading, setIsPageLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
@@ -35,6 +35,30 @@ function SettingsPageContent() {
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  
+    // State untuk Token & AI Usage
+  const [tokenData, setTokenData] = useState<TokenUsageData | null>(null);
+  const [isLoadingTokens, setIsLoadingTokens] = useState(false);
+
+  const loadTokenUsage = async () => {
+    const token = getAuthToken();
+    if (!token) return;
+    setIsLoadingTokens(true);
+    try {
+      const data = await settingsApi.getTokenUsage(token, projectIdParam ? Number(projectIdParam) : undefined);
+      setTokenData(data);
+    } catch (err) {
+      console.error("Gagal memuat data token usage:", err);
+    } finally {
+      setIsLoadingTokens(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'token-usage') {
+      loadTokenUsage();
+    }
+  }, [activeTab]);
 
   // PERBAIKAN PENTING: sebelumnya ada fallback hardcode `|| '1'` di sini — kalau
   // localStorage kosong, halaman ini diam-diam mencoba mengedit project ID 1 milik
@@ -266,6 +290,14 @@ function SettingsPageContent() {
           >
             <Brain className="w-4 h-4" /> AI Rules
           </button>
+                    <button
+            onClick={() => setActiveTab('token-usage')}
+            className={`py-4 text-sm font-semibold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+              activeTab === 'token-usage' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            <Coins className="w-4 h-4" /> Token & AI Usage
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-8 max-w-3xl">
@@ -278,7 +310,7 @@ function SettingsPageContent() {
             </div>
           )}
 
-          {activeTab === 'general' ? (
+          {activeTab === 'general' && (
             <form onSubmit={handleSaveGeneral} className="space-y-6">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider">Nama Proyek</label>
@@ -317,9 +349,12 @@ function SettingsPageContent() {
                 >
                   <Save className="w-4 h-4" /> {loading ? 'Menyimpan...' : 'Simpan Pengaturan'}
                 </button>
-              </div>
+                            </div>
             </form>
-          ) : (
+          )}
+
+          {/* TAB 2: AI RULES */}
+          {activeTab === 'ai-rules' && (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
                 <div>
@@ -393,6 +428,117 @@ function SettingsPageContent() {
                 Aturan di sini akan otomatis diikutsertakan setiap kali AI men-generate requirements
                 untuk project ini (di step Describe Project pada wizard).
               </p>
+              
+            </div>
+          )}
+                    {/* TAB 3: TOKEN & AI USAGE */}
+          {activeTab === 'token-usage' && (
+            <div className="space-y-6">
+              {isLoadingTokens ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="w-7 h-7 text-blue-600 animate-spin" />
+                  <span className="ml-2 text-sm text-gray-500">Memuat statistik token...</span>
+                </div>
+              ) : (
+                <>
+                  {/* Card Kuota & Sisa Token */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
+                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Sisa Kuota Bulanan</span>
+                      <div className="mt-2 flex items-baseline gap-2">
+                        <span className="text-2xl font-bold text-gray-900">
+                          {tokenData ? tokenData.remaining_tokens.toLocaleString() : '0'}
+                        </span>
+                        <span className="text-xs text-gray-500">/ {tokenData?.monthly_quota.toLocaleString()}</span>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-2 mt-3 overflow-hidden">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-500" 
+                          style={{ width: `${tokenData?.usage_percentage || 0}%` }}
+                        />
+                      </div>
+                      <span className="text-[11px] text-gray-400 mt-1 block">{tokenData?.usage_percentage || 0}% kuota terpakai</span>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
+                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Token Terpakai Bulan Ini</span>
+                      <div className="mt-2 text-2xl font-bold text-blue-600">
+                        {tokenData ? tokenData.monthly_used.toLocaleString() : '0'}
+                      </div>
+                      <span className="text-xs text-gray-400 mt-1 block">Dihitung otomatis per pemanggilan AI</span>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
+                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Status Multi-AI</span>
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          3 Provider Aktif
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-400 mt-2 block">Round-Robin & Failover Siap</span>
+                    </div>
+                  </div>
+
+                  {/* Provider Status Cards */}
+                  <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-amber-500" /> Model AI Terhubung
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {tokenData?.providers_info.map((p, idx) => (
+                        <div key={idx} className="border border-gray-100 bg-gray-50/70 p-4 rounded-xl">
+                          <div className="flex justify-between items-start">
+                            <span className="font-semibold text-sm text-gray-800">{p.name}</span>
+                            <span className="text-[10px] font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                              {p.status}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1 font-mono truncate">{p.model}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Riwayat Pemakaian Token */}
+                  <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <History className="w-4 h-4 text-blue-600" /> Riwayat Pemanggilan AI Terakhir
+                    </h3>
+                    {tokenData?.history && tokenData.history.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                          <thead>
+                            <tr className="border-b border-gray-200 text-gray-500">
+                              <th className="pb-3 font-medium">Fitur</th>
+                              <th className="pb-3 font-medium">Provider</th>
+                              <th className="pb-3 font-medium">Model</th>
+                              <th className="pb-3 font-medium text-right">Prompt</th>
+                              <th className="pb-3 font-medium text-right">Completion</th>
+                              <th className="pb-3 font-medium text-right">Total Tokens</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 text-gray-700">
+                            {tokenData.history.map((h) => (
+                              <tr key={h.id} className="hover:bg-gray-50/70">
+                                <td className="py-3 font-medium text-gray-900">{h.feature}</td>
+                                <td className="py-3 uppercase font-semibold text-[10px] text-gray-500">{h.provider}</td>
+                                <td className="py-3 font-mono text-[11px] text-gray-500">{h.model_name}</td>
+                                <td className="py-3 text-right font-mono">{h.prompt_tokens.toLocaleString()}</td>
+                                <td className="py-3 text-right font-mono">{h.completion_tokens.toLocaleString()}</td>
+                                <td className="py-3 text-right font-mono font-bold text-blue-600">{h.total_tokens.toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-400 text-xs">
+                        Belum ada riwayat pemanggilan AI yang tercatat.
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

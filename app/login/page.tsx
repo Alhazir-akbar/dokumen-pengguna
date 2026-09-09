@@ -63,6 +63,7 @@ export default function LoginPage() {
         console.log("Gagal memeriksa proyek, fallback ke wizard:", checkErr);
       }
       // 🚀 JIKA BELUM PUNYA PROYEK (USER BARU) -> Arahkan ke wizard setup
+      localStorage.removeItem('userdoc-wizard-storage');
       router.push('/project-setup');
     } catch (err: any) {
       setError(err.message || 'Terjadi kesalahan sistem. Silakan coba lagi.');
