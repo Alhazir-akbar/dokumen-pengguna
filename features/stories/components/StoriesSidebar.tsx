@@ -3,7 +3,12 @@
 import { useState, useMemo } from 'react';
 import { Epic, UserStory } from '../types';
 import EpicListItem from './EpicListItem';
+<<<<<<< Updated upstream
 import { Search, Pencil, ChevronDown } from 'lucide-react';
+=======
+import ProjectMenuDropdown from './ProjectMenuDropdown';
+import { Search, Edit3, ChevronDown } from 'lucide-react';
+>>>>>>> Stashed changes
 
 interface StoriesSidebarProps {
   epics: Epic[];
@@ -11,10 +16,32 @@ interface StoriesSidebarProps {
   onSelectStory: (story: UserStory) => void;
   onSelectEpic?: (epic: Epic) => void;
   onAddNew?: () => void;
+<<<<<<< Updated upstream
 }
 
 export default function StoriesSidebar({ epics, selectedStoryId, onSelectStory, onSelectEpic, onAddNew }: StoriesSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
+=======
+  projectName?: string;
+  projectId?: string | null;
+  // workspace_id dari project yang lagi dibuka (didapat dari getProjectById
+  // di app/stories/page.tsx). WAJIB dikirim eksplisit -- jangan andalkan
+  // localStorage untuk ini, soalnya bisa kosong/stale.
+  workspaceId?: number | null;
+}
+
+export default function StoriesSidebar({
+  epics,
+  selectedStoryId,
+  currentProjectId,
+  projectId,
+  workspaceId,
+  onSelectStory,
+  onSelectEpic,
+}: StoriesSidebarProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const activeProjId = currentProjectId || projectId;
+>>>>>>> Stashed changes
 
   const filteredEpics = useMemo(() => {
     if (!searchQuery.trim()) return epics;
@@ -47,8 +74,13 @@ export default function StoriesSidebar({ epics, selectedStoryId, onSelectStory, 
   }, [epics]);
 
   return (
+<<<<<<< Updated upstream
     <aside className="w-80 border-r border-gray-200 bg-white h-full flex flex-col">
       <div className="p-4 border-b border-gray-100">
+=======
+    <aside className="w-80 border-r border-gray-200 bg-white h-full flex flex-col relative select-none">
+      <div className="p-4 border-b border-gray-100 relative">
+>>>>>>> Stashed changes
         <div className="flex items-center gap-2 mb-2">
           <div className="relative flex-1">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
@@ -63,6 +95,7 @@ export default function StoriesSidebar({ epics, selectedStoryId, onSelectStory, 
             />
           </div>
 
+<<<<<<< Updated upstream
           {/* Tombol Create New (Pencil) yang berfungsi */}
           <button
             type="button"
@@ -80,6 +113,28 @@ export default function StoriesSidebar({ epics, selectedStoryId, onSelectStory, 
           >
             <ChevronDown className="w-3.5 h-3.5" />
           </button>
+=======
+          <ProjectMenuDropdown
+            workspaceId={workspaceId}
+            activeProjectId={activeProjId}
+            renderTrigger={({ onClick, triggerRef }) => (
+              <button
+                ref={triggerRef}
+                type="button"
+                onClick={onClick}
+                className="flex items-center bg-blue-600 hover:bg-blue-700 rounded-lg text-white overflow-hidden shadow-sm shrink-0 transition-colors cursor-pointer"
+                title="Project Menu & Options"
+              >
+                <span className="p-2 flex items-center justify-center border-r border-blue-500/40">
+                  <Edit3 className="w-4 h-4" />
+                </span>
+                <span className="p-2 flex items-center justify-center">
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </span>
+              </button>
+            )}
+          />
+>>>>>>> Stashed changes
         </div>
 
         <div className="text-[11px] text-gray-400 font-medium px-0.5">

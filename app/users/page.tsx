@@ -86,10 +86,12 @@ export default function UsersPage() {
             <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
               UD
             </div>
+<<<<<<< Updated upstream
+=======
+            <AccountMenu currentWorkspaceId={projectWorkspaceId} />
+>>>>>>> Stashed changes
           </div>
         </div>
-
-        {/* Dynamic Panel: Form Create/Edit, Detail, atau Empty State */}
         <div className="flex-1 flex overflow-hidden">
           {isCreating ? (
             <UserFormPanel

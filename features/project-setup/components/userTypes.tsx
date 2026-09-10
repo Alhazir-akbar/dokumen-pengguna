@@ -4,17 +4,53 @@
 import { useState } from 'react';
 import LogoUserdoc from '../../../public/logoUserDoc';
 import { useWizardStore, UserTypeItem } from '../store/wizard-store';
+<<<<<<< Updated upstream
 import { Sparkles, Trash2, ArrowRight, Plus } from 'lucide-react';
 
 export default function UserTypes() {
   const { projectName, userTypes, addUserType, removeUserType, nextStep } = useWizardStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
+=======
+import { Sparkles, Trash2, ArrowRight, Plus, AlertCircle, Pencil, Loader2 } from 'lucide-react';
+import { projectApi } from '@/services/projectsApi';
+import { getAuthToken } from '@/lib/auth';
+
+export default function UserTypes() {
+  const {
+    projectName,
+    projectDescription,
+    userTypes,
+    addUserType,
+    removeUserType,
+    updateUserTypeDescription,
+    nextStep,
+  } = useWizardStore() as any;
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 30);
+    return () => clearTimeout(t);
+  }, []);
+
+  const [isAdding, setIsAdding] = useState(false);
+>>>>>>> Stashed changes
   const [newTypeName, setNewTypeName] = useState('');
   const [newTypeDesc, setNewTypeDesc] = useState('');
 
   const titleName = projectName.trim() ? projectName : 'your project';
 
+<<<<<<< Updated upstream
   const handleAdd = (e: React.FormEvent) => {
+=======
+  // ID user type yang AI-nya lagi diproses (dipakai buat nampilin spinner di
+  // tombol Sparkles yang sedang jalan, tanpa ganggu tombol di baris lain).
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [aiError, setAiError] = useState('');
+
+  const titleName = projectName?.trim() ? projectName : 'your project';
+
+  const handleAddUserType = (e: React.FormEvent) => {
+>>>>>>> Stashed changes
     e.preventDefault();
     if (!newTypeName.trim()) return;
 
@@ -27,7 +63,64 @@ export default function UserTypes() {
     addUserType(newItem);
     setNewTypeName('');
     setNewTypeDesc('');
+<<<<<<< Updated upstream
     setIsModalOpen(false);
+=======
+    setIsAdding(false);
+    if (error) setError(false);
+  };
+
+  // Sebelumnya fungsi ini cuma mengisi string template statis. Sekarang beneran
+  // memanggil endpoint AI (/api/projects/suggest-user-type-description).
+  const handleAiGenerateDesc = async (user: UserTypeItem) => {
+    setAiError('');
+    const token = getAuthToken();
+    if (!token) {
+      setAiError('Sesi habis, silakan login kembali.');
+      return;
+    }
+
+    setGeneratingId(user.id);
+    try {
+      const result = await projectApi.suggestUserTypeDescription(
+        {
+          project_name: titleName,
+          user_type_name: user.name,
+          project_description: projectDescription || '',
+        },
+        token
+      );
+      updateUserTypeDescription(user.id, result.description);
+    } catch (err: any) {
+      console.error('Gagal generate deskripsi user type dengan AI:', err);
+      setAiError(err.message || 'AI gagal memberikan saran deskripsi. Silakan coba lagi.');
+    } finally {
+      setGeneratingId(null);
+    }
+  };
+
+  const startEditing = (user: UserTypeItem) => {
+    setEditingId(user.id);
+    setEditName(user.name);
+    setEditDesc(user.description || '');
+  };
+
+  const saveEdit = () => {
+    if (!editingId || !editName.trim()) return;
+    if (updateUserTypeDescription) {
+      updateUserTypeDescription(editingId, editDesc);
+    }
+    setEditingId(null);
+  };
+
+  const handleNext = () => {
+    if (!userTypes || userTypes.length === 0) {
+      setError(true);
+      return;
+    }
+    setError(false);
+    nextStep();
+>>>>>>> Stashed changes
   };
 
   return (
@@ -61,6 +154,7 @@ export default function UserTypes() {
                 <p className="text-blue-200 text-xs leading-relaxed">{user.description}</p>
               </div>
 
+<<<<<<< Updated upstream
               {/* Aksi Ikon (AI & Delete) */}
               <div className="flex items-center gap-2 shrink-0 pt-1">
                 <button
@@ -79,12 +173,109 @@ export default function UserTypes() {
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
+=======
+                  <div className="flex items-center gap-1.5 shrink-0 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleAiGenerateDesc(user)}
+                      disabled={generatingId === user.id}
+                      title="Generate description with AI"
+                      className="p-2 text-yellow-300 hover:text-white transition-colors rounded-xl hover:bg-white/10 border border-white/10 cursor-pointer shadow-sm bg-white/5 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {generatingId === user.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-4 h-4" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => startEditing(user)}
+                      title="Edit user type"
+                      className="p-2 text-blue-200 hover:text-white transition-colors rounded-xl hover:bg-white/10 border border-white/10 cursor-pointer shadow-sm bg-white/5"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeUserType(user.id)}
+                      title="Delete user type"
+                      className="p-2 text-red-300 hover:text-white transition-colors rounded-xl hover:bg-red-500/20 border border-red-500/20 cursor-pointer shadow-sm bg-red-950/20"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </>
+              )}
+>>>>>>> Stashed changes
             </div>
           ))
         )}
       </div>
 
+<<<<<<< Updated upstream
       {/* Tombol Bawah (Next & Add User Type) */}
+=======
+      {isAdding && (
+        <form onSubmit={handleAddUserType} className="bg-white/10 border border-blue-300/40 rounded-2xl p-4 w-full mb-4 backdrop-blur-md shadow-xl text-left flex flex-col gap-3">
+          <span className="text-xs font-semibold text-blue-200 uppercase tracking-wider">Add New User Type</span>
+          <input
+            type="text"
+            value={newTypeName}
+            onChange={(e) => setNewTypeName(e.target.value)}
+            placeholder="User type name (e.g. Administrator, Customer)..."
+            autoFocus
+            className="w-full bg-white/10 border border-blue-300/40 rounded-xl px-3 py-2 text-white text-sm font-semibold placeholder-blue-300/60 focus:outline-none"
+          />
+          <textarea
+            value={newTypeDesc}
+            onChange={(e) => setNewTypeDesc(e.target.value)}
+            placeholder="Describe what this user does..."
+            rows={2}
+            className="w-full bg-white/10 border border-blue-300/40 rounded-xl px-3 py-2 text-blue-100 text-xs placeholder-blue-300/60 resize-none focus:outline-none"
+          />
+          <div className="flex items-center gap-2 justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                setIsAdding(false);
+                setNewTypeName('');
+                setNewTypeDesc('');
+              }}
+              className="text-blue-200 hover:text-white text-xs px-3 py-1.5 cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!newTypeName.trim()}
+              className="bg-white text-blue-700 text-xs px-4 py-1.5 rounded-lg font-medium hover:bg-blue-50 cursor-pointer disabled:opacity-50"
+            >
+              Add
+            </button>
+          </div>
+        </form>
+      )}
+
+      {aiError && (
+        <div className="w-full text-left mb-4 animate-fadeIn">
+          <p className="text-red-300 text-xs flex items-center gap-1.5 bg-red-950/40 border border-red-500/30 px-3.5 py-2.5 rounded-xl">
+            <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+            {aiError}
+          </p>
+        </div>
+      )}
+
+      {error && (
+        <div className="w-full text-left mb-4 animate-fadeIn">
+          <p className="text-red-300 text-xs flex items-center gap-1.5 bg-red-950/40 border border-red-500/30 px-3.5 py-2.5 rounded-xl">
+            <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+            ⚠️ Tambahkan minimal 1 user type sebelum melanjutkan ke tahap berikutnya.
+          </p>
+        </div>
+      )}
+
+>>>>>>> Stashed changes
       <div className="w-full flex items-center justify-between">
         <button
           type="button"

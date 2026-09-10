@@ -1,12 +1,25 @@
 'use client';
 
+<<<<<<< Updated upstream
 import { useState } from 'react';
 import { Edit3, ArrowDown, Sparkles, Trash2, Plus, Save, X } from 'lucide-react';
+=======
+import { useState, useEffect } from 'react';
+import { Edit3, ArrowDown, Sparkles, Trash2, Plus, Save, X, User } from 'lucide-react';
+>>>>>>> Stashed changes
 
 interface Step {
   id: number | string;
   title: string;
   description: string;
+  personaId: number | null;
+  personaName: string | null;
+}
+
+interface Persona {
+  id: number;
+  name: string;
+  avatar_url?: string | null;
 }
 
 export interface JourneyDetailPanelProps {
@@ -16,46 +29,96 @@ export interface JourneyDetailPanelProps {
     description: string;
     steps?: Step[];
   } | null;
+  personas?: Persona[]; // daftar persona project ini, dipakai untuk dropdown assign
   isEditingInitially?: boolean;
   onClose: () => void;
   onSave: (updatedJourney: any) => void;
 }
 
+<<<<<<< Updated upstream
 export default function JourneyDetailPanel({ journey, isEditingInitially = false, onClose, onSave }: JourneyDetailPanelProps) {
   // Safe fallback object jika journey kosong/undefined
+=======
+const DEFAULT_STEP: Step = {
+  id: 1,
+  title: 'Step name',
+  description: 'Description of this Step',
+  personaId: null,
+  personaName: null,
+};
+
+export default function JourneyDetailPanel({
+  journey,
+  personas = [],
+  isEditingInitially = false,
+  onClose,
+  onSave,
+}: JourneyDetailPanelProps) {
+>>>>>>> Stashed changes
   const safeJourney = journey || {
     id: '',
     title: '',
     description: '',
-    steps: []
+    steps: [],
   };
 
   const [isEditing, setIsEditing] = useState(isEditingInitially);
+<<<<<<< Updated upstream
   
   const [title, setTitle] = useState(safeJourney.title || '');
   const [description, setDescription] = useState(safeJourney.description || '');
   
+=======
+  const [title, setTitle] = useState(safeJourney.title || '');
+  const [description, setDescription] = useState(safeJourney.description || '');
+>>>>>>> Stashed changes
   const [steps, setSteps] = useState<Step[]>(
     safeJourney.steps && safeJourney.steps.length > 0 ? safeJourney.steps : [
       { id: 1, title: 'Step name', description: 'Description of this Step' }
     ]
   );
 
+<<<<<<< Updated upstream
+=======
+  // Sync ulang state internal setiap kali data journey dari parent berubah
+  // (misalnya setelah AI selesai generate steps). Di-skip saat mode edit
+  // supaya draf yang lagi diketik user tidak ketiban reload dari server.
+  useEffect(() => {
+    if (isEditing) return;
+    setTitle(safeJourney.title || '');
+    setDescription(safeJourney.description || '');
+    setSteps(safeJourney.steps && safeJourney.steps.length > 0 ? safeJourney.steps : [DEFAULT_STEP]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [journey]);
+
+>>>>>>> Stashed changes
   const handleStepChange = (id: number | string, field: 'title' | 'description', value: string) => {
-    setSteps(steps.map(s => s.id === id ? { ...s, [field]: value } : s));
+    setSteps(steps.map((s) => (s.id === id ? { ...s, [field]: value } : s)));
+  };
+
+  const handleStepPersonaChange = (id: number | string, personaIdRaw: string) => {
+    const personaId = personaIdRaw ? Number(personaIdRaw) : null;
+    const persona = personas.find((p) => p.id === personaId);
+    setSteps(
+      steps.map((s) =>
+        s.id === id ? { ...s, personaId, personaName: persona?.name ?? null } : s
+      )
+    );
   };
 
   const handleAddStep = () => {
     const newStep: Step = {
       id: Date.now(),
       title: 'Step name',
-      description: 'Description of this Step'
+      description: 'Description of this Step',
+      personaId: null,
+      personaName: null,
     };
     setSteps([...steps, newStep]);
   };
 
   const handleDeleteStep = (id: number | string) => {
-    setSteps(steps.filter(s => s.id !== id));
+    setSteps(steps.filter((s) => s.id !== id));
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
@@ -65,25 +128,26 @@ export default function JourneyDetailPanel({ journey, isEditingInitially = false
       title,
       description,
       steps,
-      stepsCount: steps.length
+      stepsCount: steps.length,
     });
     setIsEditing(false);
   };
 
+  // ================= MODE EDIT =================
   if (isEditing) {
     return (
       <div className="flex-1 flex flex-col h-full bg-white overflow-y-auto">
         <div className="px-8 py-4 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-md z-20 shadow-xs">
           <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Journey Editor</span>
           <div className="flex items-center gap-2">
-            <button 
+            <button
               type="button"
               onClick={() => setIsEditing(false)}
               className="flex items-center gap-1.5 px-3.5 py-1.5 border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer shadow-xs"
             >
               <X className="w-3.5 h-3.5" /> Cancel
             </button>
-            <button 
+            <button
               type="button"
               onClick={handleFormSubmit}
               className="flex items-center gap-1.5 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer shadow-sm"
@@ -95,7 +159,7 @@ export default function JourneyDetailPanel({ journey, isEditingInitially = false
 
         <div className="p-8 max-w-4xl mx-auto w-full space-y-6">
           <div>
-            <input 
+            <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -106,10 +170,10 @@ export default function JourneyDetailPanel({ journey, isEditingInitially = false
 
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Description</label>
-            <textarea 
+            <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Journey name / description..."
+              placeholder="Journey description..."
               rows={3}
               className="w-full text-xs text-gray-700 placeholder:text-gray-300 border border-gray-200 rounded-xl p-4 focus:outline-none focus:border-blue-500 shadow-xs bg-white resize-none"
             />
@@ -128,19 +192,34 @@ export default function JourneyDetailPanel({ journey, isEditingInitially = false
               {steps.map((step, index) => (
                 <div key={step.id} className="flex flex-col items-center w-full space-y-4">
                   <div className="w-full bg-white border border-gray-200 rounded-2xl p-5 shadow-xs space-y-3 relative group hover:border-blue-300 transition-all">
-                    <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                      <div className="flex items-center gap-2 flex-1">
-                        <span className="text-xs font-bold text-gray-400">{index + 1}.</span>
-                        <input 
+                    <div className="flex items-center justify-between border-b border-gray-100 pb-3 gap-2">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <span className="text-xs font-bold text-gray-400 shrink-0">{index + 1}.</span>
+
+                        {/* Dropdown pilih persona asli dari project, bukan teks bebas */}
+                        <select
+                          value={step.personaId ?? ''}
+                          onChange={(e) => handleStepPersonaChange(step.id, e.target.value)}
+                          className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-2 py-1 shrink-0 focus:outline-none focus:border-blue-400 cursor-pointer max-w-[140px]"
+                        >
+                          <option value="">No persona</option>
+                          {personas.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
+
+                        <input
                           type="text"
                           value={step.title}
                           onChange={(e) => handleStepChange(step.id, 'title', e.target.value)}
-                          className="text-xs font-bold text-gray-900 bg-transparent border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:outline-none px-1 py-0.5 w-full"
+                          className="text-xs font-bold text-gray-900 bg-transparent border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:outline-none px-1 py-0.5 flex-1 min-w-0"
                         />
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
-                        <button 
+                        <button
                           type="button"
                           onClick={() => handleDeleteStep(step.id)}
                           className="text-gray-400 hover:text-red-500 transition-colors cursor-pointer p-1"
@@ -151,7 +230,7 @@ export default function JourneyDetailPanel({ journey, isEditingInitially = false
                     </div>
 
                     <div>
-                      <textarea 
+                      <textarea
                         value={step.description}
                         onChange={(e) => handleStepChange(step.id, 'description', e.target.value)}
                         rows={2}
@@ -167,7 +246,7 @@ export default function JourneyDetailPanel({ journey, isEditingInitially = false
               ))}
             </div>
 
-            <button 
+            <button
               type="button"
               onClick={handleAddStep}
               className="w-full border-2 border-dashed border-gray-200 hover:border-blue-400 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-blue-600 transition-all bg-gray-50/30 cursor-pointer group"
@@ -185,7 +264,7 @@ export default function JourneyDetailPanel({ journey, isEditingInitially = false
             <div className="inline-flex items-center text-xs font-bold text-gray-700 bg-white border border-gray-200 px-4 py-1.5 rounded-full shadow-xs">
               End Journey
             </div>
-            
+
             <span className="text-[10px] text-gray-400 pt-2">Userdoc uses AI. Check for mistakes.</span>
           </div>
         </div>
@@ -193,6 +272,7 @@ export default function JourneyDetailPanel({ journey, isEditingInitially = false
     );
   }
 
+  // ================= MODE VIEW =================
   return (
     <div className="flex-1 flex flex-col h-full bg-white overflow-y-auto">
       <div className="px-8 py-4 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-md z-10">
@@ -201,7 +281,7 @@ export default function JourneyDetailPanel({ journey, isEditingInitially = false
           <h1 className="text-sm font-bold text-gray-900 truncate max-w-xl">{safeJourney.title}</h1>
         </div>
         <div className="flex items-center gap-2">
-          <button 
+          <button
             onClick={() => setIsEditing(true)}
             className="flex items-center gap-1.5 px-3.5 py-1.5 border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer shadow-xs"
           >
@@ -228,10 +308,15 @@ export default function JourneyDetailPanel({ journey, isEditingInitially = false
               <div key={step.id || index} className="relative flex flex-col items-center">
                 <div className="w-full bg-white border border-gray-200/80 rounded-xl p-4 shadow-xs hover:border-blue-300 transition-all flex items-start justify-between gap-4">
                   <div className="space-y-1.5 flex-1">
-                    <h3 className="font-bold text-xs text-gray-900">{index + 1}. {step.title}</h3>
-                    <p className="text-xs text-gray-600 leading-relaxed">
-                      {step.description}
-                    </p>
+                    {step.personaName && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 mb-1">
+                        <User className="w-3 h-3" /> {step.personaName}
+                      </span>
+                    )}
+                    <h3 className="font-bold text-xs text-gray-900">
+                      {index + 1}. {step.title}
+                    </h3>
+                    <p className="text-xs text-gray-600 leading-relaxed">{step.description}</p>
                   </div>
                   <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-400 shrink-0 mt-0.5" />
                 </div>

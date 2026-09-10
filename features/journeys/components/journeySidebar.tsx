@@ -71,12 +71,12 @@ export default function JourneysSidebar({
             </p>
             <div className="flex items-center gap-3 text-[10px] text-gray-500 font-medium pt-2 border-t border-gray-100">
               <span className="flex items-center gap-1">
-                <User className="w-3 h-3 text-gray-400" /> {journey.personasCount || 1} Personas
+                <User className="w-3 h-3 text-gray-400" /> {journey.personasCount ?? 0} Personas
               </span>
               <span>•</span>
-              <span>{journey.storiesCount || 0} Stories</span>
+              <span>{journey.storiesCount ?? 0} Stories</span>
               <span>•</span>
-              <span>{journey.steps?.length || journey.stepsCount || 5} Steps</span>
+              <span>{journey.stepsCount ?? journey.steps?.length ?? 0} Steps</span>
             </div>
           </div>
         ))}

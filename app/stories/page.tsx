@@ -7,11 +7,65 @@ import EmptyDetailPanel from '@/features/stories/components/EmptyDetailPanel';
 import EpicDetailPanel from '@/features/stories/components/EpicDetailPanel';
 import ManualStoryDetailPanel from '@/features/stories/components/ManualStoryDetailPanel'; // <-- Komponen panel manual
 import AppSidebar from '@/features/common/components/AppSidebar';
-import { MessageSquare, Upload, Download, X } from 'lucide-react';
-import { useWizardStore } from '@/features/project-setup/store/wizard-store';
+import AccountMenu from '@/features/common/components/accountMenu';
+import { MessageSquare, Upload, Download, X, Lightbulb, Loader2 } from 'lucide-react';
+import { fetchEpics, fetchStories } from '@/services/storiesApi';
+import { projectApi } from '@/services/projectsApi';
+import { getAuthToken } from '@/lib/auth';
 
-export default function StoriesPage() {
-  const { epics, userStories, projectName, addStory, updateStory, deleteStory, useAi } = useWizardStore() as any;
+function StoriesPageContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const projectId = searchParams.get('project_id');
+
+  const [rawEpics, setRawEpics] = useState<any[]>([]);
+  const [rawStories, setRawStories] = useState<any[]>([]);
+  const [projectName, setProjectName] = useState('');
+  // workspace_id dari project yang lagi dibuka. Sumbernya langsung dari
+  // getProjectById (bukan localStorage) supaya selalu akurat, dilempar ke
+  // StoriesSidebar DAN EmptyDetailPanel (dropdown Project Menu di keduanya
+  // butuh ini) serta AccountMenu (buat highlight workspace aktif).
+  const [projectWorkspaceId, setProjectWorkspaceId] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (!projectId) {
+        setLoadError('project_id tidak ditemukan di URL.');
+        setIsLoading(false);
+        return;
+      }
+
+      const token = getAuthToken();
+      if (!token) {
+        setLoadError('Sesi habis, silakan login kembali.');
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const [epicsData, storiesData, projectData] = await Promise.all([
+          fetchEpics(Number(projectId), token),
+          fetchStories(Number(projectId), token),
+          projectApi.getProjectById(Number(projectId), token),
+        ]);
+
+        setRawEpics(epicsData);
+        setRawStories(storiesData);
+        setProjectName(projectData.name);
+        setProjectWorkspaceId(projectData.workspace_id);
+      } catch (err: any) {
+        console.error('Gagal memuat data stories:', err);
+        setLoadError(err.message || 'Gagal memuat data dari server.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [projectId]);
 
   const formattedEpics: Epic[] = epics.map((epic: any, index: number) => ({
     id: epic.id,
@@ -118,10 +172,27 @@ export default function StoriesPage() {
     downloadAnchor.remove();
   };
 
-  // 6. Fungsi Chat Assistant
-  const handleChatAssistant = () => {
-    alert('Membuka Userdoc Assistant Chat Panel...');
-  };
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+          <p className="text-sm text-gray-500">Memuat data proyek...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
+        <div className="text-center max-w-md px-6">
+          <p className="text-red-600 font-medium mb-2">Gagal memuat data</p>
+          <p className="text-sm text-gray-500">{loadError}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-50 font-sans relative">
@@ -156,13 +227,6 @@ export default function StoriesPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button 
-              onClick={handleChatAssistant}
-              className="text-xs text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm font-medium cursor-pointer"
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-blue-600" /> Chat to Userdoc Assistant
-            </button>
-            
             <div className="flex items-center gap-1.5 text-gray-500">
               <button 
                 onClick={handleUpload}
@@ -227,7 +291,11 @@ export default function StoriesPage() {
                 </ul>
               </div>
             ) : (
-              <EmptyDetailPanel onOpenAddModal={() => setIsModalOpen(true)} />
+              <EmptyDetailPanel
+                onOpenAddModal={() => setIsModalOpen(true)}
+                workspaceId={projectWorkspaceId}
+                projectId={projectId}
+              />
             )}
           </div>
         </div>
