@@ -1,13 +1,7 @@
-// features/journeys/components/journeyDetailPanel.tsx
 'use client';
 
-<<<<<<< Updated upstream
-import { useState } from 'react';
-import { Edit3, ArrowDown, Sparkles, Trash2, Plus, Save, X } from 'lucide-react';
-=======
 import { useState, useEffect } from 'react';
 import { Edit3, ArrowDown, Sparkles, Trash2, Plus, Save, X, User } from 'lucide-react';
->>>>>>> Stashed changes
 
 interface Step {
   id: number | string;
@@ -36,10 +30,6 @@ export interface JourneyDetailPanelProps {
   onSave: (updatedJourney: any) => void;
 }
 
-<<<<<<< Updated upstream
-export default function JourneyDetailPanel({ journey, isEditingInitially = false, onClose, onSave }: JourneyDetailPanelProps) {
-  // Safe fallback object jika journey kosong/undefined
-=======
 const DEFAULT_STEP: Step = {
   id: 1,
   title: 'Step name',
@@ -55,7 +45,6 @@ export default function JourneyDetailPanel({
   onClose,
   onSave,
 }: JourneyDetailPanelProps) {
->>>>>>> Stashed changes
   const safeJourney = journey || {
     id: '',
     title: '',
@@ -64,23 +53,12 @@ export default function JourneyDetailPanel({
   };
 
   const [isEditing, setIsEditing] = useState(isEditingInitially);
-<<<<<<< Updated upstream
-  
   const [title, setTitle] = useState(safeJourney.title || '');
   const [description, setDescription] = useState(safeJourney.description || '');
-  
-=======
-  const [title, setTitle] = useState(safeJourney.title || '');
-  const [description, setDescription] = useState(safeJourney.description || '');
->>>>>>> Stashed changes
   const [steps, setSteps] = useState<Step[]>(
-    safeJourney.steps && safeJourney.steps.length > 0 ? safeJourney.steps : [
-      { id: 1, title: 'Step name', description: 'Description of this Step' }
-    ]
+    safeJourney.steps && safeJourney.steps.length > 0 ? safeJourney.steps : [DEFAULT_STEP]
   );
 
-<<<<<<< Updated upstream
-=======
   // Sync ulang state internal setiap kali data journey dari parent berubah
   // (misalnya setelah AI selesai generate steps). Di-skip saat mode edit
   // supaya draf yang lagi diketik user tidak ketiban reload dari server.
@@ -92,7 +70,6 @@ export default function JourneyDetailPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [journey]);
 
->>>>>>> Stashed changes
   const handleStepChange = (id: number | string, field: 'title' | 'description', value: string) => {
     setSteps(steps.map((s) => (s.id === id ? { ...s, [field]: value } : s)));
   };
