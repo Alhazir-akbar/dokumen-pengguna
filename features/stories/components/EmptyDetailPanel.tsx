@@ -1,11 +1,18 @@
 // features/stories/components/EmptyDetailPanel.tsx
+'use client';
+
 import { Pencil, ChevronDown, Sparkles } from 'lucide-react';
+import ProjectMenuDropdown from './ProjectMenuDropdown';
 
 interface EmptyDetailPanelProps {
   onOpenAddModal?: () => void;
+  // Dibutuhkan supaya dropdown bisa fetch daftar project & tau project mana
+  // yang lagi aktif -- kirim dari app/stories/page.tsx.
+  workspaceId?: number | null;
+  projectId?: string | null;
 }
 
-export default function EmptyDetailPanel({ onOpenAddModal }: EmptyDetailPanelProps) {
+export default function EmptyDetailPanel({ onOpenAddModal, workspaceId, projectId }: EmptyDetailPanelProps) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-8 bg-white">
       {/* Ilustrasi Placeholder */}
@@ -23,22 +30,35 @@ export default function EmptyDetailPanel({ onOpenAddModal }: EmptyDetailPanelPro
         Capture requirements in a language everyone can understand
       </p>
 
-      {/* Tombol Create New dengan Pencil dan Dropdown */}
-      <div className="inline-flex rounded-lg shadow-sm">
-        <button
-          onClick={onOpenAddModal}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2.5 rounded-l-lg transition-colors flex items-center gap-2 text-sm cursor-pointer"
-        >
-          <Pencil className="w-4 h-4" />
-          <span>Create New</span>
-        </button>
-        <button
-          onClick={onOpenAddModal}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-2.5 rounded-r-lg border-l border-blue-500 transition-colors flex items-center justify-center cursor-pointer"
-        >
-          <ChevronDown className="w-4 h-4" />
-        </button>
-      </div>
+      {/* Satu tombol, satu onClick -- cuma buka dropdown Project Menu (sama
+          kayak StoriesSidebar). Aksi "Create New User Story" sekarang jadi
+          item paling atas DI DALAM dropdown itu sendiri (extraTopAction),
+          bukan aksi terpisah di tombolnya. */}
+      <ProjectMenuDropdown
+        workspaceId={workspaceId}
+        activeProjectId={projectId}
+        extraTopAction={{
+          label: 'Create New User Story',
+          icon: <Pencil className="w-4 h-4 text-blue-600" />,
+          onClick: () => onOpenAddModal?.(),
+        }}
+        renderTrigger={({ onClick, triggerRef }) => (
+          <button
+            ref={triggerRef}
+            type="button"
+            onClick={onClick}
+            className="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm transition-colors cursor-pointer"
+          >
+            <span className="px-4 py-2.5 flex items-center gap-2 text-sm font-medium border-r border-blue-500/40">
+              <Pencil className="w-4 h-4" />
+              Create New
+            </span>
+            <span className="px-2.5 py-2.5 flex items-center justify-center">
+              <ChevronDown className="w-4 h-4" />
+            </span>
+          </button>
+        )}
+      />
     </div>
   );
 }

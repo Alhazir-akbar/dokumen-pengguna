@@ -22,9 +22,10 @@ function StoriesPageContent() {
   const [rawEpics, setRawEpics] = useState<any[]>([]);
   const [rawStories, setRawStories] = useState<any[]>([]);
   const [projectName, setProjectName] = useState('');
-  // BARU: workspace_id dari project yang lagi dibuka. Sumbernya langsung dari
-  // getProjectById (bukan localStorage) supaya selalu akurat, lalu dilempar
-  // ke StoriesSidebar buat fetch daftar project di dropdown "Change Project".
+  // workspace_id dari project yang lagi dibuka. Sumbernya langsung dari
+  // getProjectById (bukan localStorage) supaya selalu akurat, dilempar ke
+  // StoriesSidebar DAN EmptyDetailPanel (dropdown Project Menu di keduanya
+  // butuh ini) serta AccountMenu (buat highlight workspace aktif).
   const [projectWorkspaceId, setProjectWorkspaceId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -240,10 +241,6 @@ function StoriesPageContent() {
     downloadAnchor.remove();
   };
 
-  const handleChatAssistant = () => {
-    alert('Membuka Userdoc Assistant Chat Panel...');
-  };
-
   if (isLoading) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
@@ -296,13 +293,6 @@ function StoriesPageContent() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={handleChatAssistant}
-              className="text-xs text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm font-medium cursor-pointer"
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-blue-600" /> Chat to Userdoc Assistant
-            </button>
-
             <div className="flex items-center gap-1.5 text-gray-500">
               <button
                 onClick={handleUpload}
@@ -354,7 +344,11 @@ function StoriesPageContent() {
                 </ul>
               </div>
             ) : (
-              <EmptyDetailPanel onOpenAddModal={() => setIsModalOpen(true)} />
+              <EmptyDetailPanel
+                onOpenAddModal={() => setIsModalOpen(true)}
+                workspaceId={projectWorkspaceId}
+                projectId={projectId}
+              />
             )}
           </div>
         </div>

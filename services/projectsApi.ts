@@ -87,20 +87,37 @@ export interface SuggestUserGoalsResponse {
   frustrations: string;
 }
 
+export interface SuggestUserJourneyPersonaItem {
+  name: string;
+  user_type?: string;
+  about?: string;
+}
+
 export interface SuggestUserJourneyPayload {
   project_name: string;
   project_description?: string;
-  user_types?: string[];
+  personas?: SuggestUserJourneyPersonaItem[];  
 }
 
 export interface SuggestUserJourneyStepItem {
   title: string;
   description: string;
+  persona_name?: string | null; 
 }
 
 export interface SuggestUserJourneyResponse {
   journey: string;
   steps: SuggestUserJourneyStepItem[];
+}
+
+export interface SuggestUserTypeDescriptionPayload {
+  project_name: string;
+  user_type_name: string;
+  project_description?: string;
+}
+
+export interface SuggestUserTypeDescriptionResponse {
+  description: string;
 }
 
 // ============ Helper ============
@@ -236,6 +253,25 @@ export const projectApi = {
       handleUnauthorized(response.status);
       const errorData = await response.json().catch(() => ({}));
       throw new Error(formatApiError(errorData, 'AI gagal memberikan saran goals & frustrations'));
+    }
+    return response.json();
+  },
+
+  // BARU: generate deskripsi untuk SATU user type (tombol Sparkles di step
+  // UserTypes wizard). Lihat SuggestUserTypeDescriptionPayload di atas.
+  suggestUserTypeDescription: async (
+    data: SuggestUserTypeDescriptionPayload,
+    token: string
+  ): Promise<SuggestUserTypeDescriptionResponse> => {
+    const response = await fetch(`${API_BASE_URL}/api/projects/suggest-user-type-description`, {
+      method: 'POST',
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      handleUnauthorized(response.status);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(formatApiError(errorData, 'AI gagal memberikan saran deskripsi tipe pengguna'));
     }
     return response.json();
   },

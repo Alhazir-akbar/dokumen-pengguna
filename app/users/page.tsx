@@ -275,8 +275,6 @@ function UsersPageContent() {
             <AccountMenu currentWorkspaceId={projectWorkspaceId} />
           </div>
         </div>
-
-        {/* Dynamic Panel: Form Create/Edit, Detail, atau Empty State */}
         <div className="flex-1 flex overflow-hidden">
           {isCreating ? (
             <UserFormPanel

@@ -4,6 +4,7 @@
 import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import AppSidebar from '@/features/common/components/AppSidebar';
+import AccountMenu from '@/features/common/components/accountMenu'
 import {
   Code,
   Layers,
@@ -19,9 +20,22 @@ import {
   X,
   ChevronRight,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Sparkles,
+  Download,
+  Monitor,
+  Cpu,
+  Database,
+  Settings2,
+  FolderTree,
+  ShieldCheck,
+  LayoutGrid,
+  ServerCog,
+  ArrowRight,
+  ArrowLeft,
+  Upload,
 } from 'lucide-react';
-import { buildApi, CodingGuideline, DevelopmentPlan } from '@/services/buildApi';
+import { buildApi, TechStack, CodingGuideline, DevelopmentPlan, EpicOption } from '@/services/buildApi';
 import { projectApi } from '@/services/projectsApi';
 import { getAuthToken } from '@/lib/auth';
 import { getStoredProjectId, setStoredProjectId } from '@/lib/project-context';
@@ -34,16 +48,36 @@ function BuildPageContent() {
   const projectIdParam = searchParams.get('project_id');
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('tech-stack');
-  const [projectName, setProjectName] = useState('');
+  const [project, setProject] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error' | ''; text: string }>({ type: '', text: '' });
 
-  // PERBAIKAN: sebelumnya project_id diambil dari localStorage key 'active_project_id'
-  // yang sebenarnya tidak pernah di-set di alur manapun saat ini, jadi Build selalu
-  // menampilkan "Tidak ada proyek aktif" walau project sudah ada. Sekarang mengikuti
-  // pola yang sama dengan Stories/Users/Journeys: baca dari URL, fallback localStorage.
+  const handleUpload = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,.txt';
+    input.onchange = (e: any) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        alert(`Journey file "${file.name}" berhasil di-upload!`);
+      }
+    };
+    input.click();
+  };
+
+    const handleDownload = () => {
+    const projectName = project?.name || 'project';
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(project, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', dataStr);
+    downloadAnchor.setAttribute('download', `${projectName}-builds.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
+
   useEffect(() => {
     if (!projectIdParam) {
       const stored = getStoredProjectId();
@@ -69,8 +103,8 @@ function BuildPageContent() {
       setIsLoading(true);
       setLoadError('');
       try {
-        const project = await projectApi.getProjectById(Number(projectIdParam), token);
-        setProjectName(project.name);
+        const proj = await projectApi.getProjectById(Number(projectIdParam), token);
+        setProject(proj);
         setStoredProjectId(projectIdParam);
       } catch (err: any) {
         console.error('Gagal memuat data project:', err);
@@ -124,69 +158,88 @@ function BuildPageContent() {
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="h-14 border-b border-gray-200 px-6 flex items-center justify-between bg-white shrink-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-500">{projectName || 'Untitled Project'}</span>
+            <span className="text-sm font-medium text-gray-500">{project?.name || 'Untitled Project'}</span>
             <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
             <Code className="w-4 h-4 text-gray-500" />
             <span className="text-sm font-semibold text-gray-800">Build</span>
             <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
             <span className="text-sm text-gray-500">
-              {activeTab === 'tech-stack' ? 'Technology Stack' : activeTab === 'guidelines' ? 'Coding Guidelines' : 'Development Plans'}
+              {activeTab === 'tech-stack' ? 'Technologies' : activeTab === 'guidelines' ? 'Coding Guidelines' : 'Dev Plans'}
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <button className="text-xs text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-xs font-medium cursor-pointer">
-              <MessageSquare className="w-3.5 h-3.5 text-blue-600" /> Chat to Userdoc Assistant
-            </button>
-            <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs">UD</div>
+            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 text-gray-500">
+              <button
+                onClick={handleUpload}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 cursor-pointer"
+                title="Upload Document"
+              >
+                <Upload className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleDownload}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 cursor-pointer"
+                title="Download / Export JSON"
+              >
+                <Download className="w-4 h-4" />
+              </button>
+              </div>
+            <AccountMenu />
           </div>
+        </div>
         </header>
 
-        <div className="border-b border-gray-200 bg-white px-6">
-          <nav className="flex gap-1">
-            {[
-              { key: 'tech-stack', label: 'Technology Stack', icon: Layers },
-              { key: 'guidelines', label: 'Coding Guidelines', icon: BookOpen },
-              { key: 'dev-plans', label: 'Development Plans', icon: ClipboardList },
-            ].map(({ key, label, icon: Icon }) => (
-              <button
-                key={key}
-                onClick={() => setActiveTab(key as ActiveTab)}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors cursor-pointer ${
-                  activeTab === key
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-800'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                {label}
-              </button>
-            ))}
-          </nav>
-        </div>
+        <div className="flex flex-1 overflow-hidden">
+          <aside className="w-56 border-r border-gray-200 bg-white shrink-0 py-4">
+            <p className="px-4 text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Implementation Tools</p>
+            <nav className="flex flex-col gap-0.5 px-2">
+              {[
+                { key: 'tech-stack', label: 'Technologies', sub: 'Technology stack and architecture', icon: Layers },
+                { key: 'guidelines', label: 'Coding guidelines', sub: 'Coding best practices and standards', icon: Code },
+                { key: 'dev-plans', label: 'Dev Plans', sub: 'Plans to build the project with AI', icon: ClipboardList },
+              ].map(({ key, label, sub, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => setActiveTab(key as ActiveTab)}
+                  className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl text-left transition-colors cursor-pointer ${
+                    activeTab === key ? 'bg-blue-50' : 'hover:bg-gray-50'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${activeTab === key ? 'text-blue-600' : 'text-gray-400'}`} />
+                  <span>
+                    <span className={`block text-sm font-medium ${activeTab === key ? 'text-gray-900' : 'text-gray-700'}`}>{label}</span>
+                    <span className="block text-[11px] text-gray-400 leading-tight">{sub}</span>
+                  </span>
+                </button>
+              ))}
+            </nav>
+          </aside>
 
-        {statusMessage.text && (
-          <div className={`mx-6 mt-4 p-3.5 rounded-xl flex items-center gap-3 text-sm font-medium ${
-            statusMessage.type === 'success'
-              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-              : 'bg-rose-50 text-rose-800 border border-rose-200'
-          }`}>
-            {statusMessage.type === 'success'
-              ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              : <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />}
-            {statusMessage.text}
+          <div className="flex-1 overflow-y-auto p-6">
+            {statusMessage.text && (
+              <div className={`mb-4 p-3.5 rounded-xl flex items-center gap-3 text-sm font-medium ${
+                statusMessage.type === 'success'
+                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                  : 'bg-rose-50 text-rose-800 border border-rose-200'
+              }`}>
+                {statusMessage.type === 'success'
+                  ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  : <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />}
+                {statusMessage.text}
+              </div>
+            )}
+
+            {activeTab === 'tech-stack' && (
+              <TechStackTab projectId={projectIdNum} applicationType={project?.application_type} showMessage={showMessage} />
+            )}
+            {activeTab === 'guidelines' && (
+              <GuidelinesTab projectId={projectIdNum} showMessage={showMessage} />
+            )}
+            {activeTab === 'dev-plans' && (
+              <DevPlansTab projectId={projectIdNum} showMessage={showMessage} />
+            )}
           </div>
-        )}
-
-        <div className="flex-1 overflow-y-auto p-6">
-          {activeTab === 'tech-stack' && (
-            <TechStackTab projectId={projectIdNum} showMessage={showMessage} />
-          )}
-          {activeTab === 'guidelines' && (
-            <GuidelinesTab projectId={projectIdNum} showMessage={showMessage} />
-          )}
-          {activeTab === 'dev-plans' && (
-            <DevPlansTab projectId={projectIdNum} showMessage={showMessage} />
-          )}
         </div>
       </main>
     </div>
@@ -205,47 +258,118 @@ export default function BuildPage() {
   );
 }
 
+// ============ Komponen bantu ============
+
+function BetaHeader({ title }: { title: string }) {
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+        <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">BETA</span>
+      </div>
+      <p className="text-xs text-gray-500 mt-1">In beta and may change, please contact us with feedback or issues.</p>
+    </div>
+  );
+}
+
+function OverviewCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 p-5">
+      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Overview</p>
+      <p className="text-sm text-gray-600 leading-relaxed">{children}</p>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">{label}</label>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50/50 text-sm text-gray-900 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
+      />
+    </div>
+  );
+}
+
 // ============ TAB 1: TECH STACK ============
 
-function TechStackTab({ projectId, showMessage }: any) {
-  const [form, setForm] = useState({ ui_layer: '', app_layer: '', data_layer: '', integration_layer: '' });
-  const [saving, setSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+const COLOR_CLASSES: Record<string, { bg: string; border: string; text: string; iconBg: string }> = {
+  blue: { bg: 'bg-blue-50/60', border: 'border-blue-200', text: 'text-blue-700', iconBg: 'bg-blue-100 text-blue-600' },
+  emerald: { bg: 'bg-emerald-50/60', border: 'border-emerald-200', text: 'text-emerald-700', iconBg: 'bg-emerald-100 text-emerald-600' },
+  violet: { bg: 'bg-violet-50/60', border: 'border-violet-200', text: 'text-violet-700', iconBg: 'bg-violet-100 text-violet-600' },
+  amber: { bg: 'bg-amber-50/60', border: 'border-amber-200', text: 'text-amber-700', iconBg: 'bg-amber-100 text-amber-600' },
+};
 
-  useEffect(() => {
-    const load = async () => {
-      const token = getAuthToken();
-      if (!token) return;
-      setIsLoading(true);
-      try {
-        const data = await buildApi.getTechStack(projectId, token);
-        if (data) {
-          setForm({
-            ui_layer: data.ui_layer || '',
-            app_layer: data.app_layer || '',
-            data_layer: data.data_layer || '',
-            integration_layer: data.integration_layer || '',
-          });
-        }
-      } catch (err: any) {
-        showMessage('error', err.message || 'Gagal memuat tech stack.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    load();
-  }, [projectId]);
+const emptyTechForm = {
+  target_users: '', scale: '', platform: '',
+  ui_language: '', ui_framework: '', ui_library: '',
+  app_language: '', app_framework: '',
+  data_layer: '', integration_layer: '',
+};
+
+function TechStackTab({ projectId, applicationType, showMessage }: any) {
+  const [data, setData] = useState<TechStack | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [form, setForm] = useState(emptyTechForm);
+
+  const load = async () => {
+    const token = getAuthToken();
+    if (!token) return;
+    setIsLoading(true);
+    try {
+      setData(await buildApi.getTechStack(projectId, token));
+    } catch (err: any) {
+      showMessage('error', err.message || 'Gagal memuat tech stack.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, [projectId]);
+
+  const openEdit = () => {
+    setForm({
+      target_users: data?.target_users || '',
+      scale: data?.scale || '',
+      platform: data?.platform || '',
+      ui_language: data?.ui_language || '',
+      ui_framework: data?.ui_framework || '',
+      ui_library: data?.ui_library || '',
+      app_language: data?.app_language || '',
+      app_framework: data?.app_framework || '',
+      data_layer: data?.data_layer || '',
+      integration_layer: data?.integration_layer || '',
+    });
+    setShowModal(true);
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const token = getAuthToken();
-    if (!token) {
-      showMessage('error', 'Sesi habis, silakan login kembali.');
-      return;
-    }
+    if (!token) { showMessage('error', 'Sesi habis, silakan login kembali.'); return; }
     setSaving(true);
     try {
-      await buildApi.upsertTechStack(projectId, form, token);
+      const updated = await buildApi.upsertTechStack(projectId, form, token);
+      setData(updated);
+      setShowModal(false);
       showMessage('success', 'Technology Stack berhasil disimpan!');
     } catch (err: any) {
       showMessage('error', err.message || 'Gagal menyimpan tech stack.');
@@ -254,63 +378,206 @@ function TechStackTab({ projectId, showMessage }: any) {
     }
   };
 
-  const layers = [
-    { key: 'ui_layer', label: 'UI Layer', placeholder: 'Contoh: Next.js, React, Vue.js', desc: 'Framework antarmuka pengguna' },
-    { key: 'app_layer', label: 'Application Layer', placeholder: 'Contoh: FastAPI, Django, Express', desc: 'Framework backend & logika bisnis' },
-    { key: 'data_layer', label: 'Data Layer', placeholder: 'Contoh: PostgreSQL, SQLite, MongoDB', desc: 'Database & penyimpanan data' },
-    { key: 'integration_layer', label: 'Integration Layer', placeholder: 'Contoh: REST API, GraphQL, WebSocket', desc: 'Protokol & integrasi layanan eksternal' },
-  ];
+  const handleGenerate = async () => {
+    const token = getAuthToken();
+    if (!token) { showMessage('error', 'Sesi habis, silakan login kembali.'); return; }
+    setGenerating(true);
+    try {
+      const updated = await buildApi.generateTechStack(projectId, token);
+      setForm({
+        target_users: updated.target_users || '',
+        scale: updated.scale || '',
+        platform: updated.platform || '',
+        ui_language: updated.ui_language || '',
+        ui_framework: updated.ui_framework || '',
+        ui_library: updated.ui_library || '',
+        app_language: updated.app_language || '',
+        app_framework: updated.app_framework || '',
+        data_layer: updated.data_layer || '',
+        integration_layer: updated.integration_layer || '',
+      });
+      setData(updated);
+      showMessage('success', 'Saran Technology Stack berhasil dibuat oleh AI!');
+    } catch (err: any) {
+      showMessage('error', err.message || 'Gagal generate tech stack.');
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   if (isLoading) {
-    return <div className="max-w-3xl py-12 flex justify-center"><Loader2 className="w-6 h-6 text-gray-400 animate-spin" /></div>;
+    return <div className="max-w-4xl py-12 flex justify-center"><Loader2 className="w-6 h-6 text-gray-400 animate-spin" /></div>;
   }
 
+  const has = (v?: string | null) => !!(v && v.trim());
+  const displayed = (v?: string | null) => v || 'Not configured';
+  const valClass = (v?: string | null) => has(v) ? 'text-gray-800 font-medium' : 'text-gray-400 italic';
+
   return (
-    <div className="max-w-3xl">
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-        <div className="p-6 border-b border-gray-100 bg-gray-50/50">
-          <h2 className="text-base font-semibold text-gray-900">Konfigurasi Technology Stack</h2>
-          <p className="text-xs text-gray-500 mt-0.5">Tentukan teknologi yang digunakan pada setiap lapisan arsitektur proyek.</p>
-        </div>
-        <form onSubmit={handleSave} className="p-6 space-y-5">
-          {layers.map(({ key, label, placeholder, desc }) => (
-            <div key={key}>
-              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider">{label}</label>
-              <p className="text-[11px] text-gray-400 mt-0.5 mb-1.5">{desc}</p>
-              <input
-                type="text"
-                value={(form as any)[key]}
-                onChange={e => setForm({ ...form, [key]: e.target.value })}
-                placeholder={placeholder}
-                className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl bg-gray-50/50 text-sm text-gray-900 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
-              />
-            </div>
-          ))}
-          <div className="flex justify-end pt-2">
-            <button
-              type="submit"
-              disabled={saving}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
-            >
-              <Save className="w-4 h-4" />
-              {saving ? 'Menyimpan...' : 'Simpan Tech Stack'}
-            </button>
-          </div>
-        </form>
+    <div className="max-w-4xl space-y-5">
+      <div className="flex items-start justify-between gap-4">
+        <BetaHeader title="Technology Stack Configuration" />
+        <button onClick={openEdit} className="inline-flex items-center gap-1.5 px-3.5 py-2 border border-gray-200 hover:bg-gray-50 rounded-lg text-sm font-medium text-gray-700 transition-colors cursor-pointer shrink-0">
+          <Pencil className="w-3.5 h-3.5" /> Edit
+        </button>
       </div>
+
+      <OverviewCard>
+        Configure your project&apos;s application details, development approach, and architecture stack. This is
+        used to help generate coding guidelines, and also development plans when it comes time for implementation.
+      </OverviewCard>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl border border-gray-200 p-5">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Application Details</p>
+          <p className="text-xs text-gray-400 mb-3">Basic application configuration</p>
+          <div className="space-y-2.5 text-sm">
+            <div className="flex justify-between"><span className="text-gray-500">Type</span><span className={valClass(applicationType)}>{displayed(applicationType)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-500">Users</span><span className={valClass(data?.target_users)}>{displayed(data?.target_users)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-500">Scale</span><span className={valClass(data?.scale)}>{displayed(data?.scale)}</span></div>
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-200 p-5">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Development Approach</p>
+          <p className="text-xs text-gray-400 mb-3">Development team and AI assistance configuration</p>
+          <div className="space-y-2.5 text-sm">
+            <div className="flex justify-between"><span className="text-gray-500">Platform</span><span className={valClass(data?.platform)}>{displayed(data?.platform)}</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Architecture</p>
+        <p className="text-xs text-gray-400 mb-3">Application layers and technology stack</p>
+
+        <div className={`rounded-2xl border p-4 mb-3 ${COLOR_CLASSES.blue.bg} ${COLOR_CLASSES.blue.border}`}>
+          <div className="flex items-center gap-2.5 mb-2">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${COLOR_CLASSES.blue.iconBg}`}><Monitor className="w-4 h-4" /></div>
+            <span className={`text-sm font-bold ${COLOR_CLASSES.blue.text}`}>User Interface Layer</span>
+          </div>
+          <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500 pl-10">
+            <span>Language: <span className={valClass(data?.ui_language)}>{displayed(data?.ui_language)}</span></span>
+            <span>Framework: <span className={valClass(data?.ui_framework)}>{displayed(data?.ui_framework)}</span></span>
+            <span>UI Library: <span className={valClass(data?.ui_library)}>{displayed(data?.ui_library)}</span></span>
+          </div>
+        </div>
+
+        <div className="flex justify-center mb-3"><ChevronRight className="w-4 h-4 text-gray-300 rotate-90" /></div>
+
+        <div className={`rounded-2xl border p-4 mb-3 ${COLOR_CLASSES.emerald.bg} ${COLOR_CLASSES.emerald.border}`}>
+          <div className="flex items-center gap-2.5 mb-2">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${COLOR_CLASSES.emerald.iconBg}`}><Cpu className="w-4 h-4" /></div>
+            <span className={`text-sm font-bold ${COLOR_CLASSES.emerald.text}`}>Application Layer</span>
+          </div>
+          <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500 pl-10">
+            <span>Language: <span className={valClass(data?.app_language)}>{displayed(data?.app_language)}</span></span>
+            <span>Framework: <span className={valClass(data?.app_framework)}>{displayed(data?.app_framework)}</span></span>
+          </div>
+        </div>
+
+        <div className="flex justify-center mb-3"><ChevronRight className="w-4 h-4 text-gray-300 rotate-90" /></div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className={`rounded-2xl border p-4 ${COLOR_CLASSES.violet.bg} ${COLOR_CLASSES.violet.border}`}>
+            <div className="flex items-center gap-2.5 mb-2">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${COLOR_CLASSES.violet.iconBg}`}><Database className="w-4 h-4" /></div>
+              <span className={`text-sm font-bold ${COLOR_CLASSES.violet.text}`}>Data Layer</span>
+            </div>
+            <div className="text-xs text-gray-500 pl-10">
+              Database: <span className={valClass(data?.data_layer)}>{displayed(data?.data_layer)}</span>
+            </div>
+          </div>
+          <div className={`rounded-2xl border p-4 ${COLOR_CLASSES.amber.bg} ${COLOR_CLASSES.amber.border}`}>
+            <div className="flex items-center gap-2.5 mb-2">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${COLOR_CLASSES.amber.iconBg}`}><Settings2 className="w-4 h-4" /></div>
+              <span className={`text-sm font-bold ${COLOR_CLASSES.amber.text}`}>Integration Layer</span>
+            </div>
+            <div className="text-xs text-gray-500 pl-10">
+              <span className={valClass(data?.integration_layer)}>{displayed(data?.integration_layer)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {showModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white rounded-t-2xl">
+              <h3 className="text-base font-semibold">Edit Technology Stack</h3>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={handleGenerate} disabled={generating}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 cursor-pointer">
+                  <Sparkles className="w-3.5 h-3.5" /> {generating ? 'Generating...' : 'Generate with AI'}
+                </button>
+                <button onClick={() => setShowModal(false)} className="p-1 hover:bg-gray-100 rounded-lg cursor-pointer"><X className="w-4 h-4" /></button>
+              </div>
+            </div>
+            <form onSubmit={handleSave} className="p-5 space-y-5">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Users" value={form.target_users} onChange={(v) => setForm({ ...form, target_users: v })} placeholder="Contoh: 1.000 - 10.000 pengguna" />
+                <Field label="Scale" value={form.scale} onChange={(v) => setForm({ ...form, scale: v })} placeholder="Contoh: Small to Medium Scale" />
+              </div>
+              <Field label="Platform" value={form.platform} onChange={(v) => setForm({ ...form, platform: v })} placeholder="Contoh: Web-based, AI-assisted development" />
+
+              <div>
+                <p className="text-xs font-semibold text-gray-700 mb-2">User Interface Layer</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <Field label="Language" value={form.ui_language} onChange={(v) => setForm({ ...form, ui_language: v })} placeholder="TypeScript" />
+                  <Field label="Framework" value={form.ui_framework} onChange={(v) => setForm({ ...form, ui_framework: v })} placeholder="Next.js" />
+                  <Field label="UI Library" value={form.ui_library} onChange={(v) => setForm({ ...form, ui_library: v })} placeholder="Tailwind CSS" />
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold text-gray-700 mb-2">Application Layer</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Language" value={form.app_language} onChange={(v) => setForm({ ...form, app_language: v })} placeholder="Python" />
+                  <Field label="Framework" value={form.app_framework} onChange={(v) => setForm({ ...form, app_framework: v })} placeholder="FastAPI" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Data Layer (Database)" value={form.data_layer} onChange={(v) => setForm({ ...form, data_layer: v })} placeholder="PostgreSQL" />
+                <Field label="Integration Layer" value={form.integration_layer} onChange={(v) => setForm({ ...form, integration_layer: v })} placeholder="REST API" />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-1">
+                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer">Batal</button>
+                <button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-semibold disabled:opacity-50 cursor-pointer flex items-center gap-2">
+                  <Save className="w-4 h-4" /> {saving ? 'Menyimpan...' : 'Simpan'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ============ TAB 2: CODING GUIDELINES ============
 
+const GUIDELINE_CATEGORIES = [
+  { key: 'project_structure', label: 'Project Structure', desc: 'Directory and file structure', icon: FolderTree },
+  { key: 'security', label: 'Security', desc: 'Overview of security best practices', icon: ShieldCheck },
+  { key: 'frontend', label: 'Frontend Guidelines', desc: 'Overview of frontend best practices', icon: LayoutGrid },
+  { key: 'backend', label: 'Backend Guidelines', desc: 'Overview of backend best practices', icon: ServerCog },
+  { key: 'database', label: 'Database Guidelines', desc: 'Overview of database best practices', icon: Database },
+];
+
 function GuidelinesTab({ projectId, showMessage }: any) {
   const [guidelines, setGuidelines] = useState<CodingGuideline[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [editingItem, setEditingItem] = useState<CodingGuideline | null>(null);
-  const [form, setForm] = useState({ title: '', content: '' });
-  const [saving, setSaving] = useState(false);
+  const [generatingAll, setGeneratingAll] = useState(false);
+
+  const [activeItem, setActiveItem] = useState<{ category: string | null; label: string; existing: CodingGuideline | null } | null>(null);
+  const [modalForm, setModalForm] = useState({ title: '', content: '' });
+  const [savingModal, setSavingModal] = useState(false);
+  const [generatingModal, setGeneratingModal] = useState(false);
+
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState({ title: '', content: '' });
+  const [savingAdd, setSavingAdd] = useState(false);
 
   const fetchGuidelines = async () => {
     const token = getAuthToken();
@@ -327,34 +594,129 @@ function GuidelinesTab({ projectId, showMessage }: any) {
 
   useEffect(() => { fetchGuidelines(); }, [projectId]);
 
-  const openAddModal = () => { setEditingItem(null); setForm({ title: '', content: '' }); setShowModal(true); };
-  const openEditModal = (item: CodingGuideline) => { setEditingItem(item); setForm({ title: item.title, content: item.content }); setShowModal(true); };
+  const byCategory = (key: string) => guidelines.find((g) => g.category === key) || null;
+  const customGuidelines = guidelines.filter((g) => !g.category);
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const openCategory = (key: string, label: string) => {
+    const existing = byCategory(key);
+    setModalForm({ title: existing?.title || label, content: existing?.content || '' });
+    setActiveItem({ category: key, label, existing });
+  };
+
+  const openCustom = (item: CodingGuideline) => {
+    setModalForm({ title: item.title, content: item.content });
+    setActiveItem({ category: null, label: item.title, existing: item });
+  };
+
+  const handleGenerateAll = async () => {
     const token = getAuthToken();
-    if (!token) {
-      showMessage('error', 'Sesi habis, silakan login kembali.');
-      return;
-    }
-    setSaving(true);
+    if (!token) { showMessage('error', 'Sesi habis, silakan login kembali.'); return; }
+    setGeneratingAll(true);
     try {
-      if (editingItem) {
-        await buildApi.updateGuideline(projectId, editingItem.id, form, token);
-      } else {
-        await buildApi.createGuideline(projectId, form, token);
-      }
+      const res = await buildApi.generateAllGuidelines(projectId, token);
       await fetchGuidelines();
-      setShowModal(false);
-      showMessage('success', editingItem ? 'Guideline berhasil diperbarui!' : 'Guideline baru berhasil ditambahkan!');
+      if (res.errors && res.errors.length > 0) {
+        showMessage('error', `Sebagian kategori gagal digenerate: ${res.errors.join('; ')}`);
+      } else {
+        showMessage('success', 'Semua coding guidelines berhasil digenerate!');
+      }
     } catch (err: any) {
-      showMessage('error', err.message || 'Gagal menyimpan guideline.');
+      showMessage('error', err.message || 'Gagal generate semua guidelines.');
     } finally {
-      setSaving(false);
+      setGeneratingAll(false);
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleInstall = () => {
+    if (guidelines.length === 0) {
+      showMessage('error', 'Belum ada guideline untuk di-install.');
+      return;
+    }
+    const orderedCategories = GUIDELINE_CATEGORIES.map((c) => byCategory(c.key)).filter(Boolean) as CodingGuideline[];
+    const all = [...orderedCategories, ...customGuidelines];
+    const md = all.map((g) => `## ${g.title}\n\n${g.content}\n`).join('\n');
+    const blob = new Blob([`# Coding Guidelines\n\n${md}`], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'coding-guidelines.md';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleModalGenerate = async () => {
+    if (!activeItem?.category) return;
+    const token = getAuthToken();
+    if (!token) return;
+    setGeneratingModal(true);
+    try {
+      const updated = await buildApi.generateGuideline(projectId, activeItem.category, token);
+      setModalForm({ title: updated.title, content: updated.content });
+      await fetchGuidelines();
+      showMessage('success', 'Guideline berhasil digenerate ulang!');
+    } catch (err: any) {
+      showMessage('error', err.message || 'Gagal generate guideline.');
+    } finally {
+      setGeneratingModal(false);
+    }
+  };
+
+  const handleModalSave = async () => {
+    const token = getAuthToken();
+    if (!token) { showMessage('error', 'Sesi habis, silakan login kembali.'); return; }
+    setSavingModal(true);
+    try {
+      if (activeItem?.existing) {
+        await buildApi.updateGuideline(projectId, activeItem.existing.id, modalForm, token);
+      } else {
+        await buildApi.createGuideline(projectId, { ...modalForm, category: activeItem?.category || null }, token);
+      }
+      await fetchGuidelines();
+      setActiveItem(null);
+      showMessage('success', 'Guideline berhasil disimpan!');
+    } catch (err: any) {
+      showMessage('error', err.message || 'Gagal menyimpan guideline.');
+    } finally {
+      setSavingModal(false);
+    }
+  };
+
+  const handleModalDelete = async () => {
+    if (!activeItem?.existing) return;
+    if (!confirm('Hapus guideline ini?')) return;
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      await buildApi.deleteGuideline(projectId, activeItem.existing.id, token);
+      await fetchGuidelines();
+      setActiveItem(null);
+      showMessage('success', 'Guideline berhasil dihapus!');
+    } catch (err: any) {
+      showMessage('error', err.message || 'Gagal menghapus guideline.');
+    }
+  };
+
+  const handleAddSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const token = getAuthToken();
+    if (!token) { showMessage('error', 'Sesi habis, silakan login kembali.'); return; }
+    setSavingAdd(true);
+    try {
+      await buildApi.createGuideline(projectId, { ...addForm, category: null }, token);
+      await fetchGuidelines();
+      setShowAddModal(false);
+      setAddForm({ title: '', content: '' });
+      showMessage('success', 'Guideline baru berhasil ditambahkan!');
+    } catch (err: any) {
+      showMessage('error', err.message || 'Gagal menambahkan guideline.');
+    } finally {
+      setSavingAdd(false);
+    }
+  };
+
+  const handleDeleteCustom = async (id: number) => {
     if (!confirm('Hapus guideline ini?')) return;
     const token = getAuthToken();
     if (!token) return;
@@ -368,81 +730,138 @@ function GuidelinesTab({ projectId, showMessage }: any) {
   };
 
   return (
-    <div className="max-w-3xl space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-gray-900">Coding Guidelines</h2>
-          <p className="text-xs text-gray-500 mt-0.5">Panduan standar penulisan kode untuk seluruh tim developer.</p>
+    <div className="max-w-4xl space-y-5">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <BetaHeader title="Coding Guidelines" />
+        <div className="flex items-center gap-2 shrink-0">
+          <button onClick={handleGenerateAll} disabled={generatingAll}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-2 rounded-lg transition-colors disabled:opacity-50 cursor-pointer">
+            <Sparkles className="w-3.5 h-3.5" /> {generatingAll ? 'Generating...' : 'Generate All'}
+          </button>
+          <button onClick={handleInstall}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg transition-colors cursor-pointer">
+            <Download className="w-3.5 h-3.5" /> Install Coding Guidelines
+          </button>
         </div>
-        <button onClick={openAddModal} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-colors cursor-pointer">
-          <Plus className="w-4 h-4" /> Tambah Guideline
-        </button>
       </div>
+
+      <OverviewCard>
+        Generate, review, and manage coding guidelines tailored to your project. These represent best practices
+        for the project, and can be used by your development team and AI coding agents and platforms. AI can help
+        generate your coding guidelines and you can then edit them — or you can create your own from scratch.
+      </OverviewCard>
 
       {isLoading ? (
         <div className="py-12 flex justify-center"><Loader2 className="w-6 h-6 text-gray-400 animate-spin" /></div>
-      ) : guidelines.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-200 p-10 text-center text-gray-400">
-          <BookOpen className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-          <p className="text-sm">Belum ada coding guideline. Tambahkan yang pertama!</p>
-        </div>
       ) : (
-        <div className="space-y-3">
-          {guidelines.map(item => (
-            <div key={item.id} className="bg-white rounded-2xl border border-gray-200 p-5 hover:border-gray-300 transition-colors">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <h3 className="text-sm font-semibold text-gray-900">{item.title}</h3>
-                  <p className="text-xs text-gray-500 mt-1.5 leading-relaxed whitespace-pre-wrap">{item.content}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {GUIDELINE_CATEGORIES.map(({ key, label, desc, icon: Icon }) => {
+            const existing = byCategory(key);
+            return (
+              <button key={key} onClick={() => openCategory(key, label)}
+                className="text-left bg-white rounded-2xl border border-gray-200 hover:border-blue-300 hover:shadow-sm p-5 transition-all cursor-pointer">
+                <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center mb-3">
+                  <Icon className="w-4 h-4 text-gray-500" />
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button onClick={() => openEditModal(item)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-500">
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
-                  <button onClick={() => handleDelete(item.id)} className="p-2 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer text-rose-500">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                <p className="text-sm font-semibold text-gray-900">{label}</p>
+                <p className="text-xs text-gray-400 mt-1">{existing ? 'Configured' : desc}</p>
+              </button>
+            );
+          })}
+
+          {customGuidelines.map((item) => (
+            <div key={item.id} className="relative bg-white rounded-2xl border border-gray-200 hover:border-blue-300 hover:shadow-sm p-5 transition-all group">
+              <button onClick={() => openCustom(item)} className="text-left w-full cursor-pointer">
+                <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center mb-3">
+                  <BookOpen className="w-4 h-4 text-gray-500" />
                 </div>
-              </div>
+                <p className="text-sm font-semibold text-gray-900 pr-6">{item.title}</p>
+                <p className="text-xs text-gray-400 mt-1 line-clamp-2">{item.content}</p>
+              </button>
+              <button onClick={() => handleDeleteCustom(item.id)}
+                className="absolute top-4 right-4 p-1.5 rounded-lg text-gray-300 hover:text-rose-500 hover:bg-rose-50 opacity-0 group-hover:opacity-100 transition-all cursor-pointer">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
             </div>
           ))}
+
+          <button onClick={() => setShowAddModal(true)}
+            className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 hover:border-blue-300 rounded-2xl p-5 text-gray-400 hover:text-blue-500 transition-colors cursor-pointer min-h-[140px]">
+            <Plus className="w-5 h-5" />
+            <span className="text-xs font-medium">Add new Coding Guideline</span>
+          </button>
         </div>
       )}
 
-      {showModal && (
+      {activeItem && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl">
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-base font-semibold">{activeItem.label}</h3>
+              <div className="flex items-center gap-2">
+                {activeItem.category && (
+                  <button onClick={handleModalGenerate} disabled={generatingModal}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 cursor-pointer">
+                    <Sparkles className="w-3.5 h-3.5" /> {generatingModal ? '...' : 'Generate'}
+                  </button>
+                )}
+                <button onClick={() => setActiveItem(null)} className="p-1 hover:bg-gray-100 rounded-lg cursor-pointer"><X className="w-4 h-4" /></button>
+              </div>
+            </div>
+            <div className="p-5 space-y-4">
+              <Field label="Judul" value={modalForm.title} onChange={(v) => setModalForm({ ...modalForm, title: v })} />
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Isi Guideline</label>
+                <textarea
+                  value={modalForm.content}
+                  onChange={(e) => setModalForm({ ...modalForm, content: e.target.value })}
+                  rows={8}
+                  placeholder="Tuliskan aturan atau panduan coding di sini, atau klik Generate untuk membuat draf otomatis via AI..."
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all resize-none"
+                />
+              </div>
+              <div className="flex items-center justify-between pt-1">
+                {activeItem.existing && !activeItem.category ? (
+                  <button onClick={handleModalDelete} className="text-sm text-rose-500 hover:text-rose-600 cursor-pointer flex items-center gap-1.5">
+                    <Trash2 className="w-3.5 h-3.5" /> Hapus
+                  </button>
+                ) : <span />}
+                <div className="flex gap-2">
+                  <button onClick={() => setActiveItem(null)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer">Batal</button>
+                  <button onClick={handleModalSave} disabled={savingModal} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-semibold disabled:opacity-50 cursor-pointer">
+                    {savingModal ? 'Menyimpan...' : 'Simpan'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg">
             <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-base font-semibold">{editingItem ? 'Edit Guideline' : 'Tambah Guideline Baru'}</h3>
-              <button onClick={() => setShowModal(false)} className="p-1 hover:bg-gray-100 rounded-lg cursor-pointer"><X className="w-4 h-4" /></button>
+              <h3 className="text-base font-semibold">Tambah Guideline Baru</h3>
+              <button onClick={() => setShowAddModal(false)} className="p-1 hover:bg-gray-100 rounded-lg cursor-pointer"><X className="w-4 h-4" /></button>
             </div>
-            <form onSubmit={handleSave} className="p-5 space-y-4">
+            <form onSubmit={handleAddSave} className="p-5 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">Judul Guideline</label>
-                <input
-                  type="text"
-                  value={form.title}
-                  onChange={e => setForm({ ...form, title: e.target.value })}
-                  placeholder="Contoh: Penamaan Variabel, Struktur Folder"
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all"
-                  required
-                />
+                <input type="text" value={addForm.title} onChange={(e) => setAddForm({ ...addForm, title: e.target.value })}
+                  placeholder="Contoh: Penamaan Variabel"
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all" required />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">Isi Guideline</label>
-                <textarea
-                  value={form.content}
-                  onChange={e => setForm({ ...form, content: e.target.value })}
-                  placeholder="Tuliskan aturan atau panduan coding di sini..."
-                  rows={5}
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all resize-none"
-                  required
-                />
+                <textarea value={addForm.content} onChange={(e) => setAddForm({ ...addForm, content: e.target.value })}
+                  rows={5} placeholder="Tuliskan aturan atau panduan coding di sini..."
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all resize-none" required />
               </div>
               <div className="flex justify-end gap-2 pt-1">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer">Batal</button>
-                <button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-semibold disabled:opacity-50 cursor-pointer">
-                  {saving ? 'Menyimpan...' : 'Simpan'}
+                <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer">Batal</button>
+                <button type="submit" disabled={savingAdd} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-semibold disabled:opacity-50 cursor-pointer">
+                  {savingAdd ? 'Menyimpan...' : 'Simpan'}
                 </button>
               </div>
             </form>
@@ -453,28 +872,50 @@ function GuidelinesTab({ projectId, showMessage }: any) {
   );
 }
 
-// ============ TAB 3: DEVELOPMENT PLANS ============
+// ============ TAB 3: DEV PLANS ============
 
-const STATUS_CONFIG = {
-  todo: { label: 'To Do', color: 'bg-gray-100 text-gray-600' },
+const PLAN_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  draft: { label: 'Draft', color: 'bg-gray-100 text-gray-600' },
+  todo: { label: 'To Do', color: 'bg-slate-100 text-slate-600' },
   in_progress: { label: 'In Progress', color: 'bg-amber-100 text-amber-700' },
-  done: { label: 'Done', color: 'bg-emerald-100 text-emerald-700' },
+  completed: { label: 'Completed', color: 'bg-emerald-100 text-emerald-700' },
 };
+
+const STATUS_FLOW = ['draft', 'todo', 'in_progress', 'completed'];
+
+const FILTER_TABS = [
+  { key: 'all', label: 'All' },
+  { key: 'draft', label: 'Draft' },
+  { key: 'completed', label: 'Completed' },
+  { key: 'in_progress', label: 'In Progress' },
+  { key: 'todo', label: 'To Do' },
+];
 
 function DevPlansTab({ projectId, showMessage }: any) {
   const [plans, setPlans] = useState<DevelopmentPlan[]>([]);
+  const [epics, setEpics] = useState<EpicOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
+
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<DevelopmentPlan | null>(null);
-  const [form, setForm] = useState({ title: '', description: '', status: 'todo' });
+  const [form, setForm] = useState<{ title: string; description: string; status: string; epic_id: string }>({
+    title: '', description: '', status: 'draft', epic_id: '',
+  });
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
-  const fetchPlans = async () => {
+  const fetchAll = async () => {
     const token = getAuthToken();
     if (!token) return;
     setIsLoading(true);
     try {
-      setPlans(await buildApi.getDevPlans(projectId, token));
+      const [plansRes, epicsRes] = await Promise.all([
+        buildApi.getDevPlans(projectId, token),
+        buildApi.getEpicOptions(projectId, token),
+      ]);
+      setPlans(plansRes);
+      setEpics(epicsRes);
     } catch (err: any) {
       showMessage('error', err.message || 'Gagal memuat development plans.');
     } finally {
@@ -482,26 +923,60 @@ function DevPlansTab({ projectId, showMessage }: any) {
     }
   };
 
-  useEffect(() => { fetchPlans(); }, [projectId]);
+  useEffect(() => { fetchAll(); }, [projectId]);
 
-  const openAddModal = () => { setEditingItem(null); setForm({ title: '', description: '', status: 'todo' }); setShowModal(true); };
-  const openEditModal = (item: DevelopmentPlan) => { setEditingItem(item); setForm({ title: item.title, description: item.description || '', status: item.status }); setShowModal(true); };
+  const openAddModal = () => {
+    setEditingItem(null);
+    setForm({ title: '', description: '', status: 'draft', epic_id: epics[0] ? String(epics[0].id) : '' });
+    setShowModal(true);
+  };
+
+  const openEditModal = (item: DevelopmentPlan) => {
+    setEditingItem(item);
+    setForm({
+      title: item.title,
+      description: item.description || '',
+      status: item.status,
+      epic_id: item.epic_id ? String(item.epic_id) : '',
+    });
+    setShowModal(true);
+  };
+
+  const handleGenerateInModal = async () => {
+    if (!form.epic_id) { showMessage('error', 'Pilih requirement/epic terlebih dahulu.'); return; }
+    const token = getAuthToken();
+    if (!token) return;
+    setGenerating(true);
+    try {
+      await buildApi.generateDevPlan(projectId, Number(form.epic_id), token);
+      await fetchAll();
+      setShowModal(false);
+      showMessage('success', 'Development plan berhasil digenerate oleh AI!');
+    } catch (err: any) {
+      showMessage('error', err.message || 'Gagal generate development plan.');
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const token = getAuthToken();
-    if (!token) {
-      showMessage('error', 'Sesi habis, silakan login kembali.');
-      return;
-    }
+    if (!token) { showMessage('error', 'Sesi habis, silakan login kembali.'); return; }
     setSaving(true);
     try {
+      const payload = {
+        title: form.title,
+        description: form.description,
+        status: form.status,
+        epic_id: form.epic_id ? Number(form.epic_id) : undefined,
+      };
       if (editingItem) {
-        await buildApi.updateDevPlan(projectId, editingItem.id, form, token);
+        await buildApi.updateDevPlan(projectId, editingItem.id, payload, token);
       } else {
-        await buildApi.createDevPlan(projectId, form, token);
+        await buildApi.createDevPlan(projectId, payload as any, token);
       }
-      await fetchPlans();
+      await fetchAll();
       setShowModal(false);
       showMessage('success', editingItem ? 'Plan berhasil diperbarui!' : 'Development plan baru ditambahkan!');
     } catch (err: any) {
@@ -517,7 +992,7 @@ function DevPlansTab({ projectId, showMessage }: any) {
     if (!token) return;
     try {
       await buildApi.deleteDevPlan(projectId, id, token);
-      await fetchPlans();
+      await fetchAll();
       showMessage('success', 'Plan berhasil dihapus!');
     } catch (err: any) {
       showMessage('error', err.message || 'Gagal menghapus plan.');
@@ -529,126 +1004,147 @@ function DevPlansTab({ projectId, showMessage }: any) {
     if (!token) return;
     try {
       await buildApi.updateDevPlan(projectId, item.id, { status: newStatus }, token);
-      await fetchPlans();
+      await fetchAll();
       showMessage('success', 'Status plan diperbarui!');
     } catch (err: any) {
       showMessage('error', err.message || 'Gagal memperbarui status.');
     }
   };
 
-  const grouped = {
-    todo: plans.filter(p => p.status === 'todo'),
-    in_progress: plans.filter(p => p.status === 'in_progress'),
-    done: plans.filter(p => p.status === 'done'),
-  };
-
-  if (isLoading) {
-    return <div className="py-12 flex justify-center"><Loader2 className="w-6 h-6 text-gray-400 animate-spin" /></div>;
-  }
+  const filteredPlans = filter === 'all' ? plans : plans.filter((p) => p.status === filter);
+  const epicName = (id?: number | null) => epics.find((e) => e.id === id)?.name;
 
   return (
-    <div className="max-w-5xl space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-gray-900">Development Plans</h2>
-          <p className="text-xs text-gray-500 mt-0.5">Kelola rencana pengembangan proyek berdasarkan status pengerjaannya.</p>
-        </div>
-        <button onClick={openAddModal} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-colors cursor-pointer">
-          <Plus className="w-4 h-4" /> Tambah Plan
+    <div className="max-w-4xl space-y-5">
+      <div className="flex items-start justify-between gap-4">
+        <BetaHeader title="Dev Plans" />
+        <button onClick={openAddModal} className="inline-flex items-center gap-1.5 px-3.5 py-2 border border-gray-200 hover:bg-gray-50 rounded-lg text-sm font-medium text-gray-700 transition-colors cursor-pointer shrink-0">
+          <Plus className="w-3.5 h-3.5" /> Create New Plan
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {(['todo', 'in_progress', 'done'] as const).map(statusKey => (
-          <div key={statusKey} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-            <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_CONFIG[statusKey].color}`}>
-                  {STATUS_CONFIG[statusKey].label}
-                </span>
-              </div>
-              <span className="text-xs text-gray-400 font-medium">{grouped[statusKey].length} item</span>
-            </div>
-            <div className="p-3 space-y-2 min-h-32">
-              {grouped[statusKey].length === 0 && (
-                <p className="text-xs text-gray-400 text-center py-6">Kosong</p>
-              )}
-              {grouped[statusKey].map(item => (
-                <div key={item.id} className="bg-gray-50 border border-gray-200 rounded-xl p-3 hover:border-blue-300 transition-colors">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{item.title}</p>
-                      {item.description && <p className="text-xs text-gray-500 mt-1">{item.description}</p>}
+      <OverviewCard>
+        Dev plans guide AI coding agents and platforms (Lovable, v0, etc.) when it comes time to implement your
+        requirements. Dev plans contain one or more requirements from your project, and take into account your
+        project&apos;s technologies and coding guidelines. Userdoc&apos;s AI uses these to generate comprehensive
+        plans that you can use directly with your AI tool of choice.
+      </OverviewCard>
+
+      <div className="bg-white rounded-2xl border border-gray-200 p-3 flex items-center gap-1 flex-wrap">
+        <span className="text-xs text-gray-400 font-medium px-2">Filter by status:</span>
+        {FILTER_TABS.map((t) => (
+          <button key={t.key} onClick={() => setFilter(t.key)}
+            className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+              filter === t.key ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100'
+            }`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div>
+        <p className="text-sm font-semibold text-gray-900 mb-2">Plans</p>
+        {isLoading ? (
+          <div className="py-12 flex justify-center"><Loader2 className="w-6 h-6 text-gray-400 animate-spin" /></div>
+        ) : filteredPlans.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
+            <ClipboardList className="w-10 h-10 mx-auto mb-3 text-blue-200" />
+            <p className="text-base font-semibold text-gray-900">You have not created any Dev Plans yet</p>
+            <p className="text-xs text-gray-400 mt-1 mb-5">Create your first dev plan to get started building with AI.</p>
+            <button onClick={openAddModal} className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-full text-sm font-semibold transition-colors cursor-pointer">
+              <Sparkles className="w-4 h-4" /> Create Dev Plan
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredPlans.map((item) => (
+              <div key={item.id} className="bg-white rounded-2xl border border-gray-200 p-5 hover:border-gray-300 transition-colors">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-sm font-semibold text-gray-900">{item.title}</h3>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${PLAN_STATUS_CONFIG[item.status]?.color || 'bg-gray-100 text-gray-600'}`}>
+                        {PLAN_STATUS_CONFIG[item.status]?.label || item.status}
+                      </span>
+                      {epicName(item.epic_id) && (
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">{epicName(item.epic_id)}</span>
+                      )}
                     </div>
-                    <div className="flex gap-1 shrink-0">
-                      <button onClick={() => openEditModal(item)} className="p-1 hover:bg-gray-200 rounded-lg cursor-pointer text-gray-400">
-                        <Pencil className="w-3 h-3" />
-                      </button>
-                      <button onClick={() => handleDelete(item.id)} className="p-1 hover:bg-rose-100 rounded-lg cursor-pointer text-rose-400">
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
+                    {item.description && (
+                      <p className="text-xs text-gray-500 mt-1.5 leading-relaxed whitespace-pre-wrap line-clamp-4">{item.description}</p>
+                    )}
                   </div>
-                  <div className="flex gap-1 mt-2">
-                    {statusKey !== 'todo' && (
-                      <button onClick={() => handleStatusChange(item, statusKey === 'in_progress' ? 'todo' : 'in_progress')}
-                        className="text-[10px] px-2 py-0.5 rounded-full bg-gray-200 text-gray-600 hover:bg-gray-300 transition-colors cursor-pointer">
-                        ← Mundur
-                      </button>
-                    )}
-                    {statusKey !== 'done' && (
-                      <button onClick={() => handleStatusChange(item, statusKey === 'todo' ? 'in_progress' : 'done')}
-                        className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors cursor-pointer">
-                        Maju →
-                      </button>
-                    )}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button onClick={() => openEditModal(item)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-500"><Pencil className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => handleDelete(item.id)} className="p-2 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer text-rose-500"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
-              ))}
-            </div>
+                <div className="flex gap-1.5 mt-3">
+                  {STATUS_FLOW.indexOf(item.status) > 0 && (
+                    <button onClick={() => handleStatusChange(item, STATUS_FLOW[STATUS_FLOW.indexOf(item.status) - 1])}
+                      className="text-[11px] px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer flex items-center gap-1">
+                      <ArrowLeft className="w-3 h-3" /> {PLAN_STATUS_CONFIG[STATUS_FLOW[STATUS_FLOW.indexOf(item.status) - 1]].label}
+                    </button>
+                  )}
+                  {STATUS_FLOW.indexOf(item.status) < STATUS_FLOW.length - 1 && (
+                    <button onClick={() => handleStatusChange(item, STATUS_FLOW[STATUS_FLOW.indexOf(item.status) + 1])}
+                      className="text-[11px] px-2.5 py-1 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors cursor-pointer flex items-center gap-1">
+                      {PLAN_STATUS_CONFIG[STATUS_FLOW[STATUS_FLOW.indexOf(item.status) + 1]].label} <ArrowRight className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
 
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg">
             <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-base font-semibold">{editingItem ? 'Edit Plan' : 'Tambah Development Plan'}</h3>
+              <h3 className="text-base font-semibold">{editingItem ? 'Edit Plan' : 'Buat Development Plan'}</h3>
               <button onClick={() => setShowModal(false)} className="p-1 hover:bg-gray-100 rounded-lg cursor-pointer"><X className="w-4 h-4" /></button>
             </div>
             <form onSubmit={handleSave} className="p-5 space-y-4">
               <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">Requirement / Epic</label>
+                <select value={form.epic_id} onChange={(e) => setForm({ ...form, epic_id: e.target.value })}
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all">
+                  <option value="">Tidak terhubung ke epic tertentu</option>
+                  {epics.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                </select>
+              </div>
+
+              {!editingItem && (
+                <button type="button" onClick={handleGenerateInModal} disabled={generating || !form.epic_id}
+                  className="w-full inline-flex items-center justify-center gap-2 text-sm font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50 cursor-pointer">
+                  <Sparkles className="w-4 h-4" /> {generating ? 'AI sedang menyusun plan...' : 'Generate Plan Otomatis dengan AI'}
+                </button>
+              )}
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-100" /></div>
+                <div className="relative flex justify-center"><span className="bg-white px-2 text-[10px] text-gray-400 uppercase">atau isi manual</span></div>
+              </div>
+
+              <div>
                 <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">Judul Plan</label>
-                <input
-                  type="text"
-                  value={form.title}
-                  onChange={e => setForm({ ...form, title: e.target.value })}
+                <input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
                   placeholder="Contoh: Setup Authentication API"
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all"
-                  required
-                />
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all" required />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">Deskripsi (Opsional)</label>
-                <textarea
-                  value={form.description}
-                  onChange={e => setForm({ ...form, description: e.target.value })}
-                  placeholder="Deskripsi singkat rencana pengembangan ini..."
-                  rows={3}
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all resize-none"
-                />
+                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">Deskripsi</label>
+                <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  rows={5} placeholder="Deskripsi rencana pengembangan ini..."
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all resize-none" />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">Status</label>
-                <select
-                  value={form.status}
-                  onChange={e => setForm({ ...form, status: e.target.value })}
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all"
-                >
-                  <option value="todo">To Do</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="done">Done</option>
+                <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all">
+                  {STATUS_FLOW.map((s) => <option key={s} value={s}>{PLAN_STATUS_CONFIG[s].label}</option>)}
                 </select>
               </div>
               <div className="flex justify-end gap-2 pt-1">

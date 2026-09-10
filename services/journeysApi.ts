@@ -19,11 +19,20 @@ function formatApiError(errorData: any, fallback: string): string {
 
 // ============ Interfaces ============
 
+export interface PersonaSummary {
+  id: number;
+  name: string;
+  avatar_url?: string | null;
+  job_title?: string | null;
+}
+
 export interface JourneyStep {
   id?: number;
   step_order: number;
   title: string;
   description?: string;
+  persona_id?: number | null;       // <-- field yang bikin error TS, sekarang ada
+  persona?: PersonaSummary | null;  // <-- nested persona dari backend (JourneyStepResponse.persona)
 }
 
 export interface UserJourneyResponse {
@@ -43,6 +52,7 @@ export interface CreateJourneyPayload {
     step_order: number;
     title: string;
     description?: string;
+    persona_id?: number | null;
   }>;
 }
 
@@ -116,9 +126,9 @@ export const journeysApi = {
     return response.json();
   },
 
-  // BARU: Mengganti seluruh steps sebuah journey (dipakai saat user edit
-  // steps secara manual lewat JourneyDetailPanel). Cocok dengan endpoint
-  // backend PUT /api/journeys/{id}/steps.
+  // Mengganti seluruh steps sebuah journey (dipakai saat user edit steps
+  // secara manual lewat JourneyDetailPanel). Cocok dengan endpoint backend
+  // PUT /api/journeys/{id}/steps.
   replaceSteps: async (
     journeyId: number,
     steps: Array<{ step_order: number; title: string; description?: string; persona_id?: number | null }>,
@@ -136,8 +146,8 @@ export const journeysApi = {
     return response.json();
   },
 
-  // BARU: Trigger AI untuk generate steps sebuah journey. Cocok dengan
-  // endpoint backend POST /api/journeys/{id}/generate-ai-steps.
+  // Trigger AI untuk generate steps sebuah journey. Cocok dengan endpoint
+  // backend POST /api/journeys/{id}/generate-ai-steps.
   generateAiSteps: async (journeyId: number, token: string): Promise<UserJourneyResponse> => {
     const response = await fetch(`${API_BASE_URL}/api/journeys/${journeyId}/generate-ai-steps`, {
       method: 'POST',

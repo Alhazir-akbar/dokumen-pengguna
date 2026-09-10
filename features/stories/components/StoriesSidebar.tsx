@@ -5,10 +5,12 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Epic, UserStory } from '../types';
 import EpicListItem from './EpicListItem';
-import { Search, Edit3, ChevronDown, Plus, Settings, Folder, Trash2 } from 'lucide-react';
-import { projectApi } from '@/services/projectsApi';
-import { getAuthToken } from '@/lib/auth';
-import { useWizardStore } from '@/features/project-setup/store/wizard-store';
+<<<<<<< Updated upstream
+import { Search, Pencil, ChevronDown } from 'lucide-react';
+=======
+import ProjectMenuDropdown from './ProjectMenuDropdown';
+import { Search, Edit3, ChevronDown } from 'lucide-react';
+>>>>>>> Stashed changes
 
 interface StoriesSidebarProps {
   epics: Epic[];
@@ -17,13 +19,7 @@ interface StoriesSidebarProps {
   onSelectStory: (story: UserStory) => void;
   onSelectEpic?: (epic: Epic) => void;
   onAddNew?: () => void;
-  projectName?: string;
-  projectId?: string | null;
-  // workspace_id dari project yang lagi dibuka (didapat dari getProjectById
-  // di app/stories/page.tsx). Ini WAJIB dikirim eksplisit -- jangan andalkan
-  // localStorage untuk ini, soalnya localStorage 'workspace_id' bisa kosong/stale
-  // (misal user baru selesai wizard dan belum pernah mampir ke halaman /workspace).
-  workspaceId?: number | null;
+<<<<<<< Updated upstream
 }
 
 export default function StoriesSidebar({
@@ -41,81 +37,27 @@ export default function StoriesSidebar({
   const setWizardWorkspaceId = useWizardStore((s: any) => s.setWorkspaceId);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [allProjects, setAllProjects] = useState<any[]>([]);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+=======
+  projectName?: string;
+  projectId?: string | null;
+  // workspace_id dari project yang lagi dibuka (didapat dari getProjectById
+  // di app/stories/page.tsx). WAJIB dikirim eksplisit -- jangan andalkan
+  // localStorage untuk ini, soalnya bisa kosong/stale.
+  workspaceId?: number | null;
+}
 
+export default function StoriesSidebar({
+  epics,
+  selectedStoryId,
+  currentProjectId,
+  projectId,
+  workspaceId,
+  onSelectStory,
+  onSelectEpic,
+}: StoriesSidebarProps) {
+  const [searchQuery, setSearchQuery] = useState('');
   const activeProjId = currentProjectId || projectId;
-
-  useEffect(() => {
-    const fetchProjects = async () => {
-      // Tunggu sampai workspaceId project aktif diketahui dari parent -- jangan
-      // fetch dengan workspace_id yang salah/kosong (itu penyebab bug 403
-      // sebelumnya).
-      if (!workspaceId) return;
-
-      const token = getAuthToken();
-      if (!token) return;
-      try {
-        const response: any = await projectApi.getProjects(workspaceId, token);
-        const projectsList = Array.isArray(response) ? response : response?.data || response?.projects || [];
-        setAllProjects(projectsList);
-      } catch (err) {
-        console.error('Gagal memuat list project:', err);
-      }
-    };
-    fetchProjects();
-  }, [activeProjId, workspaceId]);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Workspace SUDAH pasti ada di titik ini (user lagi buka halaman Stories di
-  // dalamnya). Jadi wizard harus langsung mulai dari NameProject, TeamName
-  // di-skip. Caranya SAMA seperti di app/workspace/page.tsx
-  // (handleCreateFirstProject): isi workspaceId ke WIZARD STORE-nya langsung,
-  // bukan cuma nitip lewat query string URL -- karena TeamName.tsx membaca
-  // workspaceId dari useWizardStore, bukan dari URL.
-  const handleCreateNewProject = () => {
-    setIsDropdownOpen(false);
-    resetStore();
-    if (workspaceId) {
-      setWizardWorkspaceId(workspaceId);
-    }
-    router.push('/project-setup');
-  };
-
-  const handleDeleteProject = async (e: React.MouseEvent, pId: number, pName: string) => {
-    e.stopPropagation();
-    if (!confirm(`Hapus project "${pName}"? Seluruh data di dalamnya akan terhapus permanen.`)) return;
-
-    const token = getAuthToken();
-    if (!token) return;
-
-    try {
-      await projectApi.deleteProject(pId, token);
-      const remaining = allProjects.filter((p) => p.id !== pId);
-      setAllProjects(remaining);
-
-      if (String(pId) === String(activeProjId)) {
-        if (remaining.length > 0) {
-          router.push(`/stories?project_id=${remaining[0].id}`);
-        } else {
-          router.push('/workspace');
-        }
-      }
-    } catch (err: any) {
-      console.error('Gagal menghapus project:', err);
-      alert(err.message || 'Gagal menghapus project.');
-    }
-  };
+>>>>>>> Stashed changes
 
   const filteredEpics = useMemo(() => {
     if (!searchQuery.trim()) return epics;
@@ -148,8 +90,13 @@ export default function StoriesSidebar({
   }, [epics]);
 
   return (
+<<<<<<< Updated upstream
+    <aside className="w-80 border-r border-gray-200 bg-white h-full flex flex-col">
+      <div className="p-4 border-b border-gray-100">
+=======
     <aside className="w-80 border-r border-gray-200 bg-white h-full flex flex-col relative select-none">
-      <div className="p-4 border-b border-gray-100 relative" ref={dropdownRef}>
+      <div className="p-4 border-b border-gray-100 relative">
+>>>>>>> Stashed changes
         <div className="flex items-center gap-2 mb-2">
           <div className="relative flex-1">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
@@ -164,19 +111,46 @@ export default function StoriesSidebar({
             />
           </div>
 
+<<<<<<< Updated upstream
+          {/* Tombol Create New (Pencil) yang berfungsi */}
           <button
             type="button"
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center bg-blue-600 hover:bg-blue-700 rounded-lg text-white overflow-hidden shadow-sm shrink-0 transition-colors cursor-pointer"
-            title="Project Menu & Options"
+            onClick={onAddNew}
+            className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg transition-colors flex items-center justify-center shadow-sm cursor-pointer"
+            title="Create New Story/Epic"
           >
-            <span className="p-2 flex items-center justify-center border-r border-blue-500/40">
-              <Edit3 className="w-4 h-4" />
-            </span>
-            <span className="p-2 flex items-center justify-center">
-              <ChevronDown className="w-3.5 h-3.5" />
-            </span>
+            <Pencil className="w-4 h-4" />
           </button>
+          
+          <button
+            type="button"
+            className="border border-gray-200 hover:bg-gray-50 text-gray-600 p-2 rounded-lg transition-colors flex items-center justify-center cursor-pointer"
+            title="More options"
+          >
+            <ChevronDown className="w-3.5 h-3.5" />
+          </button>
+=======
+          <ProjectMenuDropdown
+            workspaceId={workspaceId}
+            activeProjectId={activeProjId}
+            renderTrigger={({ onClick, triggerRef }) => (
+              <button
+                ref={triggerRef}
+                type="button"
+                onClick={onClick}
+                className="flex items-center bg-blue-600 hover:bg-blue-700 rounded-lg text-white overflow-hidden shadow-sm shrink-0 transition-colors cursor-pointer"
+                title="Project Menu & Options"
+              >
+                <span className="p-2 flex items-center justify-center border-r border-blue-500/40">
+                  <Edit3 className="w-4 h-4" />
+                </span>
+                <span className="p-2 flex items-center justify-center">
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </span>
+              </button>
+            )}
+          />
+>>>>>>> Stashed changes
         </div>
 
         <div className="text-[11px] text-gray-400 font-medium px-0.5">
