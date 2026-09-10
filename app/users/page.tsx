@@ -255,10 +255,6 @@ function UsersPageContent() {
           </span>
 
           <div className="flex items-center gap-3">
-            <button className="text-xs text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm font-medium cursor-pointer">
-              <MessageSquare className="w-3.5 h-3.5 text-blue-600" /> Chat to Userdoc Assistant
-            </button>
-
             <div className="flex items-center gap-1.5 text-gray-500">
               <button
                 onClick={handleUpload}
