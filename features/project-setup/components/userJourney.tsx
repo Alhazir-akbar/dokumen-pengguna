@@ -49,7 +49,7 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
 
     setIsSuggesting(true);
     try {
-            const result = await projectApi.suggestUserJourney(
+      const result = await projectApi.suggestUserJourney(
         {
           project_name: titleName,
           project_description: projectDescription || '',
