@@ -4,11 +4,7 @@
 import { useState } from 'react';
 import LogoUserdoc from '../../../public/logoUserDoc';
 import { useWizardStore } from '../store/wizard-store';
-<<<<<<< HEAD
-import { Sparkles, Loader2, AlertCircle, User } from 'lucide-react';
-=======
 import { Sparkles, Loader2, AlertCircle, ArrowLeft, User } from 'lucide-react';
->>>>>>> skip,-next,-back-button-on-project-setup
 import { projectApi } from '@/services/projectsApi';
 import { journeysApi } from '@/services/journeysApi';
 import { getAuthToken } from '@/lib/auth';
@@ -43,12 +39,6 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
       return;
     }
 
-<<<<<<< HEAD
-    // Ambil persona asli dari userTypes di store (hasil step AI Requirements
-    // sebelumnya, UserTypeItem.personas: PersonaDraft[]). Ini yang dipakai
-    // AI untuk assign persona_name per step -- bukan lagi nama user type.
-=======
->>>>>>> skip,-next,-back-button-on-project-setup
     const personas = (userTypes || []).flatMap((ut: any) =>
       (ut.personas || []).map((p: any) => ({
         name: p.name,
@@ -59,7 +49,7 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
 
     setIsSuggesting(true);
     try {
-            const result = await projectApi.suggestUserJourney(
+      const result = await projectApi.suggestUserJourney(
         {
           project_name: titleName,
           project_description: projectDescription || '',
@@ -258,9 +248,6 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
         </div>
       )}
 
-<<<<<<< HEAD
-      <div className="w-full flex items-center justify-start mt-2">
-=======
       {/* Navigasi Bawah */}
       <div className="w-full flex items-center justify-between pt-4 border-t border-white/10 mt-2">
         <button
@@ -271,7 +258,6 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
 
->>>>>>> skip,-next,-back-button-on-project-setup
         <button
           type="button"
           onClick={handleFinish}
