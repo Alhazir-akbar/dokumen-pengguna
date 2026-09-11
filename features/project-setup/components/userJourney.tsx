@@ -4,17 +4,13 @@
 import { useState } from 'react';
 import LogoUserdoc from '../../../public/logoUserDoc';
 import { useWizardStore } from '../store/wizard-store';
-<<<<<<< Updated upstream
-import { Sparkles, Loader2 } from 'lucide-react';
-=======
 import { Sparkles, Loader2, AlertCircle, User } from 'lucide-react';
 import { projectApi } from '@/services/projectsApi';
 import { journeysApi } from '@/services/journeysApi';
 import { getAuthToken } from '@/lib/auth';
->>>>>>> Stashed changes
 
 interface UserJourneyProps {
-  onFinishProject: () => void;
+  onFinishProject: () => Promise<void> | void;
 }
 
 interface JourneyStepDraft {
@@ -27,40 +23,22 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
   const { projectName, projectDescription, projectId, userTypes } = useWizardStore() as any;
 
   const [journeyText, setJourneyText] = useState('');
-<<<<<<< Updated upstream
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [loadingText, setLoadingText] = useState('Analyzing project context...');
-=======
   const [journeySteps, setJourneySteps] = useState<JourneyStepDraft[]>([]);
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(false);
   const [actionError, setActionError] = useState('');
->>>>>>> Stashed changes
 
   const titleName = projectName?.trim() ? projectName : 'your project';
 
-  const handleFinish = () => {
-    setIsGenerating(true);
+  const handleAiSuggest = async () => {
+    setActionError('');
+    const token = getAuthToken();
+    if (!token) {
+      setActionError('Sesi habis, silakan login kembali.');
+      return;
+    }
 
-<<<<<<< Updated upstream
-    // Simulasi tahapan proses AI generating data sebelum masuk ke halaman stories
-    setTimeout(() => {
-      setLoadingText('Generating user stories & epics...');
-    }, 1200);
-
-    setTimeout(() => {
-      setLoadingText('Finalizing project structure...');
-    }, 2400);
-
-    setTimeout(() => {
-      setIsGenerating(false);
-      onFinishProject(); // Pindah ke halaman stories/dashboard utama
-    }, 3500);
-  };
-
-  if (isGenerating) {
-=======
     // Ambil persona asli dari userTypes di store (hasil step AI Requirements
     // sebelumnya, UserTypeItem.personas: PersonaDraft[]). Ini yang dipakai
     // AI untuk assign persona_name per step -- bukan lagi nama user type.
@@ -157,7 +135,6 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
   };
 
   if (isSubmitting) {
->>>>>>> Stashed changes
     return (
       <div className="flex flex-col items-center justify-center w-full max-w-md mx-auto pt-20 text-center pb-12 animate-fadeIn">
         <div className="mb-6 p-6 bg-white/10 rounded-3xl backdrop-blur-md border border-white/20 shadow-2xl">
@@ -195,24 +172,6 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
         <LogoUserdoc />
       </div>
 
-<<<<<<< Updated upstream
-      {/* Judul Utama */}
-      <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
-        Let&apos;s capture a User Journey through {titleName}
-      </h1>
-      
-      <p className="text-blue-200 text-xs sm:text-sm mb-8 max-w-lg leading-relaxed">
-        A user journey is a description of how one or more user types interact with your product along a timeline. It could start with them having a problem, discovering your product, using it, getting a result etc.
-        <br />
-        As always, you can use <Sparkles className="w-3 h-3 inline text-yellow-300" /> to get some AI suggestions.
-      </p>
-
-      {/* Textarea Input User Journey */}
-      <div className="w-full bg-white/10 border border-white/20 rounded-2xl p-4 sm:p-5 backdrop-blur-md shadow-xl text-left mb-6">
-        <textarea
-          rows={5}
-          placeholder={`What is a sample user journey within ${titleName}?`}
-=======
       <div className="header-fade w-full text-center" style={{ animationDelay: '80ms' }}>
         <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
           Let&apos;s capture a User Journey through {titleName}
@@ -237,7 +196,6 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
               ? 'AI sedang menyusun draf user journey...'
               : `What is a sample user journey within ${titleName}?`
           }
->>>>>>> Stashed changes
           value={journeyText}
           onChange={(e) => {
             setJourneyText(e.target.value);
@@ -267,10 +225,6 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
         </div>
       </div>
 
-<<<<<<< Updated upstream
-      {/* Tombol Finished / Create my Project */}
-      <div className="w-full flex items-center justify-start">
-=======
       {journeySteps.length > 0 && (
         <div className="w-full text-left mb-4 space-y-2">
           <span className="text-[11px] text-green-300 font-medium bg-green-950/30 px-3 py-1.5 rounded-xl border border-green-500/20 inline-block">
@@ -311,7 +265,6 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
       )}
 
       <div className="w-full flex items-center justify-start mt-2">
->>>>>>> Stashed changes
         <button
           type="button"
           onClick={handleFinish}

@@ -1,4 +1,3 @@
-// app/journeys/page.tsx
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
@@ -8,15 +7,18 @@ import JourneysSidebar from '@/features/journeys/components/journeySidebar';
 import EmptyJourneyPanel from '@/features/journeys/components/emptyJourneyPanel';
 import JourneyDetailPanel from '@/features/journeys/components/journeyDetailPanel';
 import AccountMenu from '@/features/common/components/accountMenu';
-import { Upload, Download, X, MessageSquare, Loader2 } from 'lucide-react';
+import { Upload, Download, X, Loader2 } from 'lucide-react';
 import { journeysApi, UserJourneyResponse } from '@/services/journeysApi';
 import { projectApi } from '@/services/projectsApi';
+import { personasApi, Persona } from '@/services/personasApi';
 import { getAuthToken } from '@/lib/auth';
 
 interface JourneyStepVM {
   id: number | string;
   title: string;
   description: string;
+  personaId: number | null;
+  personaName: string | null;
 }
 
 interface JourneyVM {
@@ -31,6 +33,9 @@ interface JourneyVM {
 
 function mapJourneyFromBackend(j: UserJourneyResponse): JourneyVM {
   const sortedSteps = [...(j.steps || [])].sort((a, b) => a.step_order - b.step_order);
+  const uniquePersonaIds = new Set(
+    sortedSteps.map((s) => s.persona_id).filter((pid): pid is number => pid != null)
+  );
   return {
     id: String(j.id),
     title: j.name,
@@ -39,9 +44,11 @@ function mapJourneyFromBackend(j: UserJourneyResponse): JourneyVM {
       id: s.id ?? `${j.id}-${idx}`,
       title: s.title,
       description: s.description || '',
+      personaId: s.persona_id ?? null,
+      personaName: s.persona?.name ?? null,
     })),
     stepsCount: sortedSteps.length,
-    personasCount: 0,
+    personasCount: uniquePersonaIds.size,
     storiesCount: 0,
   };
 }
@@ -54,11 +61,11 @@ function JourneysPageContent() {
   const [projectWorkspaceId, setProjectWorkspaceId] = useState<number | null>(null);
   const [journeys, setJourneys] = useState<JourneyVM[]>([]);
   const [selectedJourney, setSelectedJourney] = useState<JourneyVM | null>(null);
+  const [personas, setPersonas] = useState<Persona[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
-  // Modal & Edit States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -81,20 +88,29 @@ function JourneysPageContent() {
 
     setIsLoading(true);
     try {
-      const [journeysData, projectData] = await Promise.all([
+      const [journeysData, projectData, personasData] = await Promise.all([
         journeysApi.getJourneysByProject(Number(projectId), token),
         projectApi.getProjectById(Number(projectId), token),
+        personasApi.getPersonasByProject(Number(projectId), token),
       ]);
 
       const mapped = journeysData.map(mapJourneyFromBackend);
       setJourneys(mapped);
       setProjectName(projectData.name);
       setProjectWorkspaceId(projectData.workspace_id);
+      setPersonas(personasData);
 
       if (selectId) {
-        setSelectedJourney(mapped.find((j) => j.id === selectId) || mapped[0] || null);
+        const found = mapped.find((j) => j.id === selectId);
+        setSelectedJourney(found || mapped[0] || null);
       } else if (mapped.length > 0) {
-        setSelectedJourney((prev) => (prev ? mapped.find((j) => j.id === prev.id) || mapped[0] : mapped[0]));
+        setSelectedJourney((prev) => {
+          if (prev) {
+            const updatedPrev = mapped.find((j) => j.id === prev.id);
+            return updatedPrev || mapped[0];
+          }
+          return mapped[0];
+        });
       } else {
         setSelectedJourney(null);
       }
@@ -130,7 +146,6 @@ function JourneysPageContent() {
 
     try {
       if (isEditMode && selectedJourney) {
-        // Update journey yang sudah ada (nama & deskripsi)
         const updated = await journeysApi.updateJourney(
           Number(selectedJourney.id),
           { name: newTitle, description: newDesc },
@@ -138,7 +153,7 @@ function JourneysPageContent() {
         );
         await loadData(String(updated.id));
       } else {
-        // 1. Buat journey baru dulu (steps kosong)
+        // 1. Buat Journey dulu (steps kosong)
         const created = await journeysApi.createJourney(
           {
             project_id: Number(projectId),
@@ -149,12 +164,13 @@ function JourneysPageContent() {
           token
         );
 
-        // 2. Trigger AI untuk generate steps step-by-step
+        // 2. Trigger AI Generate Steps -- backend akan fetch persona ASLI
+        // dari DB project ini dan assign persona_id per step (bukan nama karangan).
         setIsGenerating(true);
         const withAiSteps = await journeysApi.generateAiSteps(created.id, token);
         setIsGenerating(false);
 
-        // 3. Refresh dari server supaya steps hasil AI ikut tampil
+        // 3. Fetch ulang data terbaru agar step yang di-generate AI langsung tampil
         await loadData(String(withAiSteps.id));
       }
 
@@ -176,20 +192,27 @@ function JourneysPageContent() {
     }
 
     try {
+      // Update nama & deskripsi
       await journeysApi.updateJourney(
         Number(updated.id),
         { name: updated.title, description: updated.description },
         token
       );
+
+      // Update steps secara terpisah (replace) -- kirim persona_id (relasional),
+      // BUKAN assigned_persona (string bebas, gak match ke tabel personas)
       await journeysApi.replaceSteps(
         Number(updated.id),
         updated.steps.map((s, index) => ({
           step_order: index + 1,
           title: s.title,
           description: s.description,
+          persona_id: s.personaId ?? null,
         })),
         token
       );
+
+      // Fetch ulang data bersih dari backend
       await loadData(updated.id);
     } catch (err: any) {
       console.error('Gagal menyimpan perubahan journey:', err);
@@ -242,6 +265,12 @@ function JourneysPageContent() {
     );
   }
 
+  // Deep clone agar JourneyDetailPanel tidak bisa memutasi state asli
+  // secara langsung saat user mengetik/edit (fix bug Cancel sebelumnya).
+  const safeSelectedJourney = selectedJourney
+    ? JSON.parse(JSON.stringify(selectedJourney))
+    : null;
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-50 font-sans relative">
       <AppSidebar activeMenu="journeys" projectId={projectId} />
@@ -256,17 +285,12 @@ function JourneysPageContent() {
       />
 
       <main className="flex-1 flex flex-col h-full bg-white overflow-hidden">
-        {/* Top Navbar */}
         <div className="h-14 border-b border-gray-200 px-6 flex items-center justify-between bg-white shrink-0">
           <span className="text-xs font-medium text-gray-500">
             {projectName || 'Untitled Project'} <span className="text-gray-300">/</span>
           </span>
 
           <div className="flex items-center gap-3">
-            <button className="text-xs text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm font-medium cursor-pointer">
-              <MessageSquare className="w-3.5 h-3.5 text-blue-600" /> Chat to Userdoc Assistant
-            </button>
-
             <div className="flex items-center gap-1.5 text-gray-500">
               <button
                 onClick={handleUpload}
@@ -288,11 +312,14 @@ function JourneysPageContent() {
           </div>
         </div>
 
-        {/* Main Content Area */}
         {selectedJourney ? (
           <JourneyDetailPanel
-            journey={selectedJourney}
-            onClose={() => setSelectedJourney(null)}
+            journey={safeSelectedJourney}
+            personas={personas}
+            onClose={() => {
+              const original = journeys.find((j) => j.id === selectedJourney.id);
+              setSelectedJourney(original || null);
+            }}
             onSave={handleUpdateJourneyDetail}
           />
         ) : (

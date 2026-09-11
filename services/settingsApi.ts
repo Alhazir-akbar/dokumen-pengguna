@@ -1,12 +1,27 @@
 // services/settingsApi.ts
-import { formatApiError } from '@/lib/api-error';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+function formatApiError(errorData: any, fallback: string): string {
+  const detail = errorData?.detail;
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((d: any) => {
+        const field = Array.isArray(d.loc) ? d.loc.join('.') : 'field';
+        return `${field}: ${d.msg}`;
+      })
+      .join(' | ');
+  }
+  return fallback;
+}
 
 const getAuthHeaders = (token: string) => ({
   'Content-Type': 'application/json',
   'Authorization': `Bearer ${token}`,
 });
+
+// ============ Interfaces ============
 
 export interface AIRule {
   id: number;
@@ -17,6 +32,18 @@ export interface AIRule {
   workspace_id?: number | null;
 }
 
+export interface AIRuleSuggestion {
+  name: string;
+  content: string;
+}
+
+export interface ProviderInfo {
+  name: string;
+  provider_key: string;
+  model: string;
+  status: string;
+}
+
 export interface TokenUsageHistoryItem {
   id: number;
   feature: string;
@@ -25,14 +52,7 @@ export interface TokenUsageHistoryItem {
   prompt_tokens: number;
   completion_tokens: number;
   total_tokens: number;
-  created_at: string;
-}
-
-export interface ProviderInfo {
-  name: string;
-  provider_key: string;
-  model: string;
-  status: string;
+  created_at: string | null;
 }
 
 export interface TokenUsageData {
@@ -46,10 +66,14 @@ export interface TokenUsageData {
   history: TokenUsageHistoryItem[];
 }
 
+// ============ API ============
+// PENTING: semua endpoint AI Rules di sini path-based (project_id di URL path),
+// mengikuti routers/ai_rules.py asli -- BUKAN query param seperti versi sebelumnya.
+
 export const settingsApi = {
-  // Aturan project-level (bukan workspace-level)
   getProjectAIRules: async (projectId: number, token: string): Promise<AIRule[]> => {
     const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/ai-rules`, {
+      method: 'GET',
       headers: getAuthHeaders(token),
     });
     if (!response.ok) {
@@ -67,7 +91,7 @@ export const settingsApi = {
     const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/ai-rules`, {
       method: 'POST',
       headers: getAuthHeaders(token),
-      body: JSON.stringify(data),
+      body: JSON.stringify(data), // tidak perlu project_id di body, sudah di path
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -76,11 +100,23 @@ export const settingsApi = {
     return response.json();
   },
 
+  deleteAIRule: async (ruleId: number, token: string) => {
+    const response = await fetch(`${API_BASE_URL}/api/ai-rules/${ruleId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(token),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(formatApiError(errorData, 'Gagal menghapus aturan AI'));
+    }
+    return response.json();
+  },
+
   generateAIRuleSuggestions: async (
     projectId: number,
     token: string
-  ): Promise<{ name: string; content: string }[]> => {
-    const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/ai-rules/generate`, {
+  ): Promise<AIRuleSuggestion[]> => {
+    const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/ai-rules/suggest`, {
       method: 'POST',
       headers: getAuthHeaders(token),
     });
@@ -92,30 +128,18 @@ export const settingsApi = {
     return data.suggestions || [];
   },
 
-  deleteAIRule: async (ruleId: number, token: string): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/api/ai-rules/${ruleId}`, {
-      method: 'DELETE',
+  getTokenUsage: async (token: string, projectId?: number): Promise<TokenUsageData> => {
+    const url = projectId
+      ? `${API_BASE_URL}/api/tokens/usage?project_id=${projectId}`
+      : `${API_BASE_URL}/api/tokens/usage`;
+    const response = await fetch(url, {
+      method: 'GET',
       headers: getAuthHeaders(token),
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(formatApiError(errorData, 'Gagal menghapus aturan AI'));
+      throw new Error(formatApiError(errorData, 'Gagal mengambil data token usage'));
     }
+    return response.json();
   },
-
-  // Mengambil statistik token dan kuota
-  getTokenUsage: async (token: string, projectId?: number): Promise<TokenUsageData> => {
-    const url = projectId 
-      ? `${API_BASE_URL}/api/tokens/usage?project_id=${projectId}`
-      : `${API_BASE_URL}/api/tokens/usage`;
-      
-    const res = await fetch(url, {
-      headers: getAuthHeaders(token),
-    });
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(formatApiError(errorData, 'Gagal memuat data token usage'));
-    }
-    return res.json();
-  }
 };
