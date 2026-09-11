@@ -1,7 +1,8 @@
 // services/usersApi.ts
 import { UserType, Persona } from '@/features/users/types';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = `${API_BASE_URL}/api`;
 
 const getAuthHeaders = (token: string) => ({
   'Content-Type': 'application/json',
