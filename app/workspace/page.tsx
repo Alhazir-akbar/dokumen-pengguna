@@ -113,8 +113,7 @@ export default function WorkspacePage() {
     );
   }
 
-  // Kalau sampai sini, artinya hasNoProjects true (kasus lain sudah di-redirect
-  // duluan di dalam useEffect sebelum render sempat sampai sini).
+  
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="h-14 border-b border-gray-200 bg-white flex items-center justify-between px-6 sticky top-0 z-10">
@@ -124,7 +123,7 @@ export default function WorkspacePage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => router.push('/team-settings')}
+            onClick={() => router.push('/team')}
             className="text-xs text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm font-medium cursor-pointer"
           >
             <Users className="w-3.5 h-3.5 text-gray-500" /> Team Settings

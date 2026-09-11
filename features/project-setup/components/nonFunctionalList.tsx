@@ -4,16 +4,17 @@
 import { useState, useEffect } from 'react';
 import LogoUserdoc from '../../../public/logoUserDoc';
 import { useWizardStore, NonFunctionalItem } from '../store/wizard-store';
-import { Sparkles, ArrowRight, Plus, Pencil, X } from 'lucide-react';
+import { Sparkles, ArrowRight, ArrowLeft, Plus, Pencil, X } from 'lucide-react';
 
 export default function NonFunctionalList() {
-  const {
+    const {
     projectName,
     nonFunctionals,
     addNonFunctional,
     removeNonFunctional,
     updateNonFunctional,
     nextStep,
+    prevStep,
   } = useWizardStore() as any;
 
   const [mounted, setMounted] = useState(false);
@@ -206,24 +207,35 @@ export default function NonFunctionalList() {
         )}
       </div>
 
-      <div className="w-full flex items-center justify-between">
+            <div className="w-full flex items-center justify-between pt-4 border-t border-white/10">
         <button
           type="button"
-          onClick={nextStep}
-          className="bg-white hover:bg-blue-50 text-blue-700 px-5 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 shadow-lg cursor-pointer text-sm"
+          onClick={prevStep}
+          className="bg-transparent hover:bg-white/10 text-white border border-white/20 px-4 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 cursor-pointer text-sm"
         >
-          Next <ArrowRight className="w-4 h-4" />
+          <ArrowLeft className="w-4 h-4" /> Back
         </button>
 
-        {!isAdding && (
+        <div className="flex items-center gap-3">
+          {!isAdding && (
+            <button
+              type="button"
+              onClick={() => setIsAdding(true)}
+              className="bg-transparent hover:bg-white/10 text-white border border-white/20 px-4 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 cursor-pointer text-sm"
+            >
+              <Plus className="w-4 h-4" /> Add requirement
+            </button>
+          )}
+
           <button
             type="button"
-            onClick={() => setIsAdding(true)}
-            className="bg-transparent hover:bg-white/10 text-white border border-white/20 px-4 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 cursor-pointer text-sm"
+            onClick={nextStep}
+            className="bg-white hover:bg-blue-50 text-blue-700 px-6 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-lg cursor-pointer text-sm"
           >
-            <Plus className="w-4 h-4" /> Add requirement
+            <span>Next</span> <ArrowRight className="w-4 h-4" />
           </button>
-        )}
+        </div>
+      
       </div>
     </div>
   );

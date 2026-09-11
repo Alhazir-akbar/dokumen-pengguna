@@ -4,10 +4,10 @@
 import { useState, useEffect } from 'react';
 import LogoUserdoc from '../../../public/logoUserDoc';
 import { useWizardStore } from '../store/wizard-store';
-import { Plus, X, Pencil, Sparkles, ArrowRight } from 'lucide-react';
+import { Plus, X, Pencil, Sparkles, ArrowRight, ArrowLeft } from 'lucide-react';
 
 export default function EpicsList() {
-  const { projectName, epics, addEpic, removeEpic, updateEpic, nextStep } = useWizardStore() as any;
+  const { projectName, epics, addEpic, removeEpic, updateEpic, nextStep, prevStep } = useWizardStore() as any;
 
   const [isAdding, setIsAdding] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -202,24 +202,34 @@ export default function EpicsList() {
         )}
       </div>
 
-      <div className="w-full flex items-center justify-between">
+            <div className="w-full flex items-center justify-between pt-4 border-t border-white/10">
         <button
           type="button"
-          onClick={handleNext}
-          className="bg-white hover:bg-blue-50 text-blue-700 px-5 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 shadow-lg cursor-pointer"
+          onClick={prevStep}
+          className="bg-transparent hover:bg-white/10 text-white border border-white/20 px-4 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 cursor-pointer text-sm"
         >
-          Next <ArrowRight className="w-4 h-4" />
+          <ArrowLeft className="w-4 h-4" /> Back
         </button>
 
-        {!isAdding && (
+        <div className="flex items-center gap-3">
+          {!isAdding && (
+            <button
+              type="button"
+              onClick={() => setIsAdding(true)}
+              className="bg-transparent hover:bg-white/10 text-white border border-white/20 px-4 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 cursor-pointer text-sm"
+            >
+              <Plus className="w-4 h-4" /> Add epic
+            </button>
+          )}
+
           <button
             type="button"
-            onClick={() => setIsAdding(true)}
-            className="bg-transparent hover:bg-white/10 text-white border border-white/20 px-4 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 cursor-pointer"
+            onClick={handleNext}
+            className="bg-white hover:bg-blue-50 text-blue-700 px-6 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-lg cursor-pointer text-sm"
           >
-            <Plus className="w-4 h-4" /> Add epic
+            <span>Next</span> <ArrowRight className="w-4 h-4" />
           </button>
-        )}
+        </div>
       </div>
     </div>
   );

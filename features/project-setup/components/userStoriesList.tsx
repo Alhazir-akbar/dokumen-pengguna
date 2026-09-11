@@ -5,7 +5,8 @@ import { useState, useEffect } from 'react';
 import LogoUserdoc from '../../../public/logoUserDoc';
 import { useWizardStore, UserStoryItem } from '../store/wizard-store';
 import { 
-  ArrowRight, 
+  ArrowRight,
+  ArrowLeft,
   Trash2, 
   ChevronDown, 
   Lock, 
@@ -39,7 +40,7 @@ const getEpicIcon = (title: string) => {
 };
 
 export default function UserStoriesList() {
-  const { projectName, epics, userTypes, userStories, addUserStory, removeUserStory, updateStory, nextStep } = useWizardStore() as any;
+  const { projectName, userStories, epics, userTypes, addUserStory, removeUserStory, updateStory, nextStep, prevStep } = useWizardStore() as any;
   
   const [addingEpicTitle, setAddingEpicTitle] = useState<string | null>(null);
   const [storyName, setStoryName] = useState('');
@@ -395,7 +396,16 @@ export default function UserStoriesList() {
         </div>
       )}
 
-      <div className="w-full flex items-center justify-start">
+            {/* Navigasi Bawah */}
+      <div className="w-full flex items-center justify-between pt-4 border-t border-white/10">
+        <button
+          type="button"
+          onClick={prevStep}
+          className="bg-transparent hover:bg-white/10 text-white border border-white/20 px-4 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 cursor-pointer text-sm"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back
+        </button>
+
         <button
           type="button"
           onClick={handleNext}

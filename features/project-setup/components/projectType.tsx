@@ -2,11 +2,11 @@
 
 import LogoUserdoc from '../../../public/logoUserDoc';
 import { useWizardStore } from '../store/wizard-store';
-import { FolderGit2, FileCode2, Eye } from 'lucide-react';
+import { FolderGit2, FileCode2, Eye, ArrowLeft } from 'lucide-react';
 
 export default function ProjectType() {
   // Pastikan store Anda memiliki tipe 'generate' | 'translate' | 'example' | null
-  const { projectType, setProjectType, nextStep } = useWizardStore();
+  const { setProjectType, nextStep, prevStep, projectType } = useWizardStore();
 
   const handleSelect = (type: 'generate' | 'translate' | 'example') => {
     setProjectType(type);
@@ -65,7 +65,7 @@ export default function ProjectType() {
         </div>
       </div>
 
-      {/* Tombol Explore Example */}
+            {/* Tombol Explore Example */}
       <div className="w-full flex flex-col items-center mb-8">
         <span className="text-blue-300/80 text-xs font-medium uppercase tracking-wider mb-3">OR</span>
         <button
@@ -76,6 +76,17 @@ export default function ProjectType() {
           }`}
         >
           <Eye className="w-4 h-4" /> Explore an example Userdoc project
+        </button>
+      </div>
+
+      {/* Tombol Back */}
+      <div className="w-full flex items-center justify-start pt-4 border-t border-white/10">
+        <button
+          type="button"
+          onClick={prevStep}
+          className="bg-transparent hover:bg-white/10 text-white border border-white/20 px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all flex items-center gap-2 cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back
         </button>
       </div>
       

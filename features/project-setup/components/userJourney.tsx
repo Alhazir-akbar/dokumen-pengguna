@@ -4,7 +4,11 @@
 import { useState } from 'react';
 import LogoUserdoc from '../../../public/logoUserDoc';
 import { useWizardStore } from '../store/wizard-store';
+<<<<<<< HEAD
 import { Sparkles, Loader2, AlertCircle, User } from 'lucide-react';
+=======
+import { Sparkles, Loader2, AlertCircle, ArrowLeft, User } from 'lucide-react';
+>>>>>>> skip,-next,-back-button-on-project-setup
 import { projectApi } from '@/services/projectsApi';
 import { journeysApi } from '@/services/journeysApi';
 import { getAuthToken } from '@/lib/auth';
@@ -20,7 +24,7 @@ interface JourneyStepDraft {
 }
 
 export default function UserJourney({ onFinishProject }: UserJourneyProps) {
-  const { projectName, projectDescription, projectId, userTypes } = useWizardStore() as any;
+  const { projectName, projectDescription, projectId, userTypes, prevStep } = useWizardStore() as any;
 
   const [journeyText, setJourneyText] = useState('');
   const [journeySteps, setJourneySteps] = useState<JourneyStepDraft[]>([]);
@@ -39,9 +43,12 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
       return;
     }
 
+<<<<<<< HEAD
     // Ambil persona asli dari userTypes di store (hasil step AI Requirements
     // sebelumnya, UserTypeItem.personas: PersonaDraft[]). Ini yang dipakai
     // AI untuk assign persona_name per step -- bukan lagi nama user type.
+=======
+>>>>>>> skip,-next,-back-button-on-project-setup
     const personas = (userTypes || []).flatMap((ut: any) =>
       (ut.personas || []).map((p: any) => ({
         name: p.name,
@@ -50,20 +57,13 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
       }))
     );
 
-    if (personas.length === 0) {
-      setActionError(
-        'Belum ada Persona yang tersedia. Kembali ke step User Types dan pastikan persona sudah dibuat sebelum generate AI journey.'
-      );
-      return;
-    }
-
     setIsSuggesting(true);
     try {
-      const result = await projectApi.suggestUserJourney(
+            const result = await projectApi.suggestUserJourney(
         {
           project_name: titleName,
           project_description: projectDescription || '',
-          personas, // <- ganti dari user_types: string[]
+          personas,
         },
         token
       );
@@ -105,12 +105,6 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
 
     setIsSubmitting(true);
     try {
-      // CATATAN: di titik wizard ini persona masih berupa draft di store
-      // (belum tentu punya id asli di DB tergantung urutan save-requirements),
-      // jadi step yang dibuat di sini belum menyertakan persona_id. Persona
-      // per step baru bisa di-assign final nanti di halaman Journeys, baik
-      // lewat "Generate AI Steps" ulang (yang query persona asli dari DB dan
-      // match by name) atau lewat dropdown assign manual.
       await journeysApi.createJourney(
         {
           name: `${titleName} — Main User Journey`,
@@ -264,7 +258,20 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
         </div>
       )}
 
+<<<<<<< HEAD
       <div className="w-full flex items-center justify-start mt-2">
+=======
+      {/* Navigasi Bawah */}
+      <div className="w-full flex items-center justify-between pt-4 border-t border-white/10 mt-2">
+        <button
+          type="button"
+          onClick={prevStep}
+          className="bg-transparent hover:bg-white/10 text-white border border-white/20 px-4 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 cursor-pointer text-sm"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back
+        </button>
+
+>>>>>>> skip,-next,-back-button-on-project-setup
         <button
           type="button"
           onClick={handleFinish}
