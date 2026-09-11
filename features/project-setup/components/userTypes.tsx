@@ -4,11 +4,7 @@
 import { useState, useEffect } from 'react';
 import LogoUserdoc from '../../../public/logoUserDoc';
 import { useWizardStore, UserTypeItem } from '../store/wizard-store';
-<<<<<<< HEAD
-import { Sparkles, Trash2, ArrowRight, Plus, AlertCircle, Pencil, Loader2 } from 'lucide-react';
-=======
 import { Plus, Trash2, Pencil, Sparkles, AlertCircle, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
->>>>>>> skip,-next,-back-button-on-project-setup
 import { projectApi } from '@/services/projectsApi';
 import { getAuthToken } from '@/lib/auth';
 
@@ -38,12 +34,6 @@ export default function UserTypes() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
-
-<<<<<<< HEAD
-  // ID user type yang AI-nya lagi diproses (dipakai buat nampilin spinner di
-  // tombol Sparkles yang sedang jalan, tanpa ganggu tombol di baris lain).
-=======
->>>>>>> skip,-next,-back-button-on-project-setup
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [aiError, setAiError] = useState('');
 
@@ -275,18 +265,6 @@ export default function UserTypes() {
         </div>
       )}
 
-<<<<<<< HEAD
-      <div className="w-full flex items-center justify-between">
-        <button
-          type="button"
-          onClick={handleNext}
-          className="bg-white hover:bg-blue-50 text-blue-700 px-6 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-lg cursor-pointer text-sm"
-        >
-          <span>Next</span> <ArrowRight className="w-4 h-4" />
-        </button>
-
-        {!isAdding && (
-=======
       {/* Navigasi Bawah */}
       <div className="w-full flex items-center justify-between pt-4 border-t border-white/10">
         <button
@@ -296,7 +274,7 @@ export default function UserTypes() {
         >
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
-
+        
         <div className="flex items-center gap-3">
           {!isAdding && (
             <button
@@ -308,7 +286,6 @@ export default function UserTypes() {
             </button>
           )}
 
->>>>>>> skip,-next,-back-button-on-project-setup
           <button
             type="button"
             onClick={handleNext}
