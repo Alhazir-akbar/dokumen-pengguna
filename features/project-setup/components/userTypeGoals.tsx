@@ -4,12 +4,12 @@
 import { useState, useEffect } from 'react';
 import LogoUserdoc from '../../../public/logoUserDoc';
 import { useWizardStore } from '../store/wizard-store';
-import { ArrowRight, Sparkles, AlertCircle, Loader2, Plus, X, Pencil } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Sparkles, AlertCircle, Loader2, Plus, X, Pencil } from 'lucide-react';
 import { projectApi } from '@/services/projectsApi';
 import { getAuthToken } from '@/lib/auth';
 
 export default function UserTypeGoals() {
-  const { projectName, userTypes, userGoals, updateUserGoal, nextStep, addUserType, removeUserType, updateUserTypeDescription } = useWizardStore() as any;
+  const { projectName, userTypes, userGoals, updateUserGoal, nextStep, prevStep, addUserType, removeUserType, updateUserTypeDescription } = useWizardStore() as any;
   const [error, setError] = useState(false);
 
   const [mounted, setMounted] = useState(false);
@@ -394,25 +394,33 @@ export default function UserTypeGoals() {
       )}
 
       {/* Navigasi Bawah */}
-      <div className="w-full flex items-center justify-between">
+      <div className="w-full flex items-center justify-between pt-4 border-t border-white/10">
         <button
           type="button"
-          onClick={handleNext}
-          className="bg-white hover:bg-blue-50 text-blue-700 px-6 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 shadow-lg cursor-pointer text-sm"
+          onClick={prevStep}
+          className="bg-transparent hover:bg-white/10 text-white border border-white/20 px-4 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 cursor-pointer text-sm"
         >
-          Next <ArrowRight className="w-4 h-4" />
+          <ArrowLeft className="w-4 h-4" /> Back
         </button>
-
-        {!isAdding && (
+        <div className="flex items-center gap-3">
+          {!isAdding && (
+            <button
+              type="button"
+              onClick={() => setIsAdding(true)}
+              className="bg-transparent hover:bg-white/10 text-white border border-white/20 px-4 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 cursor-pointer text-sm"
+            >
+              <Plus className="w-4 h-4" /> Add user type
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => setIsAdding(true)}
-            className="bg-transparent hover:bg-white/10 text-white border border-white/20 px-4 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 cursor-pointer text-sm"
+            onClick={handleNext}
+            className="bg-white hover:bg-blue-50 text-blue-700 px-6 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 shadow-lg cursor-pointer text-sm"
           >
-            <Plus className="w-4 h-4" /> Add user type
+            Next <ArrowRight className="w-4 h-4" />
           </button>
-        )}
+          </div>
+        </div>
       </div>
-    </div>
   );
 }

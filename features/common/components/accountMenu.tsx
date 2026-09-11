@@ -204,7 +204,7 @@ export default function AccountMenu({ currentWorkspaceId: currentWorkspaceIdProp
                   <User className="w-4 h-4 text-gray-400" /> Manage Profile
                 </button>
                 <button
-                  onClick={() => { setIsOpen(false); router.push('/team-settings'); }}
+                  onClick={() => { setIsOpen(false); router.push('/team'); }}
                   className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer text-left font-medium"
                 >
                   <Users className="w-4 h-4 text-gray-400" /> Team Settings
