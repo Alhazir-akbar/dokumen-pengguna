@@ -3,11 +3,13 @@
 import { useState } from 'react';
 import LogoUserdoc from '../../../public/logoUserDoc';
 import { useWizardStore } from '../store/wizard-store';
-import { Check, X } from 'lucide-react';
+import { ArrowRight, ArrowLeft, X } from 'lucide-react';
 
 export default function SoftwareTechnologies() {
-  const { nextStep, prevStep } = useWizardStore();
-  const [technologies, setTechnologies] = useState<string[]>(['HTML', 'Python']);
+  const { nextStep, prevStep, softwareTechnologies, setSoftwareTechnologies } = useWizardStore();
+  const [technologies, setTechnologies] = useState<string[]>(
+    softwareTechnologies && softwareTechnologies.length > 0 ? softwareTechnologies : []
+  );
   const [inputValue, setInputValue] = useState('');
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -28,30 +30,26 @@ export default function SoftwareTechnologies() {
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault();
     if (technologies.length === 0) return;
+    setSoftwareTechnologies(technologies);
     nextStep();
   };
 
   return (
-    <div className="flex flex-col items-center text-center w-full max-w-xl mx-auto pt-10">
-      
-      {/* Logo Kotak (UD) */}
-      <div className="mb-6">
+    <div className="flex flex-col items-start w-full max-w-xl mx-auto pt-12">
+      <div className="mb-8">
         <LogoUserdoc />
       </div>
 
-      {/* Judul & Deskripsi */}
-      <div className="mb-6 w-full">
-        <h2 className="text-xl sm:text-2xl font-bold text-white mb-2 leading-snug">
-          What technologies does this software use?
-        </h2>
-        <p className="text-blue-100 text-xs sm:text-sm">
-          Select the programming languages and frameworks used to build this system
-        </p>
-      </div>
+      <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
+        What technologies does this software use?
+      </h1>
 
-      {/* Form Input Tags & Tombol */}
-      <form onSubmit={handleNext} className="w-full flex flex-col items-center">
-        <div className="w-full bg-white/10 border border-blue-400/50 rounded-xl p-3 flex flex-wrap items-center gap-2 mb-6 focus-within:border-white transition-all shadow-inner text-left">
+      <p className="text-blue-200 text-sm mb-6 leading-relaxed">
+        Select the programming languages and frameworks used to build this system.
+      </p>
+
+      <form onSubmit={handleNext} className="w-full flex flex-col items-start">
+        <div className="w-full bg-white/10 border border-blue-100/40 rounded-xl p-3 flex flex-wrap items-center gap-2 focus-within:ring-2 focus-within:ring-white/50 transition-all shadow-inner mb-6">
           {technologies.map((tech) => (
             <span
               key={tech}
@@ -61,7 +59,7 @@ export default function SoftwareTechnologies() {
               <button
                 type="button"
                 onClick={() => removeTech(tech)}
-                className="hover:text-red-300 transition-colors"
+                className="hover:text-red-300 transition-colors cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -72,34 +70,34 @@ export default function SoftwareTechnologies() {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={technologies.length === 0 ? "Type technology and press Enter..." : ""}
-            className="bg-transparent border-none outline-none text-sm text-white placeholder-blue-300/60 flex-1 min-w-[140px] px-1 py-1"
+            placeholder={technologies.length === 0 ? 'Type technology and press Enter...' : ''}
+            className="bg-transparent border-none outline-none text-sm text-white placeholder-blue-300/50 flex-1 min-w-[140px] px-1 py-1"
+            autoFocus
           />
         </div>
 
-        <div className="flex items-center gap-4 w-full">
-          <button
-            type="submit"
-            disabled={technologies.length === 0}
-            className={`px-6 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-md ${
-              technologies.length > 0
-                ? 'bg-white text-blue-700 hover:bg-blue-50 cursor-pointer'
-                : 'bg-white/40 text-white/50 cursor-not-allowed'
-            }`}
-          >
-            Next <Check className="w-4 h-4" />
-          </button>
-
+        <div className="w-full flex items-center justify-between">
           <button
             type="button"
             onClick={prevStep}
-            className="text-white/80 hover:text-white text-xs sm:text-sm font-medium transition-colors underline underline-offset-4 cursor-pointer"
+            className="bg-transparent hover:bg-white/10 text-white border border-white/20 px-4 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 cursor-pointer"
           >
-            Back
+            <ArrowLeft className="w-4 h-4" /> Back
+          </button>
+
+          <button
+            type="submit"
+            disabled={technologies.length === 0}
+            className={`px-6 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 border ${
+              technologies.length > 0
+                ? 'bg-transparent hover:bg-white/10 text-white border-white/20 backdrop-blur-sm cursor-pointer'
+                : 'bg-transparent text-white/30 border-white/10 cursor-not-allowed'
+            }`}
+          >
+            Next <ArrowRight className="w-4 h-4" />
           </button>
         </div>
       </form>
-
     </div>
   );
 }

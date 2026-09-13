@@ -202,7 +202,7 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
               </>
             ) : (
               <>
-                <Sparkles className="w-3 h-3 text-yellow-300 animate-pulse" /> AI Suggest
+                <Sparkles className="w-3 h-3 text-yellow-300 animate-pulse" />
               </>
             )}
           </button>

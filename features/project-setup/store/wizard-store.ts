@@ -73,6 +73,23 @@ interface WizardState {
   workspaceId: number | null;
   isCreatingWorkspace: boolean;
 
+  // ---- Jalur "Translate" (reverse engineer existing software) ----
+  softwareName: string;
+  softwareOverview: string;
+  softwareTechnologies: string[];
+
+  // SoftwareScale step
+  knowsSoftwareSize: string | null;
+  linesOfCode: string;
+  yearsInDev: string;
+  softwareSizeClass: string;
+  codeStructure: string;
+
+  // SoftwareDetails step
+  hasDbLogic: string | null;
+  useMicroservice: string | null;
+  otherComplexity: string;
+
   setStep: (step: number) => void;
   nextStep: () => void;
   prevStep: () => void;
@@ -82,6 +99,20 @@ interface WizardState {
   setProjectType: (type: ProjectTypeEnum) => void;
   setProjectDescription: (desc: string) => void;
   setPlatformType: (platform: string) => void;
+
+  setSoftwareName: (name: string) => void;
+  setSoftwareOverview: (overview: string) => void;
+  setSoftwareTechnologies: (techs: string[]) => void;
+
+  setKnowsSoftwareSize: (value: string | null) => void;
+  setLinesOfCode: (value: string) => void;
+  setYearsInDev: (value: string) => void;
+  setSoftwareSizeClass: (value: string) => void;
+  setCodeStructure: (value: string) => void;
+
+  setHasDbLogic: (value: string | null) => void;
+  setUseMicroservice: (value: string | null) => void;
+  setOtherComplexity: (value: string) => void;
 
   addUserType: (item: UserTypeItem) => void;
   removeUserType: (id: string) => void;
@@ -113,6 +144,50 @@ const getValidToken = (token?: string): string => {
   return token || localStorage.getItem('token') || localStorage.getItem('access_token') || '';
 };
 
+// Backend belum punya field khusus untuk detail teknis software existing
+// (teknologi, ukuran, kompleksitas database), jadi sementara kita rangkum
+// jadi teks dan sisipkan ke `description` project. Kalau nanti backend
+// sudah punya field dedicated, tinggal pecah fungsi ini.
+function buildTranslateDescription(state: {
+  softwareOverview: string;
+  softwareTechnologies: string[];
+  knowsSoftwareSize: string | null;
+  linesOfCode: string;
+  yearsInDev: string;
+  softwareSizeClass: string;
+  codeStructure: string;
+  hasDbLogic: string | null;
+  useMicroservice: string | null;
+  otherComplexity: string;
+}): string {
+  const parts: string[] = [];
+
+  if (state.softwareOverview) parts.push(state.softwareOverview);
+
+  if (state.softwareTechnologies && state.softwareTechnologies.length > 0) {
+    parts.push(`Technologies: ${state.softwareTechnologies.join(', ')}`);
+  }
+
+  if (state.knowsSoftwareSize === 'yes' && state.linesOfCode) {
+    parts.push(`Estimated size: ${state.linesOfCode} lines of code`);
+  } else if (state.knowsSoftwareSize === 'no') {
+    const sizeParts: string[] = [];
+    if (state.yearsInDev) sizeParts.push(`${state.yearsInDev} in development`);
+    if (state.softwareSizeClass) sizeParts.push(`classified as ${state.softwareSizeClass}`);
+    if (state.codeStructure) sizeParts.push(`structure: ${state.codeStructure}`);
+    if (sizeParts.length > 0) parts.push(`Size estimate: ${sizeParts.join(', ')}`);
+  }
+
+  if (state.hasDbLogic === 'yes') {
+    const dbParts: string[] = ['Uses database logic (stored procedures/triggers)'];
+    if (state.useMicroservice) dbParts.push(`microservice architecture: ${state.useMicroservice}`);
+    if (state.otherComplexity) dbParts.push(`additional complexity: ${state.otherComplexity}`);
+    parts.push(dbParts.join(', '));
+  }
+
+  return parts.join('\n\n');
+}
+
 export const useWizardStore = create<WizardState>()(
   persist(
     (set, get: any) => ({
@@ -133,6 +208,20 @@ export const useWizardStore = create<WizardState>()(
       workspaceId: null,
       isCreatingWorkspace: false,
 
+      softwareName: '',
+      softwareOverview: '',
+      softwareTechnologies: [],
+
+      knowsSoftwareSize: null,
+      linesOfCode: '',
+      yearsInDev: '',
+      softwareSizeClass: '',
+      codeStructure: '',
+
+      hasDbLogic: null,
+      useMicroservice: null,
+      otherComplexity: '',
+
       setStep: (step) => set({ step }),
       nextStep: () => set((state) => ({ step: state.step + 1 })),
       prevStep: () => set((state) => ({ step: Math.max(state.step - 1, 1) })),
@@ -143,6 +232,20 @@ export const useWizardStore = create<WizardState>()(
       setProjectType: (type) => set({ projectType: type }),
       setProjectDescription: (desc) => set({ projectDescription: desc }),
       setPlatformType: (platform) => set({ platformType: platform }),
+
+      setSoftwareName: (name) => set({ softwareName: name }),
+      setSoftwareOverview: (overview) => set({ softwareOverview: overview }),
+      setSoftwareTechnologies: (techs) => set({ softwareTechnologies: techs }),
+
+      setKnowsSoftwareSize: (value) => set({ knowsSoftwareSize: value }),
+      setLinesOfCode: (value) => set({ linesOfCode: value }),
+      setYearsInDev: (value) => set({ yearsInDev: value }),
+      setSoftwareSizeClass: (value) => set({ softwareSizeClass: value }),
+      setCodeStructure: (value) => set({ codeStructure: value }),
+
+      setHasDbLogic: (value) => set({ hasDbLogic: value }),
+      setUseMicroservice: (value) => set({ useMicroservice: value }),
+      setOtherComplexity: (value) => set({ otherComplexity: value }),
 
       addUserType: (item) => set((state) => ({ userTypes: [...state.userTypes, item] })),
       removeUserType: (id) => set((state) => ({ userTypes: state.userTypes.filter((u) => u.id !== id) })),
@@ -224,9 +327,20 @@ export const useWizardStore = create<WizardState>()(
             set({ workspaceId: activeWorkspaceId });
           }
 
+          const state = get();
+          const isTranslate = state.projectType === 'translate';
+
+          const projectName = isTranslate
+            ? (state.softwareName?.trim() || 'Proyek Baru')
+            : (state.projectName?.trim() || 'Proyek Baru');
+
+          const projectDescription = isTranslate
+            ? buildTranslateDescription(state)
+            : (state.projectDescription || '');
+
           const newProject = await projectApi.createProject({
-            name: get().projectName || 'Proyek Baru',
-            description: get().projectDescription || '',
+            name: projectName,
+            description: projectDescription,
             workspace_id: activeWorkspaceId!,
             application_type: get().platformType || 'Web Application',
             domain_business: 'General',
@@ -278,7 +392,7 @@ export const useWizardStore = create<WizardState>()(
             epicTitle: s.epic_name,
             storyName: s.story_name,
             userType: s.user_type,
-            description: s.description,
+            description: s.description || '',
             acceptanceCriteria: s.acceptance_criteria || [],
             techNotes: s.tech_notes || [],
             testCases: s.test_cases || [],
@@ -292,8 +406,8 @@ export const useWizardStore = create<WizardState>()(
             })
           );
 
-          set({ 
-            epics: mappedEpics, 
+          set({
+            epics: mappedEpics,
             userStories: mappedStories,
             userTypes: mappedUserTypes,
             nonFunctionals: mappedNonFunctionals
@@ -306,7 +420,28 @@ export const useWizardStore = create<WizardState>()(
       },
 
       resetStore: () => set({
-        step: 1, teamName: '', projectName: '', projectDescription: '', userTypes: [], userGoals: [], epics: [], nonFunctionals: [], userStories: [], projectId: null, workspaceId: null
+        step: 1,
+        teamName: '',
+        projectName: '',
+        projectDescription: '',
+        userTypes: [],
+        userGoals: [],
+        epics: [],
+        nonFunctionals: [],
+        userStories: [],
+        projectId: null,
+        workspaceId: null,
+        softwareName: '',
+        softwareOverview: '',
+        softwareTechnologies: [],
+        knowsSoftwareSize: null,
+        linesOfCode: '',
+        yearsInDev: '',
+        softwareSizeClass: '',
+        codeStructure: '',
+        hasDbLogic: null,
+        useMicroservice: null,
+        otherComplexity: '',
       }),
     }),
     {

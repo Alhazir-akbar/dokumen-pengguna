@@ -191,7 +191,6 @@ export default function WizardPage() {
         </div>
       )}
 
-      {/* 🚀 Tombol Skip Setup & Logout di Pojok Kanan Atas */}
       <div className="absolute top-6 right-6 flex items-center gap-3 z-40">
         <button
           type="button"
@@ -220,15 +219,13 @@ export default function WizardPage() {
       </div>
 
       {step === 1 && <TeamName />}
-      {step === 2 && <NameProject />}
-      {step === 3 && <ProjectType />}
+      {step === 2 && <ProjectType />}
 
       {projectType === 'generate' && (
         <>
-          {step === 4 && <AiIntro />}
+          {step === 3 && <AiIntro />}
+          {step === 4 && <NameProject />}
           {step === 5 && <DescribeProject />}
-          {/* Step "AiChoice" dihapus — DescribeProject sekarang otomatis men-generate
-              rekomendasi AI begitu user klik Next, tanpa perlu pilihan manual/AI lagi. */}
           {step === 6 && <UserTypes />}
           {step === 7 && <EpicsList />}
           {step === 8 && <NonFunctionalList />}
@@ -240,13 +237,13 @@ export default function WizardPage() {
 
       {projectType === 'translate' && (
         <>
-          {step === 4 && <SoftwareIntro />}
-          {step === 5 && <SoftwareName />}
-          {step === 6 && <SoftwareOverview />}
-          {step === 7 && <SoftwareScale />}
-          {step === 8 && <SoftwareDetails />}
-          {step === 9 && <SoftwareTechnologies />}
-          {step === 10 && <UserJourney onFinishProject={handleFinishWizard} />}
+          {step === 3 && <SoftwareIntro />}
+          {step === 4 && <SoftwareName />}
+          {step === 5 && <SoftwareOverview />}
+          {step === 6 && <SoftwareScale />}
+          {step === 7 && <SoftwareDetails />}
+          {step === 8 && <SoftwareTechnologies />}
+          {step === 9 && <UserJourney onFinishProject={handleFinishWizard} />}
         </>
       )}
 
