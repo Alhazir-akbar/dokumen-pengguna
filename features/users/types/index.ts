@@ -4,6 +4,7 @@ export interface Persona {
   id?: number; // ada jika persona ini sudah tersimpan di backend; kosong jika baru dibuat di form
   name: string;
   workTitle?: string;
+  avatarUrl?: string;
   age?: string;
   location?: string;
   familyStatus?: string;

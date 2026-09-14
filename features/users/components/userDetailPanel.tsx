@@ -74,8 +74,14 @@ export default function UserDetailPanel({ userType, onEdit, onDelete }: UserDeta
                 {/* Kolom Kiri: Foto, Nama, & Biodata */}
                 <div className="lg:col-span-4 space-y-6 lg:border-r lg:border-gray-100 lg:pr-8">
                   <div className="flex flex-col items-center text-center">
-                    <div className="w-24 h-24 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-2xl overflow-hidden mb-4 border border-gray-100 shadow-sm">
-                      {currentPersona.name ? currentPersona.name.charAt(0) : 'U'}
+                    <div className="w-24 h-24 rounded-full overflow-hidden mb-4 border-2 border-blue-100 shadow-sm flex items-center justify-center bg-blue-50 text-blue-600 font-bold text-2xl">
+                      {currentPersona.avatarUrl ? (
+                        <img src={currentPersona.avatarUrl} alt={currentPersona.name} className="w-full h-full object-cover" />
+                      ) : currentPersona.name ? (
+                        currentPersona.name.charAt(0)
+                      ) : (
+                        'U'
+                      )}
                     </div>
                     <h4 className="text-base font-bold text-gray-900">{currentPersona.name}</h4>
                   </div>
