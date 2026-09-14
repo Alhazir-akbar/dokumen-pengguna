@@ -20,8 +20,8 @@ interface JourneyStepDraft {
 }
 
 export default function UserJourney({ onFinishProject }: UserJourneyProps) {
-  const { projectName, projectDescription, projectId, userTypes, prevStep } = useWizardStore() as any;
-
+  const { projectName, projectDescription, projectId, userTypes, prevStep, createProjectIfNeeded } = useWizardStore() as any;
+  
   const [journeyText, setJourneyText] = useState('');
   const [journeySteps, setJourneySteps] = useState<JourneyStepDraft[]>([]);
   const [isSuggesting, setIsSuggesting] = useState(false);
@@ -82,24 +82,31 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
     setError(false);
     setActionError('');
 
-    const token = getAuthToken();
+        const token = getAuthToken();
     if (!token) {
       setActionError('Sesi habis, silakan login kembali.');
       return;
     }
 
-    if (!projectId) {
-      setActionError('Project belum berhasil dibuat sebelumnya. Silakan ulangi dari awal wizard.');
-      return;
-    }
-
     setIsSubmitting(true);
     try {
-      await journeysApi.createJourney(
+      // 🚀 Auto-create project jika belum dibuat di langkah sebelumnya
+      let activeProjId = projectId;
+      if (!activeProjId && createProjectIfNeeded) {
+        activeProjId = await createProjectIfNeeded(token);
+      }
+
+      if (!activeProjId) {
+        setActionError('Gagal membuat project di database. Silakan coba lagi.');
+        setIsSubmitting(false);
+        return;
+      }
+
+    await journeysApi.createJourney(
         {
           name: `${titleName} — Main User Journey`,
           description: journeyText,
-          project_id: projectId,
+          project_id: activeProjId,
           steps: journeySteps.map((step, index) => ({
             step_order: index + 1,
             title: step.title,
@@ -109,14 +116,14 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
         token
       );
 
-      await onFinishProject();
+    await onFinishProject();
     } catch (err: any) {
       console.error('Gagal menyelesaikan project:', err);
       setActionError(err.message || 'Gagal menyimpan user journey ke server.');
     } finally {
       setIsSubmitting(false);
     }
-  };
+    };
 
   if (isSubmitting) {
     return (

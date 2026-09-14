@@ -219,12 +219,17 @@ export const buildApi = {
     return handleJson(response, 'Gagal generate development plan');
   },
 
-  // ---------- AUTO-GENERATE SEMUA (dipanggil dari wizard project-setup) ----------
+    // ---------- AUTO-GENERATE SEMUA (dipanggil dari wizard project-setup) ----------
   generateDefaults: async (projectId: number, token: string): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/generate-build-defaults`, {
-      method: 'POST',
-      headers: getAuthHeaders(token),
-    });
-    return handleJson(response, 'Gagal auto-generate Build defaults');
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/generate-build-defaults`, {
+        method: 'POST',
+        headers: getAuthHeaders(token),
+      });
+      return await handleJson(response, 'Gagal auto-generate Build defaults');
+    } catch (err) {
+      console.warn('Auto-generate Build defaults non-fatal error:', err);
+      return null;
+    }
   },
 };

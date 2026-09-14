@@ -334,12 +334,22 @@ export default function TeamSettingsPage() {
               <button onClick={() => setShowInviteModal(false)} className="p-1 hover:bg-gray-100 rounded-lg cursor-pointer"><X className="w-4 h-4" /></button>
             </div>
             <form onSubmit={handleInvite} className="p-5 space-y-4">
-              <input type="email" required value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="email@example.com"
-                className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500" />
-              <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value as any)} className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500">
-                <option value="editor">Editor</option>
-                <option value="viewer">Viewer</option>
-              </select>
+              <input 
+                  type="email" 
+                  required 
+                  value={inviteEmail} 
+                  onChange={(e) => setInviteEmail(e.target.value)} 
+                  placeholder="email@example.com"
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 bg-white focus:outline-none focus:border-blue-500" 
+                />
+                <select 
+                  value={inviteRole} 
+                  onChange={(e) => setInviteRole(e.target.value as any)} 
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:border-blue-500"
+>
+                  <option value="editor">Editor</option>
+                  <option value="viewer">Viewer</option>
+                </select>
               <div className="flex justify-end gap-2 pt-2">
                 <button type="button" onClick={() => setShowInviteModal(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-xl cursor-pointer">Cancel</button>
                 <button type="submit" disabled={inviting} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-semibold disabled:opacity-50 cursor-pointer">
@@ -359,10 +369,21 @@ export default function TeamSettingsPage() {
               <button onClick={() => setShowRuleModal(false)} className="p-1 hover:bg-gray-100 rounded-lg cursor-pointer"><X className="w-4 h-4" /></button>
             </div>
             <form onSubmit={handleAddRule} className="p-5 space-y-4">
-              <input type="text" required value={newRuleName} onChange={(e) => setNewRuleName(e.target.value)} placeholder="Nama aturan"
-                className="w-full px-3.5 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500" />
-              <textarea required rows={4} value={newRuleContent} onChange={(e) => setNewRuleContent(e.target.value)} placeholder="Isi aturan..."
-                className="w-full px-3.5 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 resize-none" />
+            <input 
+              type="text" 
+              required 
+              value={newRuleName} 
+              onChange={(e) => setNewRuleName(e.target.value)} 
+              placeholder="Nama aturan (misal: Bahasa Baku, Tech Stack Standar)"
+              className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" 
+            />
+            <textarea 
+              required 
+              rows={4} 
+              value={newRuleContent} 
+              onChange={(e) => setNewRuleContent(e.target.value)} 
+              placeholder="Tuliskan aturan AI di sini..."
+              className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none" />
               <div className="flex justify-end gap-2 pt-2">
                 <button type="button" onClick={() => setShowRuleModal(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-xl cursor-pointer">Cancel</button>
                 <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-semibold cursor-pointer">Save</button>
