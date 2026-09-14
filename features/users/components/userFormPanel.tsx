@@ -3,7 +3,8 @@
 
 import { useState } from 'react';
 import { UserType, Persona } from '../types';
-import { Plus, Trash2, Sparkles, User as UserIcon, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Sparkles, User as UserIcon, Loader2, Camera } from 'lucide-react';
+import AvatarPickerModal from './avatarPickerModal';
 import { projectApi } from '@/services/projectsApi';
 import { getAuthToken } from '@/lib/auth';
 
@@ -19,7 +20,7 @@ export default function UserFormPanel({ initialData, onSubmit, onCancel, project
   const [description, setDescription] = useState(initialData?.description || '');
   const [personas, setPersonas] = useState<Persona[]>(initialData?.personas || []);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
-
+  const [activeAvatarIndex, setActiveAvatarIndex] = useState<number | null>(null);
   const [initialPersonaIds] = useState<number[]>(
     (initialData?.personas || []).map((p) => p.id).filter((id): id is number => !!id)
   );
@@ -168,9 +169,25 @@ export default function UserFormPanel({ initialData, onSubmit, onCancel, project
             <div key={persona.id ?? `new-${index}`} className="bg-white border border-gray-200 rounded-xl p-6 shadow-xs space-y-6">
               <div className="flex items-center justify-between border-b border-gray-100 pb-4">
                 <div className="flex items-center gap-3 flex-1">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm shrink-0">
-                    <UserIcon className="w-5 h-5" />
+                  {/* Foto Avatar dengan Tombol Kamera untuk Ganti Foto */}
+                  <div className="relative group shrink-0">
+                    <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-blue-100 bg-blue-50 flex items-center justify-center shadow-xs">
+                      {persona.avatarUrl ? (
+                        <img src={persona.avatarUrl} alt={persona.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <UserIcon className="w-6 h-6 text-blue-500" />
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveAvatarIndex(index)}
+                      className="absolute inset-0 bg-black/50 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                      title="Ganti Foto Persona"
+                    >
+                      <Camera className="w-4 h-4" />
+                    </button>
                   </div>
+
                   <input
                     type="text"
                     value={persona.name}
@@ -291,6 +308,16 @@ export default function UserFormPanel({ initialData, onSubmit, onCancel, project
           ))}
         </div>
       </div>
+            {activeAvatarIndex !== null && (
+        <AvatarPickerModal
+          currentAvatarUrl={personas[activeAvatarIndex]?.avatarUrl}
+          onSelect={(url) => {
+            handlePersonaChange(activeAvatarIndex, 'avatarUrl' as any, url);
+            setActiveAvatarIndex(null);
+          }}
+          onClose={() => setActiveAvatarIndex(null)}
+        />
+      )}
     </form>
   );
 }
