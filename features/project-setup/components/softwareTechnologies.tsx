@@ -4,9 +4,11 @@ import { useState } from 'react';
 import LogoUserdoc from '../../../public/logoUserDoc';
 import { useWizardStore } from '../store/wizard-store';
 import { ArrowRight, ArrowLeft, X } from 'lucide-react';
+import { getAuthToken } from '@/lib/auth';
 
 export default function SoftwareTechnologies() {
-  const { nextStep, prevStep, softwareTechnologies, setSoftwareTechnologies } = useWizardStore();
+  const { nextStep, prevStep, softwareTechnologies, setSoftwareTechnologies, createProjectIfNeeded } = useWizardStore() as any;
+
   const [technologies, setTechnologies] = useState<string[]>(
     softwareTechnologies && softwareTechnologies.length > 0 ? softwareTechnologies : []
   );
@@ -27,10 +29,17 @@ export default function SoftwareTechnologies() {
     setTechnologies(technologies.filter((tech) => tech !== techToRemove));
   };
 
-  const handleNext = (e: React.FormEvent) => {
+  const handleNext = async (e: React.FormEvent) => {
     e.preventDefault();
     if (technologies.length === 0) return;
     setSoftwareTechnologies(technologies);
+    
+    // 🚀 Buat project di background sebelum masuk step akhir
+    const token = getAuthToken();
+    if (token && createProjectIfNeeded) {
+      createProjectIfNeeded(token).catch((err: any) => console.error("Auto create proj error:", err));
+    }
+
     nextStep();
   };
 
