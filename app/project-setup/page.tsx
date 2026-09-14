@@ -127,8 +127,7 @@ export default function WizardPage() {
     }
 
     try {
-      if (projectType === 'generate') {
-
+            if (projectType === 'generate') {
         const payload = {
           user_types: (userTypes || []).map((ut: any) => ({
             name: ut.name,
@@ -165,6 +164,53 @@ export default function WizardPage() {
 
         await projectApi.saveRequirements(projectId, payload, token);
         
+        try {
+          await buildApi.generateDefaults(projectId, token);
+        } catch (buildErr) {
+          console.error('Gagal auto-generate Build defaults (non-fatal):', buildErr);
+        }
+      } else if (projectType === 'translate') {
+        // 🚀 Untuk alur Translate: AI otomatis membedah kode/overview menjadi Stories & Epics
+        try {
+          const aiReqs = await projectApi.generateRequirements(projectId, token);
+          const payload = {
+            user_types: (aiReqs.user_types || []).map((ut: any) => ({
+              name: ut.name,
+              description: ut.description || '',
+              personas: (ut.personas || []).map((p: any) => ({
+                name: p.name || 'Persona',
+                age: p.age || 25,
+                location: p.location || '-',
+                family_status: p.family_status || '-',
+                job_title: p.job_title || '-',
+                about: p.about || '-',
+                goals: p.goals || '-',
+                frustrations: p.frustrations || '-',
+              })),
+            })),
+            epics: (aiReqs.epics || []).map((e: any) => ({
+              name: e.name,
+              description: e.description || '',
+            })),
+            user_stories: (aiReqs.user_stories || []).map((s: any) => ({
+              epic_name: s.epic_name,
+              story_name: s.story_name,
+              user_type: s.user_type,
+              description: s.description || '',
+              acceptance_criteria: s.acceptance_criteria || [],
+              tech_notes: s.tech_notes || [],
+              test_cases: s.test_cases || [],
+            })),
+            nfrs: (aiReqs.nfrs || []).map((n: any) => ({
+              category: n.category,
+              description: n.description,
+            })),
+          };
+          await projectApi.saveRequirements(projectId, payload, token);
+        } catch (genErr) {
+          console.error("Auto generate requirements for translate error:", genErr);
+        }
+
         try {
           await buildApi.generateDefaults(projectId, token);
         } catch (buildErr) {
