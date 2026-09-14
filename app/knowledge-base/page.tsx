@@ -108,9 +108,14 @@ const CATEGORIES = Array.from(new Set(ARTICLES.map((a) => a.category)));
 function KnowledgeBaseContent() {
   const searchParams = useSearchParams();
   const projectIdParam = searchParams.get('project_id');
-
+  const articleParam = searchParams.get('article');
+  
   const [query, setQuery] = useState('');
-  const [expandedId, setExpandedId] = useState<string | null>('getting-started');
+  const [expandedId, setExpandedId] = useState<string | null>(
+    articleParam && ARTICLES.some((a) => a.id === articleParam)
+      ? articleParam
+      : 'getting-started'
+  );
 
   const filteredArticles = ARTICLES.filter(
     (a) =>

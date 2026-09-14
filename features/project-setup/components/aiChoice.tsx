@@ -2,101 +2,93 @@
 
 import LogoUserdoc from '../../../public/logoUserDoc';
 import { useWizardStore } from '../store/wizard-store';
-import { Sparkles, ArrowRight, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
+import { Check, X, Loader2, ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
-import { getAuthToken } from '@/lib/auth';
 
-export default function AiChoice() {
-  const {
-    projectId,
-    generateAIRequirements,
-    nextStep,
-    prevStep,
-    setUseAi,
-  } = useWizardStore() as any;
+interface AiChoiceProps {
+  // Kalau disediakan, tombol "No, not at this stage" akan memanggil ini
+  // (redirect langsung ke /stories, sekaligus seed example story) alih-alih
+  // lanjut ke step wizard berikutnya. Boleh async (page.tsx akan await-nya).
+  onManualSetup?: () => void | Promise<void>;
+}
 
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [error, setError] = useState('');
+export default function AiChoice({ onManualSetup }: AiChoiceProps) {
+  const { nextStep, prevStep, setUseAi } = useWizardStore() as any;
 
-  const handleGenerateWithAi = async () => {
-    setError('');
+  const [isSettingUpManual, setIsSettingUpManual] = useState(false);
 
-    if (!projectId) {
-      setError('Project belum dibuat. Silakan kembali ke langkah sebelumnya.');
-      return;
-    }
-
-    const token = getAuthToken();
-    if (!token) {
-      setError('Sesi habis, silakan login kembali.');
-      return;
-    }
-
+  // Tidak generate ulang di sini -- AI requirements (user types, epics, user
+  // stories, nfrs) sudah di-generate sekali di step DescribeProject (step 5)
+  // lewat generateAIRequirements(), dan hasilnya sudah tersimpan di wizard
+  // store. Generate ulang di sini akan overwrite editan manual yang mungkin
+  // sudah dilakukan user di step UserTypes (step 6). Jadi tombol ini cukup
+  // lanjut ke step berikutnya (EpicsList).
+  const handleContinueWithAi = () => {
     setUseAi(true);
-    setIsGenerating(true);
-
-    const success = await generateAIRequirements(projectId, token);
-
-    setIsGenerating(false);
-
-    if (success) {
-      nextStep();
-    } else {
-      setError('AI gagal memproses data. Silakan coba lagi.');
-    }
-  };
-
-  const handleManualInput = () => {
-    setUseAi(false);
     nextStep();
   };
 
+  const handleManualInput = async () => {
+    setUseAi(false);
+    if (onManualSetup) {
+      setIsSettingUpManual(true);
+      try {
+        await onManualSetup();
+      } finally {
+        setIsSettingUpManual(false);
+      }
+    } else {
+      nextStep();
+    }
+  };
+
   return (
-    <div className="flex flex-col items-start w-full max-w-xl mx-auto pt-12">
+    <div className="flex flex-col items-center w-full max-w-xl mx-auto pt-12">
       <div className="mb-8">
         <LogoUserdoc />
       </div>
 
-      <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
-        How do you want to build your requirements?
+      <h1 className="text-2xl sm:text-3xl font-bold text-white mb-6 text-center">
+        Kick-start your requirements using AI?
       </h1>
 
-      <p className="text-blue-200 text-sm mb-6 leading-relaxed">
-        Biarkan AI menganalisis deskripsi proyekmu dan menghasilkan draf epics, user stories, dan kebutuhan lainnya secara otomatis. Atau, kamu bisa menyusunnya sendiri secara manual.
-      </p>
-
-      {error && (
-        <p className="text-red-300 text-xs mb-4 flex items-center gap-1.5">
-          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-          {error}
-        </p>
-      )}
-
-      <div className="w-full flex flex-col gap-3 mb-6">
+      <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+        {/* Card: Yes, use Userdoc AI */}
         <button
           type="button"
-          onClick={handleGenerateWithAi}
-          disabled={isGenerating}
-          className="w-full bg-white hover:bg-blue-50 text-blue-700 px-6 py-3.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+          onClick={handleContinueWithAi}
+          disabled={isSettingUpManual}
+          className="group flex flex-col items-center text-center gap-2 p-5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/40 backdrop-blur-sm transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          {isGenerating ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" /> AI sedang memproses...
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-4 h-4" /> Generate dengan AI
-            </>
-          )}
+          <span className="w-8 h-8 rounded-full bg-white/15 border border-white/30 flex items-center justify-center mb-1 group-hover:bg-white/25 transition-colors">
+            <Check className="w-4 h-4 text-white" />
+          </span>
+          <span className="text-sm font-semibold text-white">Yes, use Userdoc AI</span>
+          <span className="text-xs text-blue-100/80 leading-relaxed">
+            Answer a few more questions and have Userdoc scaffold detailed project requirements.
+          </span>
         </button>
 
+        {/* Card: No, not at this stage */}
         <button
           type="button"
           onClick={handleManualInput}
-          disabled={isGenerating}
-          className="w-full bg-transparent hover:bg-white/10 text-white border border-white/20 px-6 py-3.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={isSettingUpManual}
+          className="group flex flex-col items-center text-center gap-2 p-5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/40 backdrop-blur-sm transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          Isi secara manual
+          <span className="w-8 h-8 rounded-full bg-white/15 border border-white/30 flex items-center justify-center mb-1 group-hover:bg-white/25 transition-colors">
+            {isSettingUpManual ? (
+              <Loader2 className="w-4 h-4 text-white animate-spin" />
+            ) : (
+              <X className="w-4 h-4 text-white" />
+            )}
+          </span>
+          <span className="text-sm font-semibold text-white">
+            {isSettingUpManual ? 'Menyiapkan project...' : 'No, not at this stage'}
+          </span>
+          <span className="text-xs text-blue-100/80 leading-relaxed">
+            Enter your requirements manually, but don't worry you can always leverage our AI later on.
+          </span>
         </button>
       </div>
 
@@ -104,7 +96,7 @@ export default function AiChoice() {
         <button
           type="button"
           onClick={prevStep}
-          disabled={isGenerating}
+          disabled={isSettingUpManual}
           className="bg-transparent hover:bg-white/10 text-white border border-white/20 px-4 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <ArrowLeft className="w-4 h-4" /> Back

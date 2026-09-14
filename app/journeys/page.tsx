@@ -7,7 +7,7 @@ import JourneysSidebar from '@/features/journeys/components/journeySidebar';
 import EmptyJourneyPanel from '@/features/journeys/components/emptyJourneyPanel';
 import JourneyDetailPanel from '@/features/journeys/components/journeyDetailPanel';
 import AccountMenu from '@/features/common/components/accountMenu';
-import { Upload, Download, X, Loader2 } from 'lucide-react';
+import { Upload, Download, Loader2 } from 'lucide-react';
 import { journeysApi, UserJourneyResponse } from '@/services/journeysApi';
 import { projectApi } from '@/services/projectsApi';
 import { personasApi, Persona } from '@/services/personasApi';
@@ -66,12 +66,10 @@ function JourneysPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-
-  const [newTitle, setNewTitle] = useState('');
-  const [newDesc, setNewDesc] = useState('');
+  // Menggantikan modal lama -- sekarang "Create New Journey" langsung
+  // menampilkan JourneyDetailPanel dalam mode edit kosong di panel utama,
+  // bukan modal kecil terpisah.
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
 
   const loadData = async (selectId?: string) => {
     if (!projectId) {
@@ -127,16 +125,20 @@ function JourneysPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
-  const handleOpenCreateModal = () => {
-    setIsEditMode(false);
-    setNewTitle('');
-    setNewDesc('');
-    setIsModalOpen(true);
+  // Dipanggil oleh KEDUA trigger: tombol "New Journey" di EmptyJourneyPanel
+  // dan ikon peta di sebelah search bar (JourneysSidebar). Keduanya sengaja
+  // memanggil fungsi yang sama persis supaya perilakunya identik.
+  const handleStartCreateJourney = () => {
+    setSelectedJourney(null);
+    setIsCreatingNew(true);
   };
 
-  const handleSaveJourney = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle.trim() || !projectId) return;
+  const handleCancelCreateJourney = () => {
+    setIsCreatingNew(false);
+  };
+
+  const handleCreateNewJourney = async (draft: JourneyVM) => {
+    if (!projectId) return;
 
     const token = getAuthToken();
     if (!token) {
@@ -145,42 +147,26 @@ function JourneysPageContent() {
     }
 
     try {
-      if (isEditMode && selectedJourney) {
-        const updated = await journeysApi.updateJourney(
-          Number(selectedJourney.id),
-          { name: newTitle, description: newDesc },
-          token
-        );
-        await loadData(String(updated.id));
-      } else {
-        // 1. Buat Journey dulu (steps kosong)
-        const created = await journeysApi.createJourney(
-          {
-            project_id: Number(projectId),
-            name: newTitle,
-            description: newDesc || 'Deskripsi user journey baru...',
-            steps: [],
-          },
-          token
-        );
+      const created = await journeysApi.createJourney(
+        {
+          project_id: Number(projectId),
+          name: draft.title?.trim() || 'Untitled journey',
+          description: draft.description || '',
+          steps: (draft.steps || []).map((s, idx) => ({
+            title: s.title,
+            description: s.description,
+            step_order: idx + 1,
+            persona_id: s.personaId ?? null,
+          })),
+        },
+        token
+      );
 
-        // 2. Trigger AI Generate Steps -- backend akan fetch persona ASLI
-        // dari DB project ini dan assign persona_id per step (bukan nama karangan).
-        setIsGenerating(true);
-        const withAiSteps = await journeysApi.generateAiSteps(created.id, token);
-        setIsGenerating(false);
-
-        // 3. Fetch ulang data terbaru agar step yang di-generate AI langsung tampil
-        await loadData(String(withAiSteps.id));
-      }
-
-      setNewTitle('');
-      setNewDesc('');
-      setIsModalOpen(false);
+      setIsCreatingNew(false);
+      await loadData(String(created.id));
     } catch (error: any) {
-      console.error('Error saving/generating journey:', error);
-      alert(error.message || 'Terjadi kesalahan saat menyimpan atau men-generate journey.');
-      setIsGenerating(false);
+      console.error('Gagal membuat journey baru:', error);
+      alert(error.message || 'Terjadi kesalahan saat menyimpan journey.');
     }
   };
 
@@ -280,8 +266,11 @@ function JourneysPageContent() {
         selectedJourneyId={selectedJourney?.id}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        onSelectJourney={setSelectedJourney}
-        onOpenMapModal={handleOpenCreateModal}
+        onSelectJourney={(j) => {
+          setIsCreatingNew(false);
+          setSelectedJourney(j);
+        }}
+        onOpenMapModal={handleStartCreateJourney}
       />
 
       <main className="flex-1 flex flex-col h-full bg-white overflow-hidden">
@@ -312,7 +301,17 @@ function JourneysPageContent() {
           </div>
         </div>
 
-        {selectedJourney ? (
+        {isCreatingNew ? (
+          <JourneyDetailPanel
+            journey={null}
+            personas={personas}
+            isEditingInitially
+            isNew
+            startWithEmptySteps
+            onClose={handleCancelCreateJourney}
+            onSave={handleCreateNewJourney}
+          />
+        ) : selectedJourney ? (
           <JourneyDetailPanel
             journey={safeSelectedJourney}
             personas={personas}
@@ -323,82 +322,9 @@ function JourneysPageContent() {
             onSave={handleUpdateJourneyDetail}
           />
         ) : (
-          <EmptyJourneyPanel onOpenAddModal={handleOpenCreateModal} />
+          <EmptyJourneyPanel onOpenAddModal={handleStartCreateJourney} />
         )}
       </main>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden border border-gray-100 animate-in fade-in zoom-in duration-200">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h3 className="font-bold text-gray-800 text-base">
-                {isEditMode ? 'Edit Journey' : 'Create New Journey'}
-              </h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg transition-colors cursor-pointer"
-                disabled={isGenerating}
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveJourney} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Journey Title</label>
-                <input
-                  type="text"
-                  placeholder="Contoh: Checkout flow & Payment gateway"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  required
-                  disabled={isGenerating}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500 disabled:opacity-50"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Description</label>
-                <textarea
-                  placeholder="Deskripsi singkat mengenai alur journey ini..."
-                  value={newDesc}
-                  onChange={(e) => setNewDesc(e.target.value)}
-                  rows={3}
-                  disabled={isGenerating}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500 disabled:opacity-50"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  disabled={isGenerating}
-                  className="px-4 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={isGenerating}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm cursor-pointer disabled:opacity-50 flex items-center gap-2"
-                >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      AI Generating...
-                    </>
-                  ) : isEditMode ? (
-                    'Simpan Perubahan'
-                  ) : (
-                    'Simpan & Generate AI'
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

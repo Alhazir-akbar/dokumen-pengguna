@@ -328,6 +328,7 @@ function StoriesPageContent() {
                 story={selectedStory}
                 onDelete={handleDeleteStory}
                 onUpdate={handleUpdateStory}
+                projectId={projectId}
               />
             ) : selectedEpic ? (
               <div className="flex-1 bg-white p-8 overflow-y-auto">

@@ -75,3 +75,21 @@ export async function submitWizardBatch(
 
   return response.json();
 }
+
+// TAMBAHAN: dipanggil saat user memilih "No, not at this stage" di step AiChoice.
+// Membuat 1 Epic + 1 User Story contoh (lengkap acceptance criteria) untuk
+// project_id ini, supaya dashboard Stories tidak kosong total.
+// Idempotent di sisi backend -- aman dipanggil berkali-kali untuk project yang sama.
+export async function seedExampleStory(projectId: number, token: string) {
+  const response = await fetch(`${API_URL}/stories/seed-example?project_id=${projectId}`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Gagal membuat example story');
+  }
+
+  return response.json();
+}

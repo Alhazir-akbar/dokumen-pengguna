@@ -8,6 +8,7 @@ import { LogOut, FastForward, Loader2 } from 'lucide-react';
 import { projectApi } from '@/services/projectsApi';
 import { workspaceApi } from '@/services/workspaceApi';
 import { buildApi } from '@/services/buildApi';
+import { seedExampleStory } from '@/services/storiesApi';
 import { getAuthToken } from '@/lib/auth';
 
 import TeamName from '@/features/project-setup/components/teamName';
@@ -16,6 +17,7 @@ import ProjectType from '@/features/project-setup/components/projectType';
 import AiIntro from '@/features/project-setup/components/aiIntro';
 import DescribeProject from '@/features/project-setup/components/describeProject';
 import UserTypes from '@/features/project-setup/components/userTypes';
+import AiChoice from '@/features/project-setup/components/aiChoice';
 import EpicsList from '@/features/project-setup/components/epicList';
 import NonFunctionalList from '@/features/project-setup/components/nonFunctionalList';
 import UserStoriesList from '@/features/project-setup/components/userStoriesList';
@@ -45,6 +47,7 @@ export default function WizardPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
+  const [isSeedingExample, setIsSeedingExample] = useState(false);
 
   // 🚪 Fungsi Logout
   const handleLogout = () => {
@@ -57,7 +60,7 @@ export default function WizardPage() {
     router.push('/login');
   };
 
-    // ⏩ Fungsi Skip Langsung ke Stories Proyek Akun Sendiri
+  // ⏩ Fungsi Skip Langsung ke Stories Proyek Akun Sendiri
   const handleSkip = async () => {
     setIsSkipping(true);
     const token = getAuthToken();
@@ -70,7 +73,7 @@ export default function WizardPage() {
       // 1. Ambil workspace milik user yang sedang aktif
       const myWorkspaces = await workspaceApi.getMyWorkspaces(token);
       let targetWsId: number;
-      
+
       if (myWorkspaces && myWorkspaces.length > 0) {
         targetWsId = myWorkspaces[0].id;
       } else {
@@ -81,7 +84,7 @@ export default function WizardPage() {
       // 2. Ambil proyek milik user di workspace ini
       let targetProjId: number;
       const myProjects = await projectApi.getProjects(targetWsId, token);
-      
+
       if (myProjects && myProjects.length > 0) {
         targetProjId = myProjects[0].id;
       } else {
@@ -103,12 +106,72 @@ export default function WizardPage() {
       resetStore();
       router.push(`/stories?project_id=${targetProjId}`);
     } catch (e) {
-      console.error("Gagal skip setup:", e);
+      console.error('Gagal skip setup:', e);
       router.push('/login');
     } finally {
       setIsSkipping(false);
     }
   };
+
+  // ✍️ Fungsi Isi Manual:
+  // 1. Simpan User Types yang sudah di-generate AI di step DescribeProject
+  //    (belum pernah dikirim ke backend sebelum titik ini, cuma ada di
+  //    wizard store/localStorage). Epics/User Stories/NFR SENGAJA tidak ikut
+  //    disimpan -- itu yang nanti diisi manual oleh user dari dashboard.
+  // 2. Seed 1 example story (epic + acceptance criteria) biar dashboard
+  //    Stories tidak kosong total.
+  // 3. Redirect ke /stories.
+  const handleManualSetup = async () => {
+    if (!projectId) {
+      alert('Project belum berhasil dibuat sebelumnya. Silakan ulangi dari awal wizard.');
+      return;
+    }
+
+    const token = getAuthToken();
+    if (!token) {
+      alert('Sesi habis, silakan login kembali.');
+      router.push('/login');
+      return;
+    }
+
+    setIsSeedingExample(true);
+    try {
+      if (userTypes && userTypes.length > 0) {
+        const userTypesPayload = {
+          user_types: userTypes.map((ut: any) => ({
+            name: ut.name,
+            description: ut.description || '',
+            personas: (ut.personas || []).map((p: any) => ({
+              name: p.name || 'Persona',
+              age: p.age || 25,
+              location: p.location || '-',
+              family_status: p.familyStatus || '-',
+              job_title: p.jobTitle || '-',
+              about: p.about || '-',
+              goals: p.goals || '-',
+              frustrations: p.frustrations || '-',
+            })),
+          })),
+          epics: [],
+          user_stories: [],
+          nfrs: [],
+        };
+        await projectApi.saveRequirements(projectId, userTypesPayload, token);
+      }
+
+      await seedExampleStory(projectId, token);
+    } catch (e) {
+      // Non-fatal: kalau salah satu gagal, tetap lanjut ke Stories daripada
+      // user ke-block di layar loading.
+      console.error('Gagal menyiapkan project untuk mode manual:', e);
+    } finally {
+      setIsSeedingExample(false);
+    }
+
+    resetStore();
+    router.push(`/stories?project_id=${projectId}`);
+  };
+
   const handleFinishWizard = async () => {
     setIsSubmitting(true);
     const token = getAuthToken();
@@ -164,7 +227,7 @@ export default function WizardPage() {
         };
 
         await projectApi.saveRequirements(projectId, payload, token);
-        
+
         try {
           await buildApi.generateDefaults(projectId, token);
         } catch (buildErr) {
@@ -188,6 +251,12 @@ export default function WizardPage() {
       {isSubmitting && (
         <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center text-white font-medium">
           Menyimpan spesifikasi proyek ke server...
+        </div>
+      )}
+
+      {isSeedingExample && (
+        <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center text-white font-medium">
+          Menyiapkan project kamu...
         </div>
       )}
 
@@ -227,11 +296,12 @@ export default function WizardPage() {
           {step === 4 && <NameProject />}
           {step === 5 && <DescribeProject />}
           {step === 6 && <UserTypes />}
-          {step === 7 && <EpicsList />}
-          {step === 8 && <NonFunctionalList />}
-          {step === 9 && <UserStoriesList />}
-          {step === 10 && <UserTypeGoals />}
-          {step === 11 && <UserJourney onFinishProject={handleFinishWizard} />}
+          {step === 7 && <AiChoice onManualSetup={handleManualSetup} />}
+          {step === 8 && <EpicsList />}
+          {step === 9 && <NonFunctionalList />}
+          {step === 10 && <UserStoriesList />}
+          {step === 11 && <UserTypeGoals />}
+          {step === 12 && <UserJourney onFinishProject={handleFinishWizard} />}
         </>
       )}
 

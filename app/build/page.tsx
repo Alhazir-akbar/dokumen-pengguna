@@ -264,7 +264,7 @@ function BetaHeader({ title }: { title: string }) {
   return (
     <div>
       <div className="flex items-center gap-2">
-        <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+        <h2 className="text-base font-bold text-gray-900">{title}</h2>
         <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">BETA</span>
       </div>
       <p className="text-xs text-gray-500 mt-1">In beta and may change, please contact us with feedback or issues.</p>
@@ -1049,7 +1049,7 @@ function DevPlansTab({ projectId, showMessage }: any) {
         ) : filteredPlans.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
             <ClipboardList className="w-10 h-10 mx-auto mb-3 text-blue-200" />
-            <p className="text-base font-semibold text-gray-900">You have not created any Dev Plans yet</p>
+            <p className="text-sm font-semibold text-gray-900">You have not created any Dev Plans yet</p>
             <p className="text-xs text-gray-400 mt-1 mb-5">Create your first dev plan to get started building with AI.</p>
             <button onClick={openAddModal} className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-full text-sm font-semibold transition-colors cursor-pointer">
               <Sparkles className="w-4 h-4" /> Create Dev Plan

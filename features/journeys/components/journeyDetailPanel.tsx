@@ -26,6 +26,17 @@ export interface JourneyDetailPanelProps {
   } | null;
   personas?: Persona[]; // daftar persona project ini, dipakai untuk dropdown assign
   isEditingInitially?: boolean;
+  // true kalau ini adalah journey BARU yang belum pernah disimpan (alur
+  // "Create New Journey"). Mengubah perilaku tombol Cancel: pada journey baru,
+  // Cancel akan memanggil onClose (membatalkan pembuatan sepenuhnya, kembali
+  // ke state sebelumnya di halaman induk). Pada journey yang sudah ada,
+  // Cancel tetap hanya keluar dari mode edit (kembali ke mode view seperti biasa).
+  isNew?: boolean;
+  // Kalau true, journey baru (belum ada steps sama sekali) akan mulai dengan
+  // array steps KOSONG, bukan 1 placeholder DEFAULT_STEP. Dipakai khusus untuk
+  // alur "Create New Journey" supaya tampilannya persis seperti mockup
+  // (langsung "Create a new step in the journey", tanpa step placeholder).
+  startWithEmptySteps?: boolean;
   onClose: () => void;
   onSave: (updatedJourney: any) => void;
 }
@@ -42,6 +53,8 @@ export default function JourneyDetailPanel({
   journey,
   personas = [],
   isEditingInitially = false,
+  isNew = false,
+  startWithEmptySteps = false,
   onClose,
   onSave,
 }: JourneyDetailPanelProps) {
@@ -52,12 +65,15 @@ export default function JourneyDetailPanel({
     steps: [],
   };
 
+  const resolveInitialSteps = (): Step[] => {
+    if (safeJourney.steps && safeJourney.steps.length > 0) return safeJourney.steps;
+    return startWithEmptySteps ? [] : [DEFAULT_STEP];
+  };
+
   const [isEditing, setIsEditing] = useState(isEditingInitially);
   const [title, setTitle] = useState(safeJourney.title || '');
   const [description, setDescription] = useState(safeJourney.description || '');
-  const [steps, setSteps] = useState<Step[]>(
-    safeJourney.steps && safeJourney.steps.length > 0 ? safeJourney.steps : [DEFAULT_STEP]
-  );
+  const [steps, setSteps] = useState<Step[]>(resolveInitialSteps());
 
   // Sync ulang state internal setiap kali data journey dari parent berubah
   // (misalnya setelah AI selesai generate steps). Di-skip saat mode edit
@@ -66,7 +82,7 @@ export default function JourneyDetailPanel({
     if (isEditing) return;
     setTitle(safeJourney.title || '');
     setDescription(safeJourney.description || '');
-    setSteps(safeJourney.steps && safeJourney.steps.length > 0 ? safeJourney.steps : [DEFAULT_STEP]);
+    setSteps(resolveInitialSteps());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [journey]);
 
@@ -111,6 +127,17 @@ export default function JourneyDetailPanel({
     setIsEditing(false);
   };
 
+  // Journey baru yang dibatalkan -> buang seluruhnya (panggil onClose milik
+  // parent). Journey lama yang lagi diedit -> cukup keluar dari mode edit,
+  // kembali ke tampilan view seperti semula.
+  const handleCancelEdit = () => {
+    if (isNew) {
+      onClose();
+    } else {
+      setIsEditing(false);
+    }
+  };
+
   // ================= MODE EDIT =================
   if (isEditing) {
     return (
@@ -120,7 +147,7 @@ export default function JourneyDetailPanel({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setIsEditing(false)}
+              onClick={handleCancelEdit}
               className="flex items-center gap-1.5 px-3.5 py-1.5 border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer shadow-xs"
             >
               <X className="w-3.5 h-3.5" /> Cancel
@@ -142,6 +169,7 @@ export default function JourneyDetailPanel({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Journey name"
+              autoFocus
               className="w-full text-xl font-bold text-gray-900 placeholder:text-gray-300 border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 shadow-xs bg-white"
             />
           </div>
@@ -151,7 +179,7 @@ export default function JourneyDetailPanel({
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Journey description..."
+              placeholder="Description of this Journey"
               rows={3}
               className="w-full text-xs text-gray-700 placeholder:text-gray-300 border border-gray-200 rounded-xl p-4 focus:outline-none focus:border-blue-500 shadow-xs bg-white resize-none"
             />

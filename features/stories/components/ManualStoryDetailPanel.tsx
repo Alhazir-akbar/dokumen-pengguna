@@ -2,6 +2,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { UserStory } from '../types';
 import { Copy, Code, History, BookOpen, Layers, GitFork, Trash2, Edit3 } from 'lucide-react';
 
@@ -9,9 +10,11 @@ interface ManualStoryDetailPanelProps {
   story: UserStory;
   onDelete?: () => void;
   onUpdate?: (updated: UserStory) => void;
+  projectId?: string | null; // dipakai buat bikin link "User story help" yang bawa context project
 }
 
-export default function ManualStoryDetailPanel({ story, onDelete, onUpdate }: ManualStoryDetailPanelProps) {
+export default function ManualStoryDetailPanel({ story, onDelete, onUpdate, projectId }: ManualStoryDetailPanelProps) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'criteria' | 'notes' | 'tests'>('criteria');
   const [isEditing, setIsEditing] = useState(false);
 
@@ -29,6 +32,14 @@ export default function ManualStoryDetailPanel({ story, onDelete, onUpdate }: Ma
       });
     }
     setIsEditing(false);
+  };
+
+  // Buka Knowledge Base langsung ke artikel "Memahami Epics dan User Stories"
+  const handleOpenStoryHelp = () => {
+    const params = new URLSearchParams();
+    if (projectId) params.set('project_id', projectId);
+    params.set('article', 'stories-epics');
+    router.push(`/knowledge?${params.toString()}`);
   };
 
   return (
@@ -172,7 +183,7 @@ export default function ManualStoryDetailPanel({ story, onDelete, onUpdate }: Ma
           )
         )}
 
-        {/* Tech Notes: sekarang menampilkan data asli dari story.techNotes (hasil AI generate
+        {/* Tech Notes: menampilkan data asli dari story.techNotes (hasil AI generate
             atau input manual), bukan lagi teks statis "No tech notes added yet." */}
         {activeTab === 'notes' && (
           story.techNotes && story.techNotes.length > 0 ? (
@@ -189,7 +200,7 @@ export default function ManualStoryDetailPanel({ story, onDelete, onUpdate }: Ma
           )
         )}
 
-        {/* Test Cases: sama seperti Tech Notes, sekarang menampilkan data asli. */}
+        {/* Test Cases: sama seperti Tech Notes, menampilkan data asli. */}
         {activeTab === 'tests' && (
           story.testCases && story.testCases.length > 0 ? (
             <ul className="space-y-3 text-xs text-gray-700 leading-relaxed">
@@ -223,7 +234,13 @@ export default function ManualStoryDetailPanel({ story, onDelete, onUpdate }: Ma
           <div className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
             <BookOpen className="w-3.5 h-3.5" /> Resources
           </div>
-          <p className="text-xs text-blue-600 hover:underline cursor-pointer">User story help</p>
+          <button
+            type="button"
+            onClick={handleOpenStoryHelp}
+            className="text-xs text-blue-600 hover:underline cursor-pointer text-left"
+          >
+            User story help
+          </button>
         </div>
       </div>
     </div>
