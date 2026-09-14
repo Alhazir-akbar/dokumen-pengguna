@@ -4,13 +4,11 @@
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import LogoUserdoc from '@/public/logoUserDoc';
-import { FileText, Users, Map, Code, Settings, HelpCircle } from 'lucide-react';
+import { FileText, Users, Map, Code, Settings, HelpCircle, GitGraph } from 'lucide-react';
 import { getStoredProjectId } from '@/lib/project-context';
 
 interface AppSidebarProps {
-  activeMenu: 'stories' | 'users' | 'journeys' | 'build' | 'settings' | 'knowledge';
-  // project_id project yang sedang dibuka. Dioper ke setiap link menu supaya
-  // saat pindah halaman (Stories -> Users -> Journeys) project_id tidak hilang.
+  activeMenu: 'stories' | 'graph' | 'users' | 'journeys' | 'build' | 'settings' | 'knowledge';
   projectId?: string | number | null;
 }
 
@@ -42,6 +40,11 @@ export default function AppSidebar({ activeMenu, projectId }: AppSidebarProps) {
         <Link href={withProject('/stories')} className={getButtonStyle('stories')}>
           <FileText className="w-5 h-5 mb-1" />
           <span className="text-[9px] font-medium leading-tight">Stories</span>
+        </Link>
+
+        <Link href={withProject('/graph')} className={getButtonStyle('graph')}>
+          <GitGraph className="w-5 h-5 mb-1" />
+          <span className="text-[9px] font-medium leading-tight">Graph</span>
         </Link>
 
         <Link href={withProject('/users')} className={getButtonStyle('users')}>
