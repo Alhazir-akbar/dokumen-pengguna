@@ -192,7 +192,7 @@ function BuildPageContent() {
 
         <div className="flex flex-1 overflow-hidden">
           <aside className="w-56 border-r border-gray-200 bg-white shrink-0 py-4">
-            <p className="px-4 text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Implementation Tools</p>
+            <p className="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Implementation Tools</p>
             <nav className="flex flex-col gap-0.5 px-2">
               {[
                 { key: 'tech-stack', label: 'Technologies', sub: 'Technology stack and architecture', icon: Layers },
@@ -209,7 +209,7 @@ function BuildPageContent() {
                   <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${activeTab === key ? 'text-blue-600' : 'text-gray-400'}`} />
                   <span>
                     <span className={`block text-sm font-medium ${activeTab === key ? 'text-gray-900' : 'text-gray-700'}`}>{label}</span>
-                    <span className="block text-[11px] text-gray-400 leading-tight">{sub}</span>
+                    <span className="block text-xs text-gray-400 leading-tight">{sub}</span>
                   </span>
                 </button>
               ))}
@@ -263,11 +263,11 @@ export default function BuildPage() {
 function BetaHeader({ title }: { title: string }) {
   return (
     <div>
-      <div className="flex items-center gap-2">
-        <h2 className="text-base font-bold text-gray-900">{title}</h2>
+      <div className="flex items-center gap-2.5">
+        <h2 className="text-xl font-bold text-gray-900">{title}</h2>
         <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">BETA</span>
       </div>
-      <p className="text-xs text-gray-500 mt-1">In beta and may change, please contact us with feedback or issues.</p>
+      <p className="text-sm text-gray-500 mt-1.5">In beta and may change, please contact us with feedback or issues.</p>
     </div>
   );
 }
@@ -275,7 +275,7 @@ function BetaHeader({ title }: { title: string }) {
 function OverviewCard({ children }: { children: React.ReactNode }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-5">
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Overview</p>
+      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Overview</p>
       <p className="text-sm text-gray-600 leading-relaxed">{children}</p>
     </div>
   );
@@ -294,7 +294,7 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">{label}</label>
+      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{label}</label>
       <input
         type="text"
         value={value}
@@ -429,7 +429,7 @@ function TechStackTab({ projectId, applicationType, showMessage }: any) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white rounded-2xl border border-gray-200 p-5">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Application Details</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Application Details</p>
           <p className="text-xs text-gray-400 mb-3">Basic application configuration</p>
           <div className="space-y-2.5 text-sm">
             <div className="flex justify-between"><span className="text-gray-500">Type</span><span className={valClass(applicationType)}>{displayed(applicationType)}</span></div>
@@ -438,7 +438,7 @@ function TechStackTab({ projectId, applicationType, showMessage }: any) {
           </div>
         </div>
         <div className="bg-white rounded-2xl border border-gray-200 p-5">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Development Approach</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Development Approach</p>
           <p className="text-xs text-gray-400 mb-3">Development team and AI assistance configuration</p>
           <div className="space-y-2.5 text-sm">
             <div className="flex justify-between"><span className="text-gray-500">Platform</span><span className={valClass(data?.platform)}>{displayed(data?.platform)}</span></div>
@@ -447,13 +447,13 @@ function TechStackTab({ projectId, applicationType, showMessage }: any) {
       </div>
 
       <div>
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Architecture</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Architecture</p>
         <p className="text-xs text-gray-400 mb-3">Application layers and technology stack</p>
 
         <div className={`rounded-2xl border p-4 mb-3 ${COLOR_CLASSES.blue.bg} ${COLOR_CLASSES.blue.border}`}>
           <div className="flex items-center gap-2.5 mb-2">
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${COLOR_CLASSES.blue.iconBg}`}><Monitor className="w-4 h-4" /></div>
-            <span className={`text-sm font-bold ${COLOR_CLASSES.blue.text}`}>User Interface Layer</span>
+            <span className={`text-sm font-semibold ${COLOR_CLASSES.blue.text}`}>User Interface Layer</span>
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500 pl-10">
             <span>Language: <span className={valClass(data?.ui_language)}>{displayed(data?.ui_language)}</span></span>
@@ -467,7 +467,7 @@ function TechStackTab({ projectId, applicationType, showMessage }: any) {
         <div className={`rounded-2xl border p-4 mb-3 ${COLOR_CLASSES.emerald.bg} ${COLOR_CLASSES.emerald.border}`}>
           <div className="flex items-center gap-2.5 mb-2">
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${COLOR_CLASSES.emerald.iconBg}`}><Cpu className="w-4 h-4" /></div>
-            <span className={`text-sm font-bold ${COLOR_CLASSES.emerald.text}`}>Application Layer</span>
+            <span className={`text-sm font-semibold ${COLOR_CLASSES.emerald.text}`}>Application Layer</span>
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500 pl-10">
             <span>Language: <span className={valClass(data?.app_language)}>{displayed(data?.app_language)}</span></span>
@@ -481,7 +481,7 @@ function TechStackTab({ projectId, applicationType, showMessage }: any) {
           <div className={`rounded-2xl border p-4 ${COLOR_CLASSES.violet.bg} ${COLOR_CLASSES.violet.border}`}>
             <div className="flex items-center gap-2.5 mb-2">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${COLOR_CLASSES.violet.iconBg}`}><Database className="w-4 h-4" /></div>
-              <span className={`text-sm font-bold ${COLOR_CLASSES.violet.text}`}>Data Layer</span>
+              <span className={`text-sm font-semibold ${COLOR_CLASSES.violet.text}`}>Data Layer</span>
             </div>
             <div className="text-xs text-gray-500 pl-10">
               Database: <span className={valClass(data?.data_layer)}>{displayed(data?.data_layer)}</span>
@@ -490,7 +490,7 @@ function TechStackTab({ projectId, applicationType, showMessage }: any) {
           <div className={`rounded-2xl border p-4 ${COLOR_CLASSES.amber.bg} ${COLOR_CLASSES.amber.border}`}>
             <div className="flex items-center gap-2.5 mb-2">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${COLOR_CLASSES.amber.iconBg}`}><Settings2 className="w-4 h-4" /></div>
-              <span className={`text-sm font-bold ${COLOR_CLASSES.amber.text}`}>Integration Layer</span>
+              <span className={`text-sm font-semibold ${COLOR_CLASSES.amber.text}`}>Integration Layer</span>
             </div>
             <div className="text-xs text-gray-500 pl-10">
               <span className={valClass(data?.integration_layer)}>{displayed(data?.integration_layer)}</span>
@@ -503,7 +503,7 @@ function TechStackTab({ projectId, applicationType, showMessage }: any) {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-5 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white rounded-t-2xl">
-              <h3 className="text-base font-semibold">Edit Technology Stack</h3>
+              <h3 className="text-base font-semibold text-gray-900">Edit Technology Stack</h3>
               <div className="flex items-center gap-2">
                 <button type="button" onClick={handleGenerate} disabled={generating}
                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 cursor-pointer">
@@ -797,7 +797,7 @@ function GuidelinesTab({ projectId, showMessage }: any) {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl">
             <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-base font-semibold">{activeItem.label}</h3>
+              <h3 className="text-base font-semibold text-gray-900">{activeItem.label}</h3>
               <div className="flex items-center gap-2">
                 {activeItem.category && (
                   <button onClick={handleModalGenerate} disabled={generatingModal}
@@ -811,7 +811,7 @@ function GuidelinesTab({ projectId, showMessage }: any) {
             <div className="p-5 space-y-4">
               <Field label="Judul" value={modalForm.title} onChange={(v) => setModalForm({ ...modalForm, title: v })} />
               <div>
-                <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Isi Guideline</label>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Isi Guideline</label>
                 <textarea
                   value={modalForm.content}
                   onChange={(e) => setModalForm({ ...modalForm, content: e.target.value })}
@@ -842,18 +842,18 @@ function GuidelinesTab({ projectId, showMessage }: any) {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg">
             <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-base font-semibold">Tambah Guideline Baru</h3>
+              <h3 className="text-base font-semibold text-gray-900">Tambah Guideline Baru</h3>
               <button onClick={() => setShowAddModal(false)} className="p-1 hover:bg-gray-100 rounded-lg cursor-pointer"><X className="w-4 h-4" /></button>
             </div>
             <form onSubmit={handleAddSave} className="p-5 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">Judul Guideline</label>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Judul Guideline</label>
                 <input type="text" value={addForm.title} onChange={(e) => setAddForm({ ...addForm, title: e.target.value })}
                   placeholder="Contoh: Penamaan Variabel"
                   className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all" required />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">Isi Guideline</label>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Isi Guideline</label>
                 <textarea value={addForm.content} onChange={(e) => setAddForm({ ...addForm, content: e.target.value })}
                   rows={5} placeholder="Tuliskan aturan atau panduan coding di sini..."
                   className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all resize-none" required />
@@ -1043,7 +1043,7 @@ function DevPlansTab({ projectId, showMessage }: any) {
       </div>
 
       <div>
-        <p className="text-sm font-semibold text-gray-900 mb-2">Plans</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Plans</p>
         {isLoading ? (
           <div className="py-12 flex justify-center"><Loader2 className="w-6 h-6 text-gray-400 animate-spin" /></div>
         ) : filteredPlans.length === 0 ? (
@@ -1082,13 +1082,13 @@ function DevPlansTab({ projectId, showMessage }: any) {
                 <div className="flex gap-1.5 mt-3">
                   {STATUS_FLOW.indexOf(item.status) > 0 && (
                     <button onClick={() => handleStatusChange(item, STATUS_FLOW[STATUS_FLOW.indexOf(item.status) - 1])}
-                      className="text-[11px] px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer flex items-center gap-1">
+                      className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer flex items-center gap-1">
                       <ArrowLeft className="w-3 h-3" /> {PLAN_STATUS_CONFIG[STATUS_FLOW[STATUS_FLOW.indexOf(item.status) - 1]].label}
                     </button>
                   )}
                   {STATUS_FLOW.indexOf(item.status) < STATUS_FLOW.length - 1 && (
                     <button onClick={() => handleStatusChange(item, STATUS_FLOW[STATUS_FLOW.indexOf(item.status) + 1])}
-                      className="text-[11px] px-2.5 py-1 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors cursor-pointer flex items-center gap-1">
+                      className="text-xs px-2.5 py-1 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors cursor-pointer flex items-center gap-1">
                       {PLAN_STATUS_CONFIG[STATUS_FLOW[STATUS_FLOW.indexOf(item.status) + 1]].label} <ArrowRight className="w-3 h-3" />
                     </button>
                   )}
@@ -1103,12 +1103,12 @@ function DevPlansTab({ projectId, showMessage }: any) {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg">
             <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-base font-semibold">{editingItem ? 'Edit Plan' : 'Buat Development Plan'}</h3>
+              <h3 className="text-base font-semibold text-gray-900">{editingItem ? 'Edit Plan' : 'Buat Development Plan'}</h3>
               <button onClick={() => setShowModal(false)} className="p-1 hover:bg-gray-100 rounded-lg cursor-pointer"><X className="w-4 h-4" /></button>
             </div>
             <form onSubmit={handleSave} className="p-5 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">Requirement / Epic</label>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Requirement / Epic</label>
                 <select value={form.epic_id} onChange={(e) => setForm({ ...form, epic_id: e.target.value })}
                   className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all">
                   <option value="">Tidak terhubung ke epic tertentu</option>
@@ -1125,23 +1125,23 @@ function DevPlansTab({ projectId, showMessage }: any) {
 
               <div className="relative">
                 <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-100" /></div>
-                <div className="relative flex justify-center"><span className="bg-white px-2 text-[10px] text-gray-400 uppercase">atau isi manual</span></div>
+                <div className="relative flex justify-center"><span className="bg-white px-2 text-xs text-gray-400 uppercase">atau isi manual</span></div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">Judul Plan</label>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Judul Plan</label>
                 <input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
                   placeholder="Contoh: Setup Authentication API"
                   className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all" required />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">Deskripsi</label>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Deskripsi</label>
                 <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
                   rows={5} placeholder="Deskripsi rencana pengembangan ini..."
                   className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all resize-none" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">Status</label>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Status</label>
                 <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}
                   className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all">
                   {STATUS_FLOW.map((s) => <option key={s} value={s}>{PLAN_STATUS_CONFIG[s].label}</option>)}
