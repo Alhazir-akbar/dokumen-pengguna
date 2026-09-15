@@ -18,6 +18,7 @@ function mapPersonaFromBackend(p: any): Persona & { id?: number } {
   return {
     id: p.id,
     name: p.name,
+    avatarUrl: p.avatar_url || p.avatar || '', // 👈 Tambahkan ini
     age: p.age != null ? String(p.age) : '',
     location: p.location || '',
     familyStatus: p.family_status || '',
@@ -31,6 +32,7 @@ function mapPersonaFromBackend(p: any): Persona & { id?: number } {
 function mapPersonaToBackend(p: any, userTypeId: number) {
   return {
     name: p.name,
+    avatar_url: p.avatarUrl || null, // 👈 Tambahkan ini
     age: p.age ? Number(p.age) : null,
     location: p.location || null,
     family_status: p.familyStatus || null,
