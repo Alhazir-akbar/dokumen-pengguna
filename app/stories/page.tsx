@@ -152,42 +152,54 @@ function StoriesPageContent() {
   };
 
   const handleUpdateStory = async (updatedStory: UserStory) => {
-    const token = getAuthToken();
-    if (!token) return;
+  const token = getAuthToken();
+  if (!token) return;
 
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/stories/${updatedStory.id}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            epic_id: (updatedStory as any).epicId,
-            as_a: updatedStory.as_a,
-            i_want: updatedStory.i_want,
-            so_that: updatedStory.so_that,
-            status: 'draft',
-            project_id: Number(projectId),
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || 'Gagal memperbarui story');
+  try {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/stories/${updatedStory.id}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          epic_id: (updatedStory as any).epicId,
+          as_a: updatedStory.as_a,
+          i_want: updatedStory.i_want,
+          so_that: updatedStory.so_that,
+          status: 'draft',
+          project_id: Number(projectId),
+        }),
       }
+    );
 
-      const saved = await response.json();
-      setSelectedStory(saved);
-      setRawStories((prev) => prev.map((s) => (s.id === saved.id ? saved : s)));
-    } catch (err: any) {
-      console.error('Gagal update story:', err);
-      alert(err.message || 'Gagal memperbarui story.');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Gagal memperbarui story');
     }
-  };
+
+    const saved = await response.json();
+    const formatted: UserStory = {
+      id: saved.id,
+      epicId: saved.epic_id,
+      code: saved.code || updatedStory.code,
+      as_a: saved.as_a || 'User',
+      i_want: saved.i_want || 'Melakukan sesuatu',
+      so_that: saved.so_that || 'Sistem berjalan dengan baik',
+      acceptanceCriteria: (saved.acceptance_criteria || []).map((ac: any) => ac.description),
+      techNotes: (saved.tech_notes || []).map((tn: any) => tn.content),
+      testCases: (saved.test_cases || []).map((tc: any) => tc.description),
+    };
+
+    setSelectedStory(formatted);
+    setRawStories((prev) => prev.map((s) => (s.id === saved.id ? saved : s)));
+  } catch (err: any) {
+    console.error('Gagal update story:', err);
+    alert(err.message || 'Gagal memperbarui story.');
+  }
+};
 
   const handleDeleteStory = async () => {
     if (!selectedStory) return;
@@ -325,6 +337,7 @@ function StoriesPageContent() {
           <div className="flex-1 flex overflow-hidden">
             {selectedStory ? (
               <ManualStoryDetailPanel
+                key={String(selectedStory.id)} 
                 story={selectedStory}
                 onDelete={handleDeleteStory}
                 onUpdate={handleUpdateStory}

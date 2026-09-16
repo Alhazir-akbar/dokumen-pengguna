@@ -1,7 +1,7 @@
 // app/build/page.tsx
 'use client';
 
-import { useState, useEffect, Suspense, useCallback } from 'react';
+import { useState, useEffect, useRef, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import AppSidebar from '@/features/common/components/AppSidebar';
 import AccountMenu from '@/features/common/components/accountMenu'
@@ -53,6 +53,9 @@ function BuildPageContent() {
   const [loadError, setLoadError] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error' | ''; text: string }>({ type: '', text: '' });
+  // BUGFIX: menyimpan reference timeout supaya toast yang baru tidak
+  // "dihapus" secara prematur oleh timeout dari toast sebelumnya.
+  const statusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleUpload = () => {
     const input = document.createElement('input');
@@ -61,18 +64,25 @@ function BuildPageContent() {
     input.onchange = (e: any) => {
       const file = e.target.files?.[0];
       if (file) {
-        alert(`Journey file "${file.name}" berhasil di-upload!`);
+        // TODO: fitur upload ini masih placeholder — belum terhubung ke endpoint
+        // backend manapun, jadi file yang dipilih tidak benar-benar disimpan/diproses.
+        // Sebelumnya kode ini memakai alert() dan mengklaim "berhasil di-upload"
+        // padahal tidak ada apa pun yang terjadi. Sudah diganti ke pola toast yang
+        // konsisten dengan bagian lain aplikasi, dan pesannya dibuat jujur.
+        showMessage('error', `File "${file.name}" dipilih, tapi fitur import belum tersedia.`);
       }
     };
     input.click();
   };
 
-    const handleDownload = () => {
+  const handleDownload = () => {
     const projectName = project?.name || 'project';
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(project, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `${projectName}-builds.json`);
+    // BUGFIX: nama file sebelumnya "-builds.json" padahal isinya adalah data
+    // project secara keseluruhan (bukan hanya data build), jadi diperjelas.
+    downloadAnchor.setAttribute('download', `${projectName}-project.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -117,17 +127,28 @@ function BuildPageContent() {
     loadProject();
   }, [projectIdParam, reloadToken, router]);
 
+  // BUGFIX: bersihkan timeout toast saat komponen unmount agar tidak
+  // memanggil setState pada komponen yang sudah dilepas.
+  useEffect(() => {
+    return () => {
+      if (statusTimeoutRef.current) clearTimeout(statusTimeoutRef.current);
+    };
+  }, []);
+
   const handleRetry = useCallback(() => setReloadToken((n) => n + 1), []);
 
   const showMessage = (type: 'success' | 'error', text: string) => {
+    // BUGFIX: clear timeout lama dulu. Sebelumnya, kalau ada 2 toast berturut-turut
+    // dalam <4 detik, timeout dari toast pertama akan menghapus toast kedua lebih awal.
+    if (statusTimeoutRef.current) clearTimeout(statusTimeoutRef.current);
     setStatusMessage({ type, text });
-    setTimeout(() => setStatusMessage({ type: '', text: '' }), 4000);
+    statusTimeoutRef.current = setTimeout(() => setStatusMessage({ type: '', text: '' }), 4000);
   };
 
   if (isLoading) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
-        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+        <Loader2 className="w-7 h-7 text-blue-600 animate-spin" />
       </div>
     );
   }
@@ -136,13 +157,13 @@ function BuildPageContent() {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
         <div className="text-center max-w-md px-6">
-          <p className="text-red-600 font-medium mb-2">Gagal memuat data</p>
-          <p className="text-sm text-gray-500 mb-4">{loadError}</p>
+          <p className="text-red-600 font-medium mb-2 text-sm">Gagal memuat data</p>
+          <p className="text-xs text-gray-500 mb-4">{loadError}</p>
           <button
             onClick={handleRetry}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors cursor-pointer"
           >
-            <RefreshCw className="w-3.5 h-3.5" /> Coba lagi
+            <RefreshCw className="w-3 h-3" /> Coba lagi
           </button>
         </div>
       </div>
@@ -156,43 +177,41 @@ function BuildPageContent() {
       <AppSidebar activeMenu="build" projectId={projectIdParam} />
 
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-14 border-b border-gray-200 px-6 flex items-center justify-between bg-white shrink-0">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-500">{project?.name || 'Untitled Project'}</span>
-            <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-            <Code className="w-4 h-4 text-gray-500" />
-            <span className="text-sm font-semibold text-gray-800">Build</span>
-            <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-            <span className="text-sm text-gray-500">
+        <header className="h-12 border-b border-gray-200 px-5 flex items-center justify-between bg-white shrink-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-medium text-gray-500">{project?.name || 'Untitled Project'}</span>
+            <ChevronRight className="w-3 h-3 text-gray-300" />
+            <Code className="w-3.5 h-3.5 text-gray-500" />
+            <span className="text-xs font-semibold text-gray-800">Build</span>
+            <ChevronRight className="w-3 h-3 text-gray-300" />
+            <span className="text-xs text-gray-500">
               {activeTab === 'tech-stack' ? 'Technologies' : activeTab === 'guidelines' ? 'Coding Guidelines' : 'Dev Plans'}
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 text-gray-500">
               <button
                 onClick={handleUpload}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 cursor-pointer"
+                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 cursor-pointer"
                 title="Upload Document"
               >
-                <Upload className="w-4 h-4" />
+                <Upload className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={handleDownload}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 cursor-pointer"
+                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 cursor-pointer"
                 title="Download / Export JSON"
               >
-                <Download className="w-4 h-4" />
+                <Download className="w-3.5 h-3.5" />
               </button>
-              </div>
+            </div>
             <AccountMenu />
           </div>
-        </div>
         </header>
 
         <div className="flex flex-1 overflow-hidden">
-          <aside className="w-56 border-r border-gray-200 bg-white shrink-0 py-4">
-            <p className="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Implementation Tools</p>
+          <aside className="w-48 border-r border-gray-200 bg-white shrink-0 py-3">
+            <p className="px-3.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Implementation Tools</p>
             <nav className="flex flex-col gap-0.5 px-2">
               {[
                 { key: 'tech-stack', label: 'Technologies', sub: 'Technology stack and architecture', icon: Layers },
@@ -202,30 +221,30 @@ function BuildPageContent() {
                 <button
                   key={key}
                   onClick={() => setActiveTab(key as ActiveTab)}
-                  className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl text-left transition-colors cursor-pointer ${
+                  className={`flex items-start gap-2 px-2.5 py-2 rounded-lg text-left transition-colors cursor-pointer ${
                     activeTab === key ? 'bg-blue-50' : 'hover:bg-gray-50'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${activeTab === key ? 'text-blue-600' : 'text-gray-400'}`} />
+                  <Icon className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${activeTab === key ? 'text-blue-600' : 'text-gray-400'}`} />
                   <span>
-                    <span className={`block text-sm font-medium ${activeTab === key ? 'text-gray-900' : 'text-gray-700'}`}>{label}</span>
-                    <span className="block text-xs text-gray-400 leading-tight">{sub}</span>
+                    <span className={`block text-xs font-medium ${activeTab === key ? 'text-gray-900' : 'text-gray-700'}`}>{label}</span>
+                    <span className="block text-[10px] text-gray-400 leading-tight">{sub}</span>
                   </span>
                 </button>
               ))}
             </nav>
           </aside>
 
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-5">
             {statusMessage.text && (
-              <div className={`mb-4 p-3.5 rounded-xl flex items-center gap-3 text-sm font-medium ${
+              <div className={`mb-3.5 p-3 rounded-lg flex items-center gap-2.5 text-xs font-medium ${
                 statusMessage.type === 'success'
                   ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                   : 'bg-rose-50 text-rose-800 border border-rose-200'
               }`}>
                 {statusMessage.type === 'success'
-                  ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  : <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />}
+                  ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  : <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />}
                 {statusMessage.text}
               </div>
             )}
@@ -250,7 +269,7 @@ export default function BuildPage() {
   return (
     <Suspense fallback={
       <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
-        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+        <Loader2 className="w-7 h-7 text-blue-600 animate-spin" />
       </div>
     }>
       <BuildPageContent />
@@ -263,20 +282,20 @@ export default function BuildPage() {
 function BetaHeader({ title }: { title: string }) {
   return (
     <div>
-      <div className="flex items-center gap-2.5">
-        <h2 className="text-xl font-bold text-gray-900">{title}</h2>
-        <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">BETA</span>
+      <div className="flex items-center gap-2">
+        <h2 className="text-base font-bold text-gray-900">{title}</h2>
+        <span className="text-[9px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">BETA</span>
       </div>
-      <p className="text-sm text-gray-500 mt-1.5">In beta and may change, please contact us with feedback or issues.</p>
+      <p className="text-xs text-gray-500 mt-1">In beta and may change, please contact us with feedback or issues.</p>
     </div>
   );
 }
 
 function OverviewCard({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-5">
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Overview</p>
-      <p className="text-sm text-gray-600 leading-relaxed">{children}</p>
+    <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Overview</p>
+      <p className="text-xs text-gray-600 leading-relaxed">{children}</p>
     </div>
   );
 }
@@ -294,13 +313,13 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{label}</label>
+      <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">{label}</label>
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50/50 text-sm text-gray-900 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
+        className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg bg-gray-50/50 text-xs text-gray-900 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
       />
     </div>
   );
@@ -332,7 +351,15 @@ function TechStackTab({ projectId, applicationType, showMessage }: any) {
 
   const load = async () => {
     const token = getAuthToken();
-    if (!token) return;
+    // BUGFIX: sebelumnya fungsi ini langsung `return` di sini kalau token tidak
+    // ada, tanpa pernah memanggil setIsLoading(false) atau menampilkan error.
+    // Akibatnya spinner loading berputar selamanya dan user tidak tahu kenapa
+    // (terlihat seperti "error fetching" yang hang, padahal sesinya sudah habis).
+    if (!token) {
+      showMessage('error', 'Sesi habis, silakan login kembali.');
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
       setData(await buildApi.getTechStack(projectId, token));
@@ -406,7 +433,7 @@ function TechStackTab({ projectId, applicationType, showMessage }: any) {
   };
 
   if (isLoading) {
-    return <div className="max-w-4xl py-12 flex justify-center"><Loader2 className="w-6 h-6 text-gray-400 animate-spin" /></div>;
+    return <div className="max-w-4xl py-10 flex justify-center"><Loader2 className="w-5 h-5 text-gray-400 animate-spin" /></div>;
   }
 
   const has = (v?: string | null) => !!(v && v.trim());
@@ -414,11 +441,11 @@ function TechStackTab({ projectId, applicationType, showMessage }: any) {
   const valClass = (v?: string | null) => has(v) ? 'text-gray-800 font-medium' : 'text-gray-400 italic';
 
   return (
-    <div className="max-w-4xl space-y-5">
+    <div className="max-w-4xl space-y-4">
       <div className="flex items-start justify-between gap-4">
         <BetaHeader title="Technology Stack Configuration" />
-        <button onClick={openEdit} className="inline-flex items-center gap-1.5 px-3.5 py-2 border border-gray-200 hover:bg-gray-50 rounded-lg text-sm font-medium text-gray-700 transition-colors cursor-pointer shrink-0">
-          <Pencil className="w-3.5 h-3.5" /> Edit
+        <button onClick={openEdit} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 hover:bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-colors cursor-pointer shrink-0">
+          <Pencil className="w-3 h-3" /> Edit
         </button>
       </div>
 
@@ -427,72 +454,72 @@ function TechStackTab({ projectId, applicationType, showMessage }: any) {
         used to help generate coding guidelines, and also development plans when it comes time for implementation.
       </OverviewCard>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white rounded-2xl border border-gray-200 p-5">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Application Details</p>
-          <p className="text-xs text-gray-400 mb-3">Basic application configuration</p>
-          <div className="space-y-2.5 text-sm">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Application Details</p>
+          <p className="text-[10px] text-gray-400 mb-2.5">Basic application configuration</p>
+          <div className="space-y-2 text-xs">
             <div className="flex justify-between"><span className="text-gray-500">Type</span><span className={valClass(applicationType)}>{displayed(applicationType)}</span></div>
             <div className="flex justify-between"><span className="text-gray-500">Users</span><span className={valClass(data?.target_users)}>{displayed(data?.target_users)}</span></div>
             <div className="flex justify-between"><span className="text-gray-500">Scale</span><span className={valClass(data?.scale)}>{displayed(data?.scale)}</span></div>
           </div>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-200 p-5">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Development Approach</p>
-          <p className="text-xs text-gray-400 mb-3">Development team and AI assistance configuration</p>
-          <div className="space-y-2.5 text-sm">
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Development Approach</p>
+          <p className="text-[10px] text-gray-400 mb-2.5">Development team and AI assistance configuration</p>
+          <div className="space-y-2 text-xs">
             <div className="flex justify-between"><span className="text-gray-500">Platform</span><span className={valClass(data?.platform)}>{displayed(data?.platform)}</span></div>
           </div>
         </div>
       </div>
 
       <div>
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Architecture</p>
-        <p className="text-xs text-gray-400 mb-3">Application layers and technology stack</p>
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Architecture</p>
+        <p className="text-[10px] text-gray-400 mb-2.5">Application layers and technology stack</p>
 
-        <div className={`rounded-2xl border p-4 mb-3 ${COLOR_CLASSES.blue.bg} ${COLOR_CLASSES.blue.border}`}>
-          <div className="flex items-center gap-2.5 mb-2">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${COLOR_CLASSES.blue.iconBg}`}><Monitor className="w-4 h-4" /></div>
-            <span className={`text-sm font-semibold ${COLOR_CLASSES.blue.text}`}>User Interface Layer</span>
+        <div className={`rounded-xl border p-3.5 mb-2.5 ${COLOR_CLASSES.blue.bg} ${COLOR_CLASSES.blue.border}`}>
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${COLOR_CLASSES.blue.iconBg}`}><Monitor className="w-3.5 h-3.5" /></div>
+            <span className={`text-xs font-semibold ${COLOR_CLASSES.blue.text}`}>User Interface Layer</span>
           </div>
-          <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500 pl-10">
+          <div className="flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-gray-500 pl-9">
             <span>Language: <span className={valClass(data?.ui_language)}>{displayed(data?.ui_language)}</span></span>
             <span>Framework: <span className={valClass(data?.ui_framework)}>{displayed(data?.ui_framework)}</span></span>
             <span>UI Library: <span className={valClass(data?.ui_library)}>{displayed(data?.ui_library)}</span></span>
           </div>
         </div>
 
-        <div className="flex justify-center mb-3"><ChevronRight className="w-4 h-4 text-gray-300 rotate-90" /></div>
+        <div className="flex justify-center mb-2.5"><ChevronRight className="w-3.5 h-3.5 text-gray-300 rotate-90" /></div>
 
-        <div className={`rounded-2xl border p-4 mb-3 ${COLOR_CLASSES.emerald.bg} ${COLOR_CLASSES.emerald.border}`}>
-          <div className="flex items-center gap-2.5 mb-2">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${COLOR_CLASSES.emerald.iconBg}`}><Cpu className="w-4 h-4" /></div>
-            <span className={`text-sm font-semibold ${COLOR_CLASSES.emerald.text}`}>Application Layer</span>
+        <div className={`rounded-xl border p-3.5 mb-2.5 ${COLOR_CLASSES.emerald.bg} ${COLOR_CLASSES.emerald.border}`}>
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${COLOR_CLASSES.emerald.iconBg}`}><Cpu className="w-3.5 h-3.5" /></div>
+            <span className={`text-xs font-semibold ${COLOR_CLASSES.emerald.text}`}>Application Layer</span>
           </div>
-          <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500 pl-10">
+          <div className="flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-gray-500 pl-9">
             <span>Language: <span className={valClass(data?.app_language)}>{displayed(data?.app_language)}</span></span>
             <span>Framework: <span className={valClass(data?.app_framework)}>{displayed(data?.app_framework)}</span></span>
           </div>
         </div>
 
-        <div className="flex justify-center mb-3"><ChevronRight className="w-4 h-4 text-gray-300 rotate-90" /></div>
+        <div className="flex justify-center mb-2.5"><ChevronRight className="w-3.5 h-3.5 text-gray-300 rotate-90" /></div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className={`rounded-2xl border p-4 ${COLOR_CLASSES.violet.bg} ${COLOR_CLASSES.violet.border}`}>
-            <div className="flex items-center gap-2.5 mb-2">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${COLOR_CLASSES.violet.iconBg}`}><Database className="w-4 h-4" /></div>
-              <span className={`text-sm font-semibold ${COLOR_CLASSES.violet.text}`}>Data Layer</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+          <div className={`rounded-xl border p-3.5 ${COLOR_CLASSES.violet.bg} ${COLOR_CLASSES.violet.border}`}>
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${COLOR_CLASSES.violet.iconBg}`}><Database className="w-3.5 h-3.5" /></div>
+              <span className={`text-xs font-semibold ${COLOR_CLASSES.violet.text}`}>Data Layer</span>
             </div>
-            <div className="text-xs text-gray-500 pl-10">
+            <div className="text-[11px] text-gray-500 pl-9">
               Database: <span className={valClass(data?.data_layer)}>{displayed(data?.data_layer)}</span>
             </div>
           </div>
-          <div className={`rounded-2xl border p-4 ${COLOR_CLASSES.amber.bg} ${COLOR_CLASSES.amber.border}`}>
-            <div className="flex items-center gap-2.5 mb-2">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${COLOR_CLASSES.amber.iconBg}`}><Settings2 className="w-4 h-4" /></div>
-              <span className={`text-sm font-semibold ${COLOR_CLASSES.amber.text}`}>Integration Layer</span>
+          <div className={`rounded-xl border p-3.5 ${COLOR_CLASSES.amber.bg} ${COLOR_CLASSES.amber.border}`}>
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${COLOR_CLASSES.amber.iconBg}`}><Settings2 className="w-3.5 h-3.5" /></div>
+              <span className={`text-xs font-semibold ${COLOR_CLASSES.amber.text}`}>Integration Layer</span>
             </div>
-            <div className="text-xs text-gray-500 pl-10">
+            <div className="text-[11px] text-gray-500 pl-9">
               <span className={valClass(data?.integration_layer)}>{displayed(data?.integration_layer)}</span>
             </div>
           </div>
@@ -501,18 +528,18 @@ function TechStackTab({ projectId, applicationType, showMessage }: any) {
 
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white rounded-t-2xl">
-              <h3 className="text-base font-semibold text-gray-900">Edit Technology Stack</h3>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white rounded-t-xl">
+              <h3 className="text-sm font-semibold text-gray-900">Edit Technology Stack</h3>
               <div className="flex items-center gap-2">
                 <button type="button" onClick={handleGenerate} disabled={generating}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 cursor-pointer">
-                  <Sparkles className="w-3.5 h-3.5" /> {generating ? 'Generating...' : 'Generate with AI'}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 cursor-pointer">
+                  <Sparkles className="w-3 h-3" /> {generating ? 'Generating...' : 'Generate with AI'}
                 </button>
-                <button onClick={() => setShowModal(false)} className="p-1 hover:bg-gray-100 rounded-lg cursor-pointer"><X className="w-4 h-4" /></button>
+                <button onClick={() => setShowModal(false)} className="p-1 hover:bg-gray-100 rounded-lg cursor-pointer"><X className="w-3.5 h-3.5" /></button>
               </div>
             </div>
-            <form onSubmit={handleSave} className="p-5 space-y-5">
+            <form onSubmit={handleSave} className="p-4 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Users" value={form.target_users} onChange={(v) => setForm({ ...form, target_users: v })} placeholder="Contoh: 1.000 - 10.000 pengguna" />
                 <Field label="Scale" value={form.scale} onChange={(v) => setForm({ ...form, scale: v })} placeholder="Contoh: Small to Medium Scale" />
@@ -520,7 +547,7 @@ function TechStackTab({ projectId, applicationType, showMessage }: any) {
               <Field label="Platform" value={form.platform} onChange={(v) => setForm({ ...form, platform: v })} placeholder="Contoh: Web-based, AI-assisted development" />
 
               <div>
-                <p className="text-xs font-semibold text-gray-700 mb-2">User Interface Layer</p>
+                <p className="text-[11px] font-semibold text-gray-700 mb-1.5">User Interface Layer</p>
                 <div className="grid grid-cols-3 gap-3">
                   <Field label="Language" value={form.ui_language} onChange={(v) => setForm({ ...form, ui_language: v })} placeholder="TypeScript" />
                   <Field label="Framework" value={form.ui_framework} onChange={(v) => setForm({ ...form, ui_framework: v })} placeholder="Next.js" />
@@ -529,7 +556,7 @@ function TechStackTab({ projectId, applicationType, showMessage }: any) {
               </div>
 
               <div>
-                <p className="text-xs font-semibold text-gray-700 mb-2">Application Layer</p>
+                <p className="text-[11px] font-semibold text-gray-700 mb-1.5">Application Layer</p>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Language" value={form.app_language} onChange={(v) => setForm({ ...form, app_language: v })} placeholder="Python" />
                   <Field label="Framework" value={form.app_framework} onChange={(v) => setForm({ ...form, app_framework: v })} placeholder="FastAPI" />
@@ -542,9 +569,9 @@ function TechStackTab({ projectId, applicationType, showMessage }: any) {
               </div>
 
               <div className="flex justify-end gap-2 pt-1">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer">Batal</button>
-                <button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-semibold disabled:opacity-50 cursor-pointer flex items-center gap-2">
-                  <Save className="w-4 h-4" /> {saving ? 'Menyimpan...' : 'Simpan'}
+                <button type="button" onClick={() => setShowModal(false)} className="px-3.5 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">Batal</button>
+                <button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50 cursor-pointer flex items-center gap-1.5">
+                  <Save className="w-3.5 h-3.5" /> {saving ? 'Menyimpan...' : 'Simpan'}
                 </button>
               </div>
             </form>
@@ -581,7 +608,13 @@ function GuidelinesTab({ projectId, showMessage }: any) {
 
   const fetchGuidelines = async () => {
     const token = getAuthToken();
-    if (!token) return;
+    // BUGFIX: sama seperti di TechStackTab — jangan diam-diam berhenti tanpa
+    // mematikan loading state dan tanpa memberi tahu user.
+    if (!token) {
+      showMessage('error', 'Sesi habis, silakan login kembali.');
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
       setGuidelines(await buildApi.getGuidelines(projectId, token));
@@ -730,17 +763,17 @@ function GuidelinesTab({ projectId, showMessage }: any) {
   };
 
   return (
-    <div className="max-w-4xl space-y-5">
+    <div className="max-w-4xl space-y-4">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <BetaHeader title="Coding Guidelines" />
         <div className="flex items-center gap-2 shrink-0">
           <button onClick={handleGenerateAll} disabled={generatingAll}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-2 rounded-lg transition-colors disabled:opacity-50 cursor-pointer">
-            <Sparkles className="w-3.5 h-3.5" /> {generatingAll ? 'Generating...' : 'Generate All'}
+            className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 cursor-pointer">
+            <Sparkles className="w-3 h-3" /> {generatingAll ? 'Generating...' : 'Generate All'}
           </button>
           <button onClick={handleInstall}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg transition-colors cursor-pointer">
-            <Download className="w-3.5 h-3.5" /> Install Coding Guidelines
+            className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer">
+            <Download className="w-3 h-3" /> Install Coding Guidelines
           </button>
         </div>
       </div>
@@ -752,83 +785,83 @@ function GuidelinesTab({ projectId, showMessage }: any) {
       </OverviewCard>
 
       {isLoading ? (
-        <div className="py-12 flex justify-center"><Loader2 className="w-6 h-6 text-gray-400 animate-spin" /></div>
+        <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 text-gray-400 animate-spin" /></div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {GUIDELINE_CATEGORIES.map(({ key, label, desc, icon: Icon }) => {
             const existing = byCategory(key);
             return (
               <button key={key} onClick={() => openCategory(key, label)}
-                className="text-left bg-white rounded-2xl border border-gray-200 hover:border-blue-300 hover:shadow-sm p-5 transition-all cursor-pointer">
-                <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center mb-3">
-                  <Icon className="w-4 h-4 text-gray-500" />
+                className="text-left bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-sm p-4 transition-all cursor-pointer">
+                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center mb-2.5">
+                  <Icon className="w-3.5 h-3.5 text-gray-500" />
                 </div>
-                <p className="text-sm font-semibold text-gray-900">{label}</p>
-                <p className="text-xs text-gray-400 mt-1">{existing ? 'Configured' : desc}</p>
+                <p className="text-xs font-semibold text-gray-900">{label}</p>
+                <p className="text-[10px] text-gray-400 mt-1">{existing ? 'Configured' : desc}</p>
               </button>
             );
           })}
 
           {customGuidelines.map((item) => (
-            <div key={item.id} className="relative bg-white rounded-2xl border border-gray-200 hover:border-blue-300 hover:shadow-sm p-5 transition-all group">
+            <div key={item.id} className="relative bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-sm p-4 transition-all group">
               <button onClick={() => openCustom(item)} className="text-left w-full cursor-pointer">
-                <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center mb-3">
-                  <BookOpen className="w-4 h-4 text-gray-500" />
+                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center mb-2.5">
+                  <BookOpen className="w-3.5 h-3.5 text-gray-500" />
                 </div>
-                <p className="text-sm font-semibold text-gray-900 pr-6">{item.title}</p>
-                <p className="text-xs text-gray-400 mt-1 line-clamp-2">{item.content}</p>
+                <p className="text-xs font-semibold text-gray-900 pr-6">{item.title}</p>
+                <p className="text-[10px] text-gray-400 mt-1 line-clamp-2">{item.content}</p>
               </button>
               <button onClick={() => handleDeleteCustom(item.id)}
-                className="absolute top-4 right-4 p-1.5 rounded-lg text-gray-300 hover:text-rose-500 hover:bg-rose-50 opacity-0 group-hover:opacity-100 transition-all cursor-pointer">
-                <Trash2 className="w-3.5 h-3.5" />
+                className="absolute top-3.5 right-3.5 p-1.5 rounded-lg text-gray-300 hover:text-rose-500 hover:bg-rose-50 opacity-0 group-hover:opacity-100 transition-all cursor-pointer">
+                <Trash2 className="w-3 h-3" />
               </button>
             </div>
           ))}
 
           <button onClick={() => setShowAddModal(true)}
-            className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 hover:border-blue-300 rounded-2xl p-5 text-gray-400 hover:text-blue-500 transition-colors cursor-pointer min-h-[140px]">
-            <Plus className="w-5 h-5" />
-            <span className="text-xs font-medium">Add new Coding Guideline</span>
+            className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 hover:border-blue-300 rounded-xl p-4 text-gray-400 hover:text-blue-500 transition-colors cursor-pointer min-h-[120px]">
+            <Plus className="w-4 h-4" />
+            <span className="text-[11px] font-medium">Add new Coding Guideline</span>
           </button>
         </div>
       )}
 
       {activeItem && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl">
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-base font-semibold text-gray-900">{activeItem.label}</h3>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-xl">
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-900">{activeItem.label}</h3>
               <div className="flex items-center gap-2">
                 {activeItem.category && (
                   <button onClick={handleModalGenerate} disabled={generatingModal}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 cursor-pointer">
-                    <Sparkles className="w-3.5 h-3.5" /> {generatingModal ? '...' : 'Generate'}
+                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-1.5 rounded-lg transition-colors disabled:opacity-50 cursor-pointer">
+                    <Sparkles className="w-3 h-3" /> {generatingModal ? '...' : 'Generate'}
                   </button>
                 )}
-                <button onClick={() => setActiveItem(null)} className="p-1 hover:bg-gray-100 rounded-lg cursor-pointer"><X className="w-4 h-4" /></button>
+                <button onClick={() => setActiveItem(null)} className="p-1 hover:bg-gray-100 rounded-lg cursor-pointer"><X className="w-3.5 h-3.5" /></button>
               </div>
             </div>
-            <div className="p-5 space-y-4">
+            <div className="p-4 space-y-3.5">
               <Field label="Judul" value={modalForm.title} onChange={(v) => setModalForm({ ...modalForm, title: v })} />
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Isi Guideline</label>
+                <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Isi Guideline</label>
                 <textarea
                   value={modalForm.content}
                   onChange={(e) => setModalForm({ ...modalForm, content: e.target.value })}
                   rows={8}
                   placeholder="Tuliskan aturan atau panduan coding di sini, atau klik Generate untuk membuat draf otomatis via AI..."
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all resize-none"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-900 focus:outline-none focus:border-blue-500 transition-all resize-none"
                 />
               </div>
               <div className="flex items-center justify-between pt-1">
                 {activeItem.existing && !activeItem.category ? (
-                  <button onClick={handleModalDelete} className="text-sm text-rose-500 hover:text-rose-600 cursor-pointer flex items-center gap-1.5">
-                    <Trash2 className="w-3.5 h-3.5" /> Hapus
+                  <button onClick={handleModalDelete} className="text-xs text-rose-500 hover:text-rose-600 cursor-pointer flex items-center gap-1.5">
+                    <Trash2 className="w-3 h-3" /> Hapus
                   </button>
                 ) : <span />}
                 <div className="flex gap-2">
-                  <button onClick={() => setActiveItem(null)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer">Batal</button>
-                  <button onClick={handleModalSave} disabled={savingModal} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-semibold disabled:opacity-50 cursor-pointer">
+                  <button onClick={() => setActiveItem(null)} className="px-3.5 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">Batal</button>
+                  <button onClick={handleModalSave} disabled={savingModal} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50 cursor-pointer">
                     {savingModal ? 'Menyimpan...' : 'Simpan'}
                   </button>
                 </div>
@@ -840,27 +873,27 @@ function GuidelinesTab({ projectId, showMessage }: any) {
 
       {showAddModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg">
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-base font-semibold text-gray-900">Tambah Guideline Baru</h3>
-              <button onClick={() => setShowAddModal(false)} className="p-1 hover:bg-gray-100 rounded-lg cursor-pointer"><X className="w-4 h-4" /></button>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-900">Tambah Guideline Baru</h3>
+              <button onClick={() => setShowAddModal(false)} className="p-1 hover:bg-gray-100 rounded-lg cursor-pointer"><X className="w-3.5 h-3.5" /></button>
             </div>
-            <form onSubmit={handleAddSave} className="p-5 space-y-4">
+            <form onSubmit={handleAddSave} className="p-4 space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Judul Guideline</label>
+                <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Judul Guideline</label>
                 <input type="text" value={addForm.title} onChange={(e) => setAddForm({ ...addForm, title: e.target.value })}
                   placeholder="Contoh: Penamaan Variabel"
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all" required />
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-900 focus:outline-none focus:border-blue-500 transition-all" required />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Isi Guideline</label>
+                <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Isi Guideline</label>
                 <textarea value={addForm.content} onChange={(e) => setAddForm({ ...addForm, content: e.target.value })}
                   rows={5} placeholder="Tuliskan aturan atau panduan coding di sini..."
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all resize-none" required />
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-900 focus:outline-none focus:border-blue-500 transition-all resize-none" required />
               </div>
               <div className="flex justify-end gap-2 pt-1">
-                <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer">Batal</button>
-                <button type="submit" disabled={savingAdd} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-semibold disabled:opacity-50 cursor-pointer">
+                <button type="button" onClick={() => setShowAddModal(false)} className="px-3.5 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">Batal</button>
+                <button type="submit" disabled={savingAdd} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50 cursor-pointer">
                   {savingAdd ? 'Menyimpan...' : 'Simpan'}
                 </button>
               </div>
@@ -907,7 +940,13 @@ function DevPlansTab({ projectId, showMessage }: any) {
 
   const fetchAll = async () => {
     const token = getAuthToken();
-    if (!token) return;
+    // BUGFIX: sama seperti di dua tab lainnya — jangan diam-diam berhenti
+    // tanpa mematikan loading state dan tanpa memberi tahu user.
+    if (!token) {
+      showMessage('error', 'Sesi habis, silakan login kembali.');
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
       const [plansRes, epicsRes] = await Promise.all([
@@ -1015,11 +1054,11 @@ function DevPlansTab({ projectId, showMessage }: any) {
   const epicName = (id?: number | null) => epics.find((e) => e.id === id)?.name;
 
   return (
-    <div className="max-w-4xl space-y-5">
+    <div className="max-w-4xl space-y-4">
       <div className="flex items-start justify-between gap-4">
         <BetaHeader title="Dev Plans" />
-        <button onClick={openAddModal} className="inline-flex items-center gap-1.5 px-3.5 py-2 border border-gray-200 hover:bg-gray-50 rounded-lg text-sm font-medium text-gray-700 transition-colors cursor-pointer shrink-0">
-          <Plus className="w-3.5 h-3.5" /> Create New Plan
+        <button onClick={openAddModal} className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 hover:bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-colors cursor-pointer shrink-0">
+          <Plus className="w-3 h-3" /> Create New Plan
         </button>
       </div>
 
@@ -1030,11 +1069,11 @@ function DevPlansTab({ projectId, showMessage }: any) {
         plans that you can use directly with your AI tool of choice.
       </OverviewCard>
 
-      <div className="bg-white rounded-2xl border border-gray-200 p-3 flex items-center gap-1 flex-wrap">
-        <span className="text-xs text-gray-400 font-medium px-2">Filter by status:</span>
+      <div className="bg-white rounded-xl border border-gray-200 p-2.5 flex items-center gap-1 flex-wrap">
+        <span className="text-[11px] text-gray-400 font-medium px-2">Filter by status:</span>
         {FILTER_TABS.map((t) => (
           <button key={t.key} onClick={() => setFilter(t.key)}
-            className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+            className={`text-[11px] font-medium px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
               filter === t.key ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100'
             }`}>
             {t.label}
@@ -1043,53 +1082,53 @@ function DevPlansTab({ projectId, showMessage }: any) {
       </div>
 
       <div>
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Plans</p>
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Plans</p>
         {isLoading ? (
-          <div className="py-12 flex justify-center"><Loader2 className="w-6 h-6 text-gray-400 animate-spin" /></div>
+          <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 text-gray-400 animate-spin" /></div>
         ) : filteredPlans.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-            <ClipboardList className="w-10 h-10 mx-auto mb-3 text-blue-200" />
-            <p className="text-sm font-semibold text-gray-900">You have not created any Dev Plans yet</p>
-            <p className="text-xs text-gray-400 mt-1 mb-5">Create your first dev plan to get started building with AI.</p>
-            <button onClick={openAddModal} className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-full text-sm font-semibold transition-colors cursor-pointer">
-              <Sparkles className="w-4 h-4" /> Create Dev Plan
+          <div className="bg-white rounded-xl border border-gray-200 p-10 text-center">
+            <ClipboardList className="w-9 h-9 mx-auto mb-2.5 text-blue-200" />
+            <p className="text-xs font-semibold text-gray-900">You have not created any Dev Plans yet</p>
+            <p className="text-[11px] text-gray-400 mt-1 mb-4">Create your first dev plan to get started building with AI.</p>
+            <button onClick={openAddModal} className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-full text-xs font-semibold transition-colors cursor-pointer">
+              <Sparkles className="w-3.5 h-3.5" /> Create Dev Plan
             </button>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {filteredPlans.map((item) => (
-              <div key={item.id} className="bg-white rounded-2xl border border-gray-200 p-5 hover:border-gray-300 transition-colors">
+              <div key={item.id} className="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 transition-colors">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-sm font-semibold text-gray-900">{item.title}</h3>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${PLAN_STATUS_CONFIG[item.status]?.color || 'bg-gray-100 text-gray-600'}`}>
+                      <h3 className="text-xs font-semibold text-gray-900">{item.title}</h3>
+                      <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full ${PLAN_STATUS_CONFIG[item.status]?.color || 'bg-gray-100 text-gray-600'}`}>
                         {PLAN_STATUS_CONFIG[item.status]?.label || item.status}
                       </span>
                       {epicName(item.epic_id) && (
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">{epicName(item.epic_id)}</span>
+                        <span className="text-[9px] font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">{epicName(item.epic_id)}</span>
                       )}
                     </div>
                     {item.description && (
-                      <p className="text-xs text-gray-500 mt-1.5 leading-relaxed whitespace-pre-wrap line-clamp-4">{item.description}</p>
+                      <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed whitespace-pre-wrap line-clamp-4">{item.description}</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button onClick={() => openEditModal(item)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-500"><Pencil className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => handleDelete(item.id)} className="p-2 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer text-rose-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button onClick={() => openEditModal(item)} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-500"><Pencil className="w-3 h-3" /></button>
+                    <button onClick={() => handleDelete(item.id)} className="p-1.5 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer text-rose-500"><Trash2 className="w-3 h-3" /></button>
                   </div>
                 </div>
-                <div className="flex gap-1.5 mt-3">
+                <div className="flex gap-1.5 mt-2.5">
                   {STATUS_FLOW.indexOf(item.status) > 0 && (
                     <button onClick={() => handleStatusChange(item, STATUS_FLOW[STATUS_FLOW.indexOf(item.status) - 1])}
-                      className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer flex items-center gap-1">
-                      <ArrowLeft className="w-3 h-3" /> {PLAN_STATUS_CONFIG[STATUS_FLOW[STATUS_FLOW.indexOf(item.status) - 1]].label}
+                      className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer flex items-center gap-1">
+                      <ArrowLeft className="w-2.5 h-2.5" /> {PLAN_STATUS_CONFIG[STATUS_FLOW[STATUS_FLOW.indexOf(item.status) - 1]].label}
                     </button>
                   )}
                   {STATUS_FLOW.indexOf(item.status) < STATUS_FLOW.length - 1 && (
                     <button onClick={() => handleStatusChange(item, STATUS_FLOW[STATUS_FLOW.indexOf(item.status) + 1])}
-                      className="text-xs px-2.5 py-1 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors cursor-pointer flex items-center gap-1">
-                      {PLAN_STATUS_CONFIG[STATUS_FLOW[STATUS_FLOW.indexOf(item.status) + 1]].label} <ArrowRight className="w-3 h-3" />
+                      className="text-[11px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors cursor-pointer flex items-center gap-1">
+                      {PLAN_STATUS_CONFIG[STATUS_FLOW[STATUS_FLOW.indexOf(item.status) + 1]].label} <ArrowRight className="w-2.5 h-2.5" />
                     </button>
                   )}
                 </div>
@@ -1101,16 +1140,16 @@ function DevPlansTab({ projectId, showMessage }: any) {
 
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg">
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-base font-semibold text-gray-900">{editingItem ? 'Edit Plan' : 'Buat Development Plan'}</h3>
-              <button onClick={() => setShowModal(false)} className="p-1 hover:bg-gray-100 rounded-lg cursor-pointer"><X className="w-4 h-4" /></button>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-900">{editingItem ? 'Edit Plan' : 'Buat Development Plan'}</h3>
+              <button onClick={() => setShowModal(false)} className="p-1 hover:bg-gray-100 rounded-lg cursor-pointer"><X className="w-3.5 h-3.5" /></button>
             </div>
-            <form onSubmit={handleSave} className="p-5 space-y-4">
+            <form onSubmit={handleSave} className="p-4 space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Requirement / Epic</label>
+                <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Requirement / Epic</label>
                 <select value={form.epic_id} onChange={(e) => setForm({ ...form, epic_id: e.target.value })}
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all">
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-900 focus:outline-none focus:border-blue-500 transition-all">
                   <option value="">Tidak terhubung ke epic tertentu</option>
                   {epics.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
                 </select>
@@ -1118,38 +1157,38 @@ function DevPlansTab({ projectId, showMessage }: any) {
 
               {!editingItem && (
                 <button type="button" onClick={handleGenerateInModal} disabled={generating || !form.epic_id}
-                  className="w-full inline-flex items-center justify-center gap-2 text-sm font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50 cursor-pointer">
-                  <Sparkles className="w-4 h-4" /> {generating ? 'AI sedang menyusun plan...' : 'Generate Plan Otomatis dengan AI'}
+                  className="w-full inline-flex items-center justify-center gap-2 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3.5 py-2 rounded-lg transition-colors disabled:opacity-50 cursor-pointer">
+                  <Sparkles className="w-3.5 h-3.5" /> {generating ? 'AI sedang menyusun plan...' : 'Generate Plan Otomatis dengan AI'}
                 </button>
               )}
 
               <div className="relative">
                 <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-100" /></div>
-                <div className="relative flex justify-center"><span className="bg-white px-2 text-xs text-gray-400 uppercase">atau isi manual</span></div>
+                <div className="relative flex justify-center"><span className="bg-white px-2 text-[10px] text-gray-400 uppercase">atau isi manual</span></div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Judul Plan</label>
+                <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Judul Plan</label>
                 <input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
                   placeholder="Contoh: Setup Authentication API"
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all" required />
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-900 focus:outline-none focus:border-blue-500 transition-all" required />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Deskripsi</label>
+                <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Deskripsi</label>
                 <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
                   rows={5} placeholder="Deskripsi rencana pengembangan ini..."
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all resize-none" />
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-900 focus:outline-none focus:border-blue-500 transition-all resize-none" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Status</label>
+                <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Status</label>
                 <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-all">
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-900 focus:outline-none focus:border-blue-500 transition-all">
                   {STATUS_FLOW.map((s) => <option key={s} value={s}>{PLAN_STATUS_CONFIG[s].label}</option>)}
                 </select>
               </div>
               <div className="flex justify-end gap-2 pt-1">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer">Batal</button>
-                <button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-semibold disabled:opacity-50 cursor-pointer">
+                <button type="button" onClick={() => setShowModal(false)} className="px-3.5 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">Batal</button>
+                <button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50 cursor-pointer">
                   {saving ? 'Menyimpan...' : 'Simpan'}
                 </button>
               </div>

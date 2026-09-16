@@ -26,16 +26,8 @@ export interface JourneyDetailPanelProps {
   } | null;
   personas?: Persona[]; // daftar persona project ini, dipakai untuk dropdown assign
   isEditingInitially?: boolean;
-  // true kalau ini adalah journey BARU yang belum pernah disimpan (alur
-  // "Create New Journey"). Mengubah perilaku tombol Cancel: pada journey baru,
-  // Cancel akan memanggil onClose (membatalkan pembuatan sepenuhnya, kembali
-  // ke state sebelumnya di halaman induk). Pada journey yang sudah ada,
-  // Cancel tetap hanya keluar dari mode edit (kembali ke mode view seperti biasa).
+
   isNew?: boolean;
-  // Kalau true, journey baru (belum ada steps sama sekali) akan mulai dengan
-  // array steps KOSONG, bukan 1 placeholder DEFAULT_STEP. Dipakai khusus untuk
-  // alur "Create New Journey" supaya tampilannya persis seperti mockup
-  // (langsung "Create a new step in the journey", tanpa step placeholder).
   startWithEmptySteps?: boolean;
   onClose: () => void;
   onSave: (updatedJourney: any) => void;
@@ -75,16 +67,17 @@ export default function JourneyDetailPanel({
   const [description, setDescription] = useState(safeJourney.description || '');
   const [steps, setSteps] = useState<Step[]>(resolveInitialSteps());
 
-  // Sync ulang state internal setiap kali data journey dari parent berubah
-  // (misalnya setelah AI selesai generate steps). Di-skip saat mode edit
-  // supaya draf yang lagi diketik user tidak ketiban reload dari server.
-  useEffect(() => {
-    if (isEditing) return;
-    setTitle(safeJourney.title || '');
-    setDescription(safeJourney.description || '');
-    setSteps(resolveInitialSteps());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [journey]);
+const resetFromJourney = () => {
+  setTitle(safeJourney.title || '');
+  setDescription(safeJourney.description || '');
+  setSteps(resolveInitialSteps());
+};
+
+useEffect(() => {
+  if (isEditing) return;
+  resetFromJourney();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [journey]);
 
   const handleStepChange = (id: number | string, field: 'title' | 'description', value: string) => {
     setSteps(steps.map((s) => (s.id === id ? { ...s, [field]: value } : s)));
@@ -101,15 +94,15 @@ export default function JourneyDetailPanel({
   };
 
   const handleAddStep = () => {
-    const newStep: Step = {
-      id: Date.now(),
-      title: 'Step name',
-      description: 'Description of this Step',
-      personaId: null,
-      personaName: null,
-    };
-    setSteps([...steps, newStep]);
+  const newStep: Step = {
+    id: `new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    title: 'Step name',
+    description: 'Description of this Step',
+    personaId: null,
+    personaName: null,
   };
+  setSteps([...steps, newStep]);
+};
 
   const handleDeleteStep = (id: number | string) => {
     setSteps(steps.filter((s) => s.id !== id));
@@ -127,16 +120,14 @@ export default function JourneyDetailPanel({
     setIsEditing(false);
   };
 
-  // Journey baru yang dibatalkan -> buang seluruhnya (panggil onClose milik
-  // parent). Journey lama yang lagi diedit -> cukup keluar dari mode edit,
-  // kembali ke tampilan view seperti semula.
   const handleCancelEdit = () => {
-    if (isNew) {
-      onClose();
-    } else {
-      setIsEditing(false);
-    }
-  };
+  if (isNew) {
+    onClose();
+  } else {
+    resetFromJourney();
+    setIsEditing(false);
+  }
+};
 
   // ================= MODE EDIT =================
   if (isEditing) {
