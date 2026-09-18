@@ -358,6 +358,7 @@ function StoriesPageContent() {
               <div className="flex-1 flex overflow-hidden">
                 {selectedStory ? (
                   <ManualStoryDetailPanel
+                    key={String(selectedStory.id)}
                     story={selectedStory}
                     onDelete={handleDeleteStory}
                     onUpdate={handleUpdateStory}

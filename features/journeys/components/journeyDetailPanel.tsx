@@ -88,12 +88,15 @@ export default function JourneyDetailPanel({
   const [stepToDelete, setStepToDelete] = useState<number | string | null>(null);
   const [validationError, setValidationError] = useState('');
 
-  // Sinkronisasi data saat journey dari parent berubah
-  useEffect(() => {
-    if (isEditing) return;
+  const resetFromJourney = () => {
     setTitle(safeJourney.title || '');
     setDescription(safeJourney.description || '');
     setSteps(resolveInitialSteps());
+  };
+
+  useEffect(() => {
+    if (isEditing) return;
+    resetFromJourney();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [journey]);
 
@@ -113,7 +116,7 @@ export default function JourneyDetailPanel({
 
   const handleAddStep = () => {
     const newStep: Step = {
-      id: Date.now(),
+      id: `new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       title: `Step ${steps.length + 1}`,
       description: '',
       personaId: personas.length > 0 ? personas[0].id : null,
@@ -156,9 +159,7 @@ export default function JourneyDetailPanel({
     if (isNew) {
       onClose();
     } else {
-      setTitle(safeJourney.title || '');
-      setDescription(safeJourney.description || '');
-      setSteps(resolveInitialSteps());
+      resetFromJourney();
       setValidationError('');
       setIsEditing(false);
     }

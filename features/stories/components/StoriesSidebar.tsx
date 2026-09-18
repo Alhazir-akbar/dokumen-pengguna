@@ -16,9 +16,6 @@ interface StoriesSidebarProps {
   onAddNew?: () => void;
   projectName?: string;
   projectId?: string | null;
-  // workspace_id dari project yang lagi dibuka (didapat dari getProjectById
-  // di app/stories/page.tsx). WAJIB dikirim eksplisit -- jangan andalkan
-  // localStorage untuk ini, soalnya bisa kosong/stale.
   workspaceId?: number | null;
 }
 
@@ -30,8 +27,7 @@ export default function StoriesSidebar({
   workspaceId,
   onSelectStory,
   onSelectEpic,
-  onAddNew, 
-  
+  onAddNew,
 }: StoriesSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const activeProjId = currentProjectId || projectId;

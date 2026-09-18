@@ -217,17 +217,44 @@ function JourneysPageContent() {
   };
 
   const handleUpload = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json,.txt';
-    input.onchange = (e: any) => {
-      const file = e.target.files?.[0];
-      if (file) {
-        alert(`Journey file "${file.name}" berhasil di-upload!`);
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = async (e: any) => {
+    const file = e.target.files?.[0];
+    if (!file || !projectId) return;
+    const token = getAuthToken();
+    if (!token) { alert('Sesi habis, silakan login kembali.'); return; }
+
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const list = Array.isArray(parsed) ? parsed : [parsed];
+
+      for (const j of list) {
+        await journeysApi.createJourney(
+          {
+            project_id: Number(projectId),
+            name: j.title || j.name || 'Untitled journey',
+            description: j.description || '',
+            steps: (j.steps || []).map((s: any, idx: number) => ({
+              title: s.title,
+              description: s.description,
+              step_order: idx + 1,
+              persona_id: s.personaId ?? null,
+            })),
+          },
+          token
+        );
       }
-    };
-    input.click();
+      await loadData();
+      alert(`Berhasil import ${list.length} journey dari "${file.name}".`);
+    } catch (err: any) {
+      alert('File tidak valid atau gagal diimport: ' + (err.message || ''));
+    }
   };
+  input.click();
+};
 
   const handleDownload = () => {
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(journeys, null, 2));
@@ -310,6 +337,7 @@ function JourneysPageContent() {
 
         {selectedJourney ? (
           <JourneyDetailPanel
+            key={selectedJourney.id}
             journey={safeSelectedJourney}
             personas={personas}
             onClose={() => {
