@@ -7,9 +7,10 @@ import { UserStory, Epic } from '@/features/stories/types';
 import StoriesSidebar from '@/features/stories/components/StoriesSidebar';
 import EmptyDetailPanel from '@/features/stories/components/EmptyDetailPanel';
 import ManualStoryDetailPanel from '@/features/stories/components/ManualStoryDetailPanel';
+import ProjectMenuDropdown from '@/features/stories/components/ProjectMenuDropdown';
 import AppSidebar from '@/features/common/components/AppSidebar';
 import AccountMenu from '@/features/common/components/accountMenu';
-import { MessageSquare, Upload, Download, X, Lightbulb, Loader2 } from 'lucide-react';
+import { MessageSquare, Upload, Download, X, Lightbulb, Loader2, ChevronDown, Sparkles } from 'lucide-react';
 import { fetchEpics, fetchStories } from '@/services/storiesApi';
 import { projectApi } from '@/services/projectsApi';
 import { getAuthToken } from '@/lib/auth';
@@ -22,10 +23,6 @@ function StoriesPageContent() {
   const [rawEpics, setRawEpics] = useState<any[]>([]);
   const [rawStories, setRawStories] = useState<any[]>([]);
   const [projectName, setProjectName] = useState('');
-  // workspace_id dari project yang lagi dibuka. Sumbernya langsung dari
-  // getProjectById (bukan localStorage) supaya selalu akurat, dilempar ke
-  // StoriesSidebar DAN EmptyDetailPanel (dropdown Project Menu di keduanya
-  // butuh ini) serta AccountMenu (buat highlight workspace aktif).
   const [projectWorkspaceId, setProjectWorkspaceId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -95,17 +92,17 @@ function StoriesPageContent() {
   const [newTitle, setNewTitle] = useState('');
   const [newAsA, setNewAsA] = useState('');
   const [newSoThat, setNewSoThat] = useState('');
-  const [selectedEpicId, setSelectedEpicId] = useState<number | ''>('');
+  const [selectedEpicId, setSelectedEpicId] = useState<number | string | ''>('');
 
   useEffect(() => {
     if (formattedEpics.length > 0 && selectedEpicId === '') {
-      setSelectedEpicId(formattedEpics[0].id as any);
+      setSelectedEpicId(formattedEpics[0].id);
     }
   }, [formattedEpics, selectedEpicId]);
 
   const handleSaveNewStory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim() || !projectId) return;
+    if (!newTitle.trim()) return;
 
     const token = getAuthToken();
     if (!token) {
@@ -114,46 +111,58 @@ function StoriesPageContent() {
     }
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/stories`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            epic_id: selectedEpicId || formattedEpics[0]?.id,
-            as_a: newAsA || 'User',
-            i_want: newTitle,
-            so_that: newSoThat || 'Sistem berjalan dengan baik',
-            status: 'draft',
-            project_id: Number(projectId),
-          }),
-        }
-      );
+      let epicIdToUse = selectedEpicId;
+      if (!epicIdToUse && formattedEpics.length > 0) {
+        epicIdToUse = formattedEpics[0].id;
+      }
+
+      if (!epicIdToUse) {
+        alert('Harap buat atau pilih Epic terlebih dahulu!');
+        return;
+      }
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/stories`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          project_id: Number(projectId),
+          epic_id: Number(epicIdToUse),
+          i_want: newTitle,
+          as_a: newAsA || 'User',
+          so_that: newSoThat || 'Sistem berjalan dengan baik',
+          status: 'draft',
+          acceptance_criteria: [],
+          tech_notes: [],
+          test_cases: [],
+        }),
+      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || 'Gagal menyimpan story baru');
+        throw new Error(errorData.detail || 'Gagal membuat story baru');
       }
 
-      const newStory = await response.json();
-      setRawStories((prev) => [...prev, newStory]);
-
+      const createdStory = await response.json();
+      setRawStories((prev) => [...prev, createdStory]);
+      setIsModalOpen(false);
       setNewTitle('');
       setNewAsA('');
       setNewSoThat('');
-      setIsModalOpen(false);
     } catch (err: any) {
       console.error('Gagal membuat story:', err);
-      alert(err.message || 'Gagal menyimpan story baru.');
+      alert(err.message || 'Gagal membuat story.');
     }
   };
 
   const handleUpdateStory = async (updatedStory: UserStory) => {
     const token = getAuthToken();
-    if (!token) return;
+    if (!token) {
+      alert('Sesi habis, silakan login kembali.');
+      return;
+    }
 
     try {
       const response = await fetch(
@@ -165,36 +174,43 @@ function StoriesPageContent() {
             'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({
-            epic_id: (updatedStory as any).epicId,
             as_a: updatedStory.as_a,
             i_want: updatedStory.i_want,
             so_that: updatedStory.so_that,
-            status: 'draft',
-            project_id: Number(projectId),
+            acceptance_criteria: updatedStory.acceptanceCriteria,
+            tech_notes: updatedStory.techNotes,
+            test_cases: updatedStory.testCases,
           }),
         }
       );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || 'Gagal memperbarui story');
+        const msg = Array.isArray(errorData.detail)
+          ? errorData.detail.map((d: any) => `${d.loc?.join('.')}: ${d.msg}`).join('; ')
+          : errorData.detail;
+        throw new Error(msg || 'Gagal update story');
       }
 
-      const saved = await response.json();
-      setSelectedStory(saved);
-      setRawStories((prev) => prev.map((s) => (s.id === saved.id ? saved : s)));
+      setRawStories((prev) =>
+        prev.map((s) => (s.id === updatedStory.id ? { ...s, ...updatedStory } : s))
+      );
+      setSelectedStory(updatedStory);
     } catch (err: any) {
       console.error('Gagal update story:', err);
-      alert(err.message || 'Gagal memperbarui story.');
+      alert(err.message || 'Gagal menyimpan perubahan story.');
     }
   };
 
   const handleDeleteStory = async () => {
     if (!selectedStory) return;
-    if (!confirm('Apakah Anda yakin ingin menghapus user story ini?')) return;
+    if (!confirm('Apakah kamu yakin ingin menghapus User Story ini?')) return;
 
     const token = getAuthToken();
-    if (!token) return;
+    if (!token) {
+      alert('Sesi habis, silakan login kembali.');
+      return;
+    }
 
     try {
       const response = await fetch(
@@ -241,119 +257,138 @@ function StoriesPageContent() {
     downloadAnchor.remove();
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-          <p className="text-sm text-gray-500">Memuat data proyek...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
-        <div className="text-center max-w-md px-6">
-          <p className="text-red-600 font-medium mb-2">Gagal memuat data</p>
-          <p className="text-sm text-gray-500">{loadError}</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-50 font-sans relative">
+      {/* AppSidebar Selalu Tetap Terpasang di Layar */}
       <AppSidebar activeMenu="stories" projectId={projectId} />
 
-      <StoriesSidebar
-        epics={formattedEpics}
-        selectedStoryId={selectedStory?.id as string}
-        workspaceId={projectWorkspaceId}
-        onSelectStory={(story: UserStory) => {
-          setSelectedStory(story);
-          setSelectedEpic(null);
-        }}
-        onSelectEpic={(epic: Epic) => {
-          setSelectedEpic(epic);
-          setSelectedStory(null);
-        }}
-        onAddNew={() => setIsModalOpen(true)}
-        projectName={projectName}
-        projectId={projectId}
-      />
-
-      <main className="flex-1 flex flex-col h-full bg-white overflow-hidden">
-        <div className="h-14 border-b border-gray-200 px-6 flex items-center justify-between bg-white shrink-0">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-gray-600">
-              {projectName || 'Untitled Project'} <span className="text-gray-400">/</span>
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 text-gray-500">
-              <button
-                onClick={handleUpload}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 cursor-pointer"
-                title="Upload Document"
-              >
-                <Upload className="w-4 h-4" />
-              </button>
-              <button
-                onClick={handleDownload}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 cursor-pointer"
-                title="Download / Export JSON"
-              >
-                <Download className="w-4 h-4" />
-              </button>
-            </div>
-
-            <AccountMenu currentWorkspaceId={projectWorkspaceId} />
+      {isLoading ? (
+        <div className="flex-1 flex items-center justify-center bg-white">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+            <p className="text-xs text-gray-500 font-medium">Memuat data proyek...</p>
           </div>
         </div>
+      ) : loadError ? (
+        <div className="flex-1 flex items-center justify-center bg-white">
+          <div className="text-center max-w-md px-6">
+            <p className="text-red-600 font-bold mb-1">Gagal memuat data</p>
+            <p className="text-xs text-gray-500">{loadError}</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          <StoriesSidebar
+            epics={formattedEpics}
+            selectedStoryId={selectedStory?.id as string}
+            workspaceId={projectWorkspaceId}
+            onSelectStory={(story: UserStory) => {
+              setSelectedStory(story);
+              setSelectedEpic(null);
+            }}
+            onSelectEpic={(epic: Epic) => {
+              setSelectedEpic(epic);
+              setSelectedStory(null);
+            }}
+            onAddNew={() => setIsModalOpen(true)}
+            projectName={projectName}
+            projectId={projectId}
+          />
 
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {formattedEpics.length === 0 && (
-            <div className="bg-amber-50 border-b border-amber-100 px-6 py-2.5 flex items-center gap-2 text-xs text-amber-800 shrink-0">
-              <Lightbulb className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>Belum ada Epic atau User Story. Silakan buat yang pertama.</span>
-            </div>
-          )}
-
-          <div className="flex-1 flex overflow-hidden">
-            {selectedStory ? (
-              <ManualStoryDetailPanel
-                story={selectedStory}
-                onDelete={handleDeleteStory}
-                onUpdate={handleUpdateStory}
-                projectId={projectId}
-              />
-            ) : selectedEpic ? (
-              <div className="flex-1 bg-white p-8 overflow-y-auto">
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">{selectedEpic.name}</h1>
-                <p className="text-sm text-gray-600 mb-6">{selectedEpic.description || 'Tidak ada deskripsi epic.'}</p>
-                <h3 className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-4 border-b pb-2">Daftar Stories dalam Epic Ini</h3>
-                <ul className="space-y-2">
-                  {selectedEpic.user_stories?.map((st) => (
-                    <li key={st.id} onClick={() => setSelectedStory(st)} className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer flex justify-between items-center text-sm">
-                      <span className="font-medium text-gray-800">{st.i_want}</span>
-                      <span className="text-xs bg-gray-100 px-2 py-0.5 rounded font-mono">{st.code}</span>
-                    </li>
-                  ))}
-                </ul>
+          <main className="flex-1 flex flex-col h-full bg-white overflow-hidden">
+            {/* Top Header dengan Dropdown Project */}
+            <div className="h-14 border-b border-gray-200 px-6 flex items-center justify-between bg-white shrink-0">
+              <div className="flex items-center gap-2">
+                <ProjectMenuDropdown
+                  workspaceId={projectWorkspaceId}
+                  activeProjectId={projectId}
+                  renderTrigger={({ onClick, isOpen, triggerRef }) => (
+                    <button
+                      ref={triggerRef}
+                      type="button"
+                      onClick={onClick}
+                      className="flex items-center gap-1.5 text-xs font-bold text-gray-800 hover:text-blue-600 px-2.5 py-1.5 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer group"
+                    >
+                      <span>{projectName || 'Untitled Project'}</span>
+                      <ChevronDown className={`w-3.5 h-3.5 text-gray-400 group-hover:text-blue-600 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                  )}
+                />
               </div>
-            ) : (
-              <EmptyDetailPanel
-                onOpenAddModal={() => setIsModalOpen(true)}
-                workspaceId={projectWorkspaceId}
-                projectId={projectId}
-              />
-            )}
-          </div>
-        </div>
-      </main>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => alert('Fitur Chat to Userdoc Assistant siap digunakan!')}
+                  className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer border border-blue-200 shadow-xs"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-blue-600 fill-blue-500" />
+                  <span>Chat to Userdoc Assistant</span>
+                </button>
+
+                <div className="flex items-center gap-1.5 text-gray-500">
+                  <button
+                    onClick={handleUpload}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 cursor-pointer"
+                    title="Upload Document"
+                  >
+                    <Upload className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={handleDownload}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 cursor-pointer"
+                    title="Download / Export JSON"
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <AccountMenu currentWorkspaceId={projectWorkspaceId} />
+              </div>
+            </div>
+
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {formattedEpics.length === 0 && (
+                <div className="bg-amber-50 border-b border-amber-100 px-6 py-2.5 flex items-center gap-2 text-xs text-amber-800 shrink-0">
+                  <Lightbulb className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Belum ada Epic atau User Story. Silakan buat yang pertama.</span>
+                </div>
+              )}
+
+              <div className="flex-1 flex overflow-hidden">
+                {selectedStory ? (
+                  <ManualStoryDetailPanel
+                    story={selectedStory}
+                    onDelete={handleDeleteStory}
+                    onUpdate={handleUpdateStory}
+                    projectId={projectId}
+                  />
+                ) : selectedEpic ? (
+                  <div className="flex-1 bg-white p-8 overflow-y-auto">
+                    <h1 className="text-2xl font-bold text-gray-900 mb-2">{selectedEpic.name}</h1>
+                    <p className="text-sm text-gray-600 mb-6">{selectedEpic.description || 'Tidak ada deskripsi epic.'}</p>
+                    <h3 className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-4 border-b pb-2">Daftar Stories dalam Epic Ini</h3>
+                    <ul className="space-y-2">
+                      {selectedEpic.user_stories?.map((st) => (
+                        <li key={st.id} onClick={() => setSelectedStory(st)} className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer flex justify-between items-center text-sm">
+                          <span className="font-medium text-gray-800">{st.i_want}</span>
+                          <span className="text-xs bg-gray-100 px-2 py-0.5 rounded font-mono">{st.code}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <EmptyDetailPanel
+                    onOpenAddModal={() => setIsModalOpen(true)}
+                    workspaceId={projectWorkspaceId}
+                    projectId={projectId}
+                  />
+                )}
+              </div>
+            </div>
+          </main>
+        </>
+      )}
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -373,12 +408,9 @@ function StoriesPageContent() {
                 <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Pilih Epic</label>
                 <select
                   value={selectedEpicId}
-                  onChange={(e) => setSelectedEpicId(Number(e.target.value))}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500"
-                >
-                  {formattedEpics.map((ep) => (
-                    <option key={ep.id} value={ep.id}>{ep.name}</option>
-                  ))}
+                  onChange={(e) => setSelectedEpicId(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500">
+                  {formattedEpics.map((ep) => (<option key={ep.id} value={ep.id}>{ep.name}</option>))}
                 </select>
               </div>
 

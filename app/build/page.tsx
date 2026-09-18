@@ -1,5 +1,7 @@
 // app/build/page.tsx
 'use client';
+import ProjectMenuDropdown from '@/features/stories/components/ProjectMenuDropdown';
+import { ChevronDown } from 'lucide-react';
 
 import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -124,51 +126,42 @@ function BuildPageContent() {
     setTimeout(() => setStatusMessage({ type: '', text: '' }), 4000);
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
-        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-      </div>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
-        <div className="text-center max-w-md px-6">
-          <p className="text-red-600 font-medium mb-2">Gagal memuat data</p>
-          <p className="text-sm text-gray-500 mb-4">{loadError}</p>
-          <button
-            onClick={handleRetry}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer"
-          >
-            <RefreshCw className="w-3.5 h-3.5" /> Coba lagi
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   const projectIdNum = Number(projectIdParam);
 
   return (
     <div className="flex h-screen bg-gray-50 font-sans text-gray-900 overflow-hidden">
+      {/* AppSidebar Selalu Tetap Terpasang di Layar */}
       <AppSidebar activeMenu="build" projectId={projectIdParam} />
 
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden bg-white">
+        {/* Header dengan Dropdown Project */}
         <header className="h-14 border-b border-gray-200 px-6 flex items-center justify-between bg-white shrink-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-500">{project?.name || 'Untitled Project'}</span>
+            <ProjectMenuDropdown
+              workspaceId={project?.workspace_id}
+              activeProjectId={projectIdParam}
+              renderTrigger={({ onClick, isOpen, triggerRef }) => (
+                <button
+                  ref={triggerRef}
+                  type="button"
+                  onClick={onClick}
+                  className="flex items-center gap-1.5 text-xs font-bold text-gray-800 hover:text-blue-600 px-2.5 py-1.5 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer group"
+                >
+                  <span>{project?.name || 'Untitled Project'}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-gray-400 group-hover:text-blue-600 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                </button>
+              )}
+            />
             <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
             <Code className="w-4 h-4 text-gray-500" />
-            <span className="text-sm font-semibold text-gray-800">Build</span>
+            <span className="text-xs font-semibold text-gray-800">Build</span>
             <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-            <span className="text-sm text-gray-500">
+            <span className="text-xs text-gray-500">
               {activeTab === 'tech-stack' ? 'Technologies' : activeTab === 'guidelines' ? 'Coding Guidelines' : 'Dev Plans'}
             </span>
           </div>
+
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 text-gray-500">
               <button
                 onClick={handleUpload}
@@ -184,37 +177,57 @@ function BuildPageContent() {
               >
                 <Download className="w-4 h-4" />
               </button>
-              </div>
-            <AccountMenu />
+            </div>
+            <AccountMenu currentWorkspaceId={project?.workspace_id} />
           </div>
-        </div>
         </header>
 
-        <div className="flex flex-1 overflow-hidden">
-          <aside className="w-56 border-r border-gray-200 bg-white shrink-0 py-4">
-            <p className="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Implementation Tools</p>
-            <nav className="flex flex-col gap-0.5 px-2">
-              {[
-                { key: 'tech-stack', label: 'Technologies', sub: 'Technology stack and architecture', icon: Layers },
-                { key: 'guidelines', label: 'Coding guidelines', sub: 'Coding best practices and standards', icon: Code },
-                { key: 'dev-plans', label: 'Dev Plans', sub: 'Plans to build the project with AI', icon: ClipboardList },
-              ].map(({ key, label, sub, icon: Icon }) => (
-                <button
-                  key={key}
-                  onClick={() => setActiveTab(key as ActiveTab)}
-                  className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl text-left transition-colors cursor-pointer ${
-                    activeTab === key ? 'bg-blue-50' : 'hover:bg-gray-50'
-                  }`}
-                >
-                  <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${activeTab === key ? 'text-blue-600' : 'text-gray-400'}`} />
-                  <span>
-                    <span className={`block text-sm font-medium ${activeTab === key ? 'text-gray-900' : 'text-gray-700'}`}>{label}</span>
-                    <span className="block text-xs text-gray-400 leading-tight">{sub}</span>
-                  </span>
-                </button>
-              ))}
-            </nav>
-          </aside>
+        {isLoading ? (
+          <div className="flex-1 flex items-center justify-center bg-white">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+              <p className="text-xs text-gray-400 font-medium">Memuat konfigurasi build...</p>
+            </div>
+          </div>
+        ) : loadError ? (
+          <div className="flex-1 flex items-center justify-center bg-white">
+            <div className="text-center max-w-md px-6">
+              <p className="text-red-600 font-bold mb-1">Gagal memuat data</p>
+              <p className="text-xs text-gray-500 mb-4">{loadError}</p>
+              <button
+                onClick={handleRetry}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Coba lagi
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-1 overflow-hidden">
+            <aside className="w-56 border-r border-gray-200 bg-white shrink-0 py-4">
+              <p className="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Implementation Tools</p>
+              <nav className="flex flex-col gap-0.5 px-2">
+                {[
+                  { key: 'tech-stack', label: 'Technologies', sub: 'Technology stack and architecture', icon: Layers },
+                  { key: 'guidelines', label: 'Coding guidelines', sub: 'Coding best practices and standards', icon: Code },
+                  { key: 'dev-plans', label: 'Dev Plans', sub: 'Plans to build the project with AI', icon: ClipboardList },
+                ].map(({ key, label, sub, icon: Icon }) => (
+                  <button
+                    key={key}
+                    onClick={() => setActiveTab(key as ActiveTab)}
+                    className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl text-left transition-colors cursor-pointer ${
+                      activeTab === key ? 'bg-blue-50' : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${activeTab === key ? 'text-blue-600' : 'text-gray-400'}`} />
+                    <span>
+                      <span className={`block text-sm font-medium ${activeTab === key ? 'text-gray-900' : 'text-gray-700'}`}>{label}</span>
+                      <span className="block text-xs text-gray-400 leading-tight">{sub}</span>
+                    </span>
+                  </button>
+                ))}
+              </nav>
+            </aside>
 
           <div className="flex-1 overflow-y-auto p-6">
             {statusMessage.text && (
@@ -241,6 +254,7 @@ function BuildPageContent() {
             )}
           </div>
         </div>
+        )}
       </main>
     </div>
   );

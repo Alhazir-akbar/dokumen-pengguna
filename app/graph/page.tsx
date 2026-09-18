@@ -152,38 +152,33 @@ function GraphPageContent() {
     setSelectedNode(null);
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-screen w-screen bg-slate-900 text-white items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
-          <p className="text-sm text-slate-300 font-medium">Rendering Software Definition Graph...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <div className="flex h-screen w-screen bg-slate-50 items-center justify-center p-6">
-        <div className="bg-white border border-red-200 rounded-2xl p-6 text-center max-w-md shadow-sm">
-          <p className="text-red-600 text-sm mb-4 font-semibold">{loadError}</p>
-          <button
-            onClick={() => router.push('/workspace')}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl"
-          >
-            Kembali ke Workspace
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const hasArtifacts = epics.length > 0 || stories.length > 0 || nfrs.length > 0;
+    const hasArtifacts = epics.length > 0 || stories.length > 0 || nfrs.length > 0;
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-950 font-sans">
+      {/* 1. Global Navigation Sidebar Selalu Aktif */}
       <AppSidebar activeMenu="graph" projectId={projectId} />
+
+      {isLoading ? (
+        <div className="flex-1 flex bg-slate-900 text-white items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+            <p className="text-sm text-slate-300 font-medium">Rendering Software Definition Graph...</p>
+          </div>
+        </div>
+      ) : loadError ? (
+        <div className="flex-1 flex bg-slate-50 items-center justify-center p-6">
+          <div className="bg-white border border-red-200 rounded-2xl p-6 text-center max-w-md shadow-sm">
+            <p className="text-red-600 text-sm mb-4 font-semibold">{loadError}</p>
+            <button
+              onClick={() => router.push('/workspace')}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl"
+            >
+              Kembali ke Workspace
+            </button>
+          </div>
+        </div>
+      ) : (
 
       <div ref={containerRef} className="flex-1 flex flex-col h-full relative overflow-hidden bg-slate-950">
         {/* Top Header Bar */}
@@ -478,6 +473,7 @@ function GraphPageContent() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

@@ -30,6 +30,8 @@ export default function StoriesSidebar({
   workspaceId,
   onSelectStory,
   onSelectEpic,
+  onAddNew, 
+  
 }: StoriesSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const activeProjId = currentProjectId || projectId;
@@ -84,6 +86,11 @@ export default function StoriesSidebar({
           <ProjectMenuDropdown
             workspaceId={workspaceId}
             activeProjectId={activeProjId}
+            extraTopAction={{
+              label: 'Create New User Story',
+              icon: <Edit3 className="w-4 h-4 text-blue-600" />,
+              onClick: () => onAddNew?.(),
+            }}
             renderTrigger={({ onClick, triggerRef }) => (
               <button
                 ref={triggerRef}

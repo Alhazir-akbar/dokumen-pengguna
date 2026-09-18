@@ -1,26 +1,117 @@
 // features/stories/components/ManualStoryDetailPanel.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { UserStory } from '../types';
-import { Copy, Code, History, BookOpen, Layers, GitFork, Trash2, Edit3 } from 'lucide-react';
+import {
+  Code,
+  History,
+  BookOpen,
+  Trash2,
+  Edit3,
+  Sparkles,
+  Plus,
+  Loader2,
+} from 'lucide-react';
+import { suggestStoryWithAi } from '@/services/storiesApi';
+import { getAuthToken } from '@/lib/auth';
 
 interface ManualStoryDetailPanelProps {
   story: UserStory;
   onDelete?: () => void;
   onUpdate?: (updated: UserStory) => void;
-  projectId?: string | null; // dipakai buat bikin link "User story help" yang bawa context project
+  projectId?: string | null;
 }
 
-export default function ManualStoryDetailPanel({ story, onDelete, onUpdate, projectId }: ManualStoryDetailPanelProps) {
+export default function ManualStoryDetailPanel({
+  story,
+  onDelete,
+  onUpdate,
+  projectId,
+}: ManualStoryDetailPanelProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'criteria' | 'notes' | 'tests'>('criteria');
   const [isEditing, setIsEditing] = useState(false);
+  const [status, setStatus] = useState<'draft' | 'review' | 'approved'>('draft');
+    const [isRegenerating, setIsRegenerating] = useState(false);
+
+  const handleAiRegenerate = async () => {
+    const token = getAuthToken();
+    if (!token) {
+      alert('Sesi login habis, silakan login kembali.');
+      return;
+    }
+
+    setIsRegenerating(true);
+    try {
+      const result = await suggestStoryWithAi(
+        {
+          as_a: asA,
+          i_want: iWant,
+          so_that: soThat,
+        },
+        token
+      );
+
+      // Update state form & tabs secara instan
+      setAsA(result.as_a);
+      setIWant(result.i_want);
+      setSoThat(result.so_that);
+      setCriteriaList(result.acceptance_criteria || []);
+      setTechNotesList(result.tech_notes || []);
+      setTestCasesList(result.test_cases || []);
+
+      if (onUpdate) {
+        onUpdate({
+          ...story,
+          as_a: result.as_a,
+          i_want: result.i_want,
+          so_that: result.so_that,
+          acceptanceCriteria: result.acceptance_criteria,
+          techNotes: result.tech_notes,
+          testCases: result.test_cases,
+        });
+      }
+    } catch (err: any) {
+      console.error('Error AI regenerate:', err);
+      alert(err.message || 'Gagal generate story dengan AI');
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
 
   const [asA, setAsA] = useState(story.as_a);
   const [iWant, setIWant] = useState(story.i_want);
   const [soThat, setSoThat] = useState(story.so_that);
+
+  // State & Handler untuk Acceptance Criteria
+  const [criteriaList, setCriteriaList] = useState<string[]>(story.acceptanceCriteria || []);
+  const [newCriterion, setNewCriterion] = useState('');
+
+  // State & Handler untuk Tech Notes
+  const [techNotesList, setTechNotesList] = useState<string[]>(story.techNotes || []);
+  const [newTechNote, setNewTechNote] = useState('');
+
+  // State & Handler untuk Test Cases
+  const [testCasesList, setTestCasesList] = useState<string[]>(story.testCases || []);
+  const [newTestCase, setNewTestCase] = useState('');
+
+  // Sync state when selected story changes
+  useEffect(() => {
+    setAsA(story.as_a);
+    setIWant(story.i_want);
+    setSoThat(story.so_that);
+    setCriteriaList(story.acceptanceCriteria || []);
+    setTechNotesList(story.techNotes || []);
+    setTestCasesList(story.testCases || []);
+  }, [story]);
+
+  const statusConfig = {
+    draft: { label: 'Draft', bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-200' },
+    review: { label: 'In Review', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
+    approved: { label: 'Approved', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+  };
 
   const handleSaveEdit = () => {
     if (onUpdate) {
@@ -32,6 +123,60 @@ export default function ManualStoryDetailPanel({ story, onDelete, onUpdate, proj
       });
     }
     setIsEditing(false);
+  };
+
+  const handleAddCriterion = () => {
+    if (!newCriterion.trim()) return;
+    const updated = [...criteriaList, newCriterion.trim()];
+    setCriteriaList(updated);
+    setNewCriterion('');
+    if (onUpdate) {
+      onUpdate({ ...story, acceptanceCriteria: updated });
+    }
+  };
+
+  const handleDeleteCriterion = (indexToRemove: number) => {
+    const updated = criteriaList.filter((_, idx) => idx !== indexToRemove);
+    setCriteriaList(updated);
+    if (onUpdate) {
+      onUpdate({ ...story, acceptanceCriteria: updated });
+    }
+  };
+
+  const handleAddTechNote = () => {
+    if (!newTechNote.trim()) return;
+    const updated = [...techNotesList, newTechNote.trim()];
+    setTechNotesList(updated);
+    setNewTechNote('');
+    if (onUpdate) {
+      onUpdate({ ...story, techNotes: updated });
+    }
+  };
+
+  const handleDeleteTechNote = (indexToRemove: number) => {
+    const updated = techNotesList.filter((_, idx) => idx !== indexToRemove);
+    setTechNotesList(updated);
+    if (onUpdate) {
+      onUpdate({ ...story, techNotes: updated });
+    }
+  };
+
+  const handleAddTestCase = () => {
+    if (!newTestCase.trim()) return;
+    const updated = [...testCasesList, newTestCase.trim()];
+    setTestCasesList(updated);
+    setNewTestCase('');
+    if (onUpdate) {
+      onUpdate({ ...story, testCases: updated });
+    }
+  };
+
+  const handleDeleteTestCase = (indexToRemove: number) => {
+    const updated = testCasesList.filter((_, idx) => idx !== indexToRemove);
+    setTestCasesList(updated);
+    if (onUpdate) {
+      onUpdate({ ...story, testCases: updated });
+    }
   };
 
   // Buka Knowledge Base langsung ke artikel "Memahami Epics dan User Stories"
@@ -49,28 +194,62 @@ export default function ManualStoryDetailPanel({ story, onDelete, onUpdate, proj
         {/* Header Title & Action Code */}
         <div className="flex items-start justify-between border-b border-gray-100 pb-6 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-1">
-              {story.i_want ? `I want ${story.i_want}` : 'Manual User Story'}
-            </h1>
-            <span className="inline-block px-2 py-0.5 text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 rounded-md">
-              Manual Entry
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400 font-mono font-medium">{story.code}</span>
-            <span className="text-xs text-gray-400 font-mono font-medium">v0.1</span>
+            <div className="flex items-center gap-2 mb-1.5">
+              {/* Dropdown Status Sesuai PRD */}
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as any)}
+                className={`text-xs font-semibold px-2.5 py-1 rounded-full border cursor-pointer outline-none transition-colors ${statusConfig[status].bg} ${statusConfig[status].text} ${statusConfig[status].border}`}
+              >
+                <option value="draft">📝 Draft</option>
+                <option value="review">⏳ In Review</option>
+                <option value="approved">✅ Approved</option>
+              </select>
 
+              <span className="text-xs text-gray-400 font-mono font-medium">{story.code}</span>
+              <span className="text-xs text-gray-400 font-mono font-medium">v0.1</span>
+            </div>
+
+            <h1 className="text-2xl font-bold text-gray-900">
+              {story.i_want ? `I want ${story.i_want}` : 'User Story'}
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Tombol AI Regenerate */}
+                       {/* Tombol AI Regenerate */}
+            <button
+              onClick={handleAiRegenerate}
+              disabled={isRegenerating}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Regenerate with AI"
+            >
+              {isRegenerating ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 text-purple-600 animate-spin" />
+                  <span>Thinking...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                  <span>AI Regenerate</span>
+                </>
+              )}
+            </button>
+            
+            {/* Tombol Edit Story */}
             <button
               onClick={() => setIsEditing(!isEditing)}
-              className="p-1.5 text-gray-400 hover:text-blue-600 rounded-md transition-colors cursor-pointer"
+              className="p-1.5 text-gray-400 hover:text-blue-600 rounded-md transition-colors cursor-pointer border border-transparent hover:border-gray-200"
               title="Edit Story"
             >
               <Edit3 className="w-4 h-4" />
             </button>
 
+            {/* Tombol Hapus */}
             <button
               onClick={onDelete}
-              className="p-1.5 text-gray-400 hover:text-red-600 rounded-md transition-colors cursor-pointer"
+              className="p-1.5 text-gray-400 hover:text-red-600 rounded-md transition-colors cursor-pointer border border-transparent hover:border-red-100"
               title="Delete Story"
             >
               <Trash2 className="w-4 h-4" />
@@ -141,8 +320,8 @@ export default function ManualStoryDetailPanel({ story, onDelete, onUpdate, proj
             }`}
           >
             ACCEPTANCE CRITERIA
-            {story.acceptanceCriteria && story.acceptanceCriteria.length > 0 && (
-              <span className="ml-1.5 text-[10px] text-gray-400 font-normal">({story.acceptanceCriteria.length})</span>
+            {criteriaList.length > 0 && (
+              <span className="ml-1.5 text-[10px] text-gray-400 font-normal">({criteriaList.length})</span>
             )}
           </button>
           <button
@@ -152,8 +331,8 @@ export default function ManualStoryDetailPanel({ story, onDelete, onUpdate, proj
             }`}
           >
             TECH NOTES
-            {story.techNotes && story.techNotes.length > 0 && (
-              <span className="ml-1.5 text-[10px] text-gray-400 font-normal">({story.techNotes.length})</span>
+            {techNotesList.length > 0 && (
+              <span className="ml-1.5 text-[10px] text-gray-400 font-normal">({techNotesList.length})</span>
             )}
           </button>
           <button
@@ -163,57 +342,167 @@ export default function ManualStoryDetailPanel({ story, onDelete, onUpdate, proj
             }`}
           >
             TEST CASES
-            {story.testCases && story.testCases.length > 0 && (
-              <span className="ml-1.5 text-[10px] text-gray-400 font-normal">({story.testCases.length})</span>
+            {testCasesList.length > 0 && (
+              <span className="ml-1.5 text-[10px] text-gray-400 font-normal">({testCasesList.length})</span>
             )}
           </button>
         </div>
 
+        {/* Tab Acceptance Criteria */}
         {activeTab === 'criteria' && (
-          story.acceptanceCriteria && story.acceptanceCriteria.length > 0 ? (
-            <ul className="space-y-2.5 text-xs text-gray-700 leading-relaxed list-disc pl-5">
-              {story.acceptanceCriteria.map((ac, index) => (
-                <li key={index}>{ac}</li>
-              ))}
-            </ul>
-          ) : (
-            <div className="space-y-4 text-xs text-gray-700 leading-relaxed">
-              <p className="text-gray-500 italic">Belum ada acceptance criteria untuk story ini.</p>
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Contoh: Given pengguna login, When klik submit, Then data tersimpan"
+                value={newCriterion}
+                onChange={(e) => setNewCriterion(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddCriterion()}
+                className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <button
+                onClick={handleAddCriterion}
+                className="flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors cursor-pointer shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Tambah</span>
+              </button>
             </div>
-          )
+
+            {criteriaList.length > 0 ? (
+              <ul className="space-y-2">
+                {criteriaList.map((ac, index) => (
+                  <li
+                    key={index}
+                    className="flex items-start justify-between gap-3 p-3 bg-gray-50/70 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors group"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 w-3.5 h-3.5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span className="text-xs text-gray-700 leading-relaxed font-mono">
+                        {ac}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteCriterion(index)}
+                      className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 transition-opacity cursor-pointer"
+                      title="Hapus kriteria"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="p-4 bg-gray-50 rounded-lg border border-dashed border-gray-200 text-center">
+                <p className="text-xs text-gray-500">Belum ada acceptance criteria. Tulis format Given-When-Then di atas lalu klik Tambah.</p>
+              </div>
+            )}
+          </div>
         )}
 
-        {/* Tech Notes: menampilkan data asli dari story.techNotes (hasil AI generate
-            atau input manual), bukan lagi teks statis "No tech notes added yet." */}
+        {/* Tab Tech Notes */}
         {activeTab === 'notes' && (
-          story.techNotes && story.techNotes.length > 0 ? (
-            <ul className="space-y-3 text-xs text-gray-700 leading-relaxed">
-              {story.techNotes.map((note, index) => (
-                <li key={index} className="flex gap-2.5 p-3 bg-blue-50/40 border border-blue-100 rounded-lg">
-                  <Code className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
-                  <span>{note}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="text-xs text-gray-500 italic">No tech notes added yet.</div>
-          )
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Tambah catatan arsitektur / database / API endpoint..."
+                value={newTechNote}
+                onChange={(e) => setNewTechNote(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddTechNote()}
+                className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <button
+                onClick={handleAddTechNote}
+                className="flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors cursor-pointer shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Tambah</span>
+              </button>
+            </div>
+
+            {techNotesList.length > 0 ? (
+              <ul className="space-y-2.5">
+                {techNotesList.map((note, index) => (
+                  <li
+                    key={index}
+                    className="flex items-start justify-between gap-2.5 p-3 bg-blue-50/40 border border-blue-100 rounded-lg group hover:border-blue-200 transition-colors"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <Code className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
+                      <span className="text-xs text-gray-700 leading-relaxed font-mono">{note}</span>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteTechNote(index)}
+                      className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 transition-opacity cursor-pointer"
+                      title="Hapus tech note"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="p-4 bg-gray-50 rounded-lg border border-dashed border-gray-200 text-center">
+                <p className="text-xs text-gray-500">Belum ada tech notes. Tambahkan arsitektur atau instruksi teknis di atas.</p>
+              </div>
+            )}
+          </div>
         )}
 
-        {/* Test Cases: sama seperti Tech Notes, menampilkan data asli. */}
+        {/* Tab Test Cases */}
         {activeTab === 'tests' && (
-          story.testCases && story.testCases.length > 0 ? (
-            <ul className="space-y-3 text-xs text-gray-700 leading-relaxed">
-              {story.testCases.map((tc, index) => (
-                <li key={index} className="flex gap-2.5 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                  <span className="text-[10px] font-mono font-bold text-gray-400 shrink-0 mt-0.5">TC-{index + 1}</span>
-                  <span>{tc}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="text-xs text-gray-500 italic">No test cases added yet.</div>
-          )
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Contoh: Verifikasi sistem menampilkan pesan error jika email duplikat..."
+                value={newTestCase}
+                onChange={(e) => setNewTestCase(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddTestCase()}
+                className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <button
+                onClick={handleAddTestCase}
+                className="flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors cursor-pointer shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Tambah</span>
+              </button>
+            </div>
+
+            {testCasesList.length > 0 ? (
+              <ul className="space-y-2.5">
+                {testCasesList.map((tc, index) => (
+                  <li
+                    key={index}
+                    className="flex items-start justify-between gap-2.5 p-3 bg-gray-50 border border-gray-200 rounded-lg group hover:border-gray-300 transition-colors"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-[10px] font-mono font-bold text-gray-500 bg-gray-200/70 px-1.5 py-0.5 rounded shrink-0 mt-0.5">
+                        TC-{index + 1}
+                      </span>
+                      <span className="text-xs text-gray-700 leading-relaxed">{tc}</span>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteTestCase(index)}
+                      className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 transition-opacity cursor-pointer"
+                      title="Hapus test case"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="p-4 bg-gray-50 rounded-lg border border-dashed border-gray-200 text-center">
+                <p className="text-xs text-gray-500">Belum ada test cases. Tulis skenario pengujian di atas lalu klik Tambah.</p>
+              </div>
+            )}
+          </div>
         )}
       </div>
 

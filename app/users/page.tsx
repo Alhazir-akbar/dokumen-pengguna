@@ -206,28 +206,7 @@ function UsersPageContent() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-          <p className="text-sm text-gray-500">Memuat data user types...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
-        <div className="text-center max-w-md px-6">
-          <p className="text-red-600 font-medium mb-2">Gagal memuat data</p>
-          <p className="text-sm text-gray-500">{loadError}</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
+      return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-50 font-sans relative">
       {isSaving && (
         <div className="absolute inset-0 bg-black/40 z-50 flex items-center justify-center text-white font-medium">
@@ -235,8 +214,25 @@ function UsersPageContent() {
         </div>
       )}
 
-      {/* 1. Global Navigation Sidebar */}
+      {/* 1. Global Navigation Sidebar Selalu Aktif */}
       <AppSidebar activeMenu="users" projectId={projectId} />
+
+      {isLoading ? (
+        <div className="flex-1 flex items-center justify-center bg-gray-50">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+            <p className="text-sm text-gray-500">Memuat data user types...</p>
+          </div>
+        </div>
+      ) : loadError ? (
+        <div className="flex-1 flex items-center justify-center bg-gray-50">
+          <div className="text-center max-w-md px-6">
+            <p className="text-red-600 font-medium mb-2">Gagal memuat data</p>
+            <p className="text-sm text-gray-500">{loadError}</p>
+          </div>
+        </div>
+      ) : (
+        <>
 
       {/* 2. Sub-Sidebar Daftar User Types */}
       <UsersSidebar
@@ -297,11 +293,14 @@ function UsersPageContent() {
           ) : (
             <EmptyUserPanel onOpenAddModal={handleOpenAddModal} />
           )}
-        </div>
-      </main>
-    </div>
-  );
-}
+                 {/* Baris 296 */}
+          </div>
+        </main>
+      </>
+    )}
+  </div>
+);
+}}
 
 export default function UsersPage() {
   return (
