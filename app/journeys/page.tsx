@@ -6,6 +6,7 @@ import AppSidebar from '@/features/common/components/AppSidebar';
 import JourneysSidebar from '@/features/journeys/components/journeySidebar';
 import EmptyJourneyPanel from '@/features/journeys/components/emptyJourneyPanel';
 import JourneyDetailPanel from '@/features/journeys/components/journeyDetailPanel';
+import CreateJourneyModal from '@/features/journeys/components/createJourneyModal';
 import AccountMenu from '@/features/common/components/accountMenu';
 import { Upload, Download, Loader2 } from 'lucide-react';
 import { journeysApi, UserJourneyResponse } from '@/services/journeysApi';
@@ -66,10 +67,8 @@ function JourneysPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
-  // Menggantikan modal lama -- sekarang "Create New Journey" langsung
-  // menampilkan JourneyDetailPanel dalam mode edit kosong di panel utama,
-  // bukan modal kecil terpisah.
-  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  // Modal Create Journey State
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const loadData = async (selectId?: string) => {
     if (!projectId) {
@@ -125,51 +124,29 @@ function JourneysPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
-  // Dipanggil oleh KEDUA trigger: tombol "New Journey" di EmptyJourneyPanel
-  // dan ikon peta di sebelah search bar (JourneysSidebar). Keduanya sengaja
-  // memanggil fungsi yang sama persis supaya perilakunya identik.
-  const handleStartCreateJourney = () => {
-    setSelectedJourney(null);
-    setIsCreatingNew(true);
-  };
-
-  const handleCancelCreateJourney = () => {
-    setIsCreatingNew(false);
-  };
-
-  const handleCreateNewJourney = async (draft: JourneyVM) => {
+  // Handler Submit Modal Buat Journey Baru
+  const handleCreateJourneyFromModal = async (data: { name: string; description: string }) => {
     if (!projectId) return;
-
     const token = getAuthToken();
     if (!token) {
       alert('Sesi habis, silakan login kembali.');
       return;
     }
 
-    try {
-      const created = await journeysApi.createJourney(
-        {
-          project_id: Number(projectId),
-          name: draft.title?.trim() || 'Untitled journey',
-          description: draft.description || '',
-          steps: (draft.steps || []).map((s, idx) => ({
-            title: s.title,
-            description: s.description,
-            step_order: idx + 1,
-            persona_id: s.personaId ?? null,
-          })),
-        },
-        token
-      );
+    const created = await journeysApi.createJourney(
+      {
+        project_id: Number(projectId),
+        name: data.name,
+        description: data.description,
+        steps: [],
+      },
+      token
+    );
 
-      setIsCreatingNew(false);
-      await loadData(String(created.id));
-    } catch (error: any) {
-      console.error('Gagal membuat journey baru:', error);
-      alert(error.message || 'Terjadi kesalahan saat menyimpan journey.');
-    }
+    await loadData(String(created.id));
   };
 
+  // Handler Update Journey & Steps
   const handleUpdateJourneyDetail = async (updated: JourneyVM) => {
     const token = getAuthToken();
     if (!token) {
@@ -178,15 +155,14 @@ function JourneysPageContent() {
     }
 
     try {
-      // Update nama & deskripsi
+      // 1. Update nama & deskripsi journey
       await journeysApi.updateJourney(
         Number(updated.id),
         { name: updated.title, description: updated.description },
         token
       );
 
-      // Update steps secara terpisah (replace) -- kirim persona_id (relasional),
-      // BUKAN assigned_persona (string bebas, gak match ke tabel personas)
+      // 2. Replace langkah-langkah steps
       await journeysApi.replaceSteps(
         Number(updated.id),
         updated.steps.map((s, index) => ({
@@ -198,11 +174,45 @@ function JourneysPageContent() {
         token
       );
 
-      // Fetch ulang data bersih dari backend
       await loadData(updated.id);
     } catch (err: any) {
       console.error('Gagal menyimpan perubahan journey:', err);
       alert(err.message || 'Gagal menyimpan perubahan journey ke server.');
+    }
+  };
+
+  // Handler Hapus Journey
+  const handleDeleteJourney = async (journeyId: string) => {
+    const token = getAuthToken();
+    if (!token) {
+      alert('Sesi habis, silakan login kembali.');
+      return;
+    }
+
+    try {
+      await journeysApi.deleteJourney(Number(journeyId), token);
+      setSelectedJourney(null);
+      await loadData();
+    } catch (err: any) {
+      console.error('Gagal menghapus journey:', err);
+      alert(err.message || 'Gagal menghapus journey dari server.');
+    }
+  };
+
+  // Handler AI Generate Steps
+  const handleGenerateAiSteps = async (journeyId: string) => {
+    const token = getAuthToken();
+    if (!token) {
+      alert('Sesi habis, silakan login kembali.');
+      return;
+    }
+
+    try {
+      await journeysApi.generateAiSteps(Number(journeyId), token);
+      await loadData(journeyId);
+    } catch (err: any) {
+      console.error('Gagal generate AI steps:', err);
+      alert(err.message || 'Gagal menghasilkan langkah alur dengan AI.');
     }
   };
 
@@ -278,8 +288,6 @@ function JourneysPageContent() {
     );
   }
 
-  // Deep clone agar JourneyDetailPanel tidak bisa memutasi state asli
-  // secara langsung saat user mengetik/edit (fix bug Cancel sebelumnya).
   const safeSelectedJourney = selectedJourney
     ? JSON.parse(JSON.stringify(selectedJourney))
     : null;
@@ -293,11 +301,8 @@ function JourneysPageContent() {
         selectedJourneyId={selectedJourney?.id}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        onSelectJourney={(j) => {
-          setIsCreatingNew(false);
-          setSelectedJourney(j);
-        }}
-        onOpenMapModal={handleStartCreateJourney}
+        onSelectJourney={(j) => setSelectedJourney(j)}
+        onOpenMapModal={() => setIsCreateModalOpen(true)}
       />
 
       <main className="flex-1 flex flex-col h-full bg-white overflow-hidden">
@@ -309,6 +314,7 @@ function JourneysPageContent() {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 text-gray-500">
               <button
+                type="button"
                 onClick={handleUpload}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 cursor-pointer"
                 title="Upload Document"
@@ -316,6 +322,7 @@ function JourneysPageContent() {
                 <Upload className="w-4 h-4" />
               </button>
               <button
+                type="button"
                 onClick={handleDownload}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 cursor-pointer"
                 title="Download / Export JSON"
@@ -328,18 +335,7 @@ function JourneysPageContent() {
           </div>
         </div>
 
-        {isCreatingNew ? (
-          <JourneyDetailPanel
-            key="new-journey"
-            journey={null}
-            personas={personas}
-            isEditingInitially
-            isNew
-            startWithEmptySteps
-            onClose={handleCancelCreateJourney}
-            onSave={handleCreateNewJourney}
-          />
-        ) : selectedJourney ? (
+        {selectedJourney ? (
           <JourneyDetailPanel
             key={selectedJourney.id}
             journey={safeSelectedJourney}
@@ -349,11 +345,20 @@ function JourneysPageContent() {
               setSelectedJourney(original || null);
             }}
             onSave={handleUpdateJourneyDetail}
+            onDeleteJourney={handleDeleteJourney}
+            onGenerateAiSteps={handleGenerateAiSteps}
           />
         ) : (
-          <EmptyJourneyPanel onOpenAddModal={handleStartCreateJourney} />
+          <EmptyJourneyPanel onOpenAddModal={() => setIsCreateModalOpen(true)} />
         )}
       </main>
+
+      {/* Modal Popup Create Journey Sesuai PRD */}
+      <CreateJourneyModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={handleCreateJourneyFromModal}
+      />
     </div>
   );
 }

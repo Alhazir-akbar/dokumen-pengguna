@@ -1,3 +1,5 @@
+//emptyJourneyPanel.tsx
+
 'use client';
 
 import { Map } from 'lucide-react';
