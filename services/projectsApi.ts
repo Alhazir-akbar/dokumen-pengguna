@@ -1,5 +1,3 @@
-// services/projectsApi.ts
-
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 function formatApiError(errorData: any, fallback: string): string {
@@ -16,11 +14,6 @@ function formatApiError(errorData: any, fallback: string): string {
   return fallback;
 }
 
-// 401 = token invalid/expired -> memang sesi habis, paksa logout.
-// 403 = user login VALID tapi gak punya akses ke resource spesifik ini
-// (misal: bukan anggota workspace tsb) -> BUKAN soal token, jangan logout
-// paksa. Biarkan errornya dilempar biasa supaya UI bisa nampilin pesan
-// yang sesuai ("Anda tidak memiliki akses...") tanpa nendang user ke /login.
 function handleUnauthorized(status: number): boolean {
   if (status === 401) {
     localStorage.removeItem('token');
@@ -29,8 +22,6 @@ function handleUnauthorized(status: number): boolean {
   }
   return false;
 }
-
-// ============ Interfaces ============
 
 export interface ProjectCreate {
   name: string;
@@ -71,6 +62,12 @@ export interface SuggestDescriptionPayload {
   project_name: string;
   platform_type: string;
 }
+export interface GenerateRequirementsResponse {
+  user_types?: any[];
+  epics?: any[];
+  user_stories?: any[];
+  nfrs?: any[];
+}
 
 export interface SuggestDescriptionResponse {
   description: string;
@@ -96,13 +93,13 @@ export interface SuggestUserJourneyPersonaItem {
 export interface SuggestUserJourneyPayload {
   project_name: string;
   project_description?: string;
-  personas?: SuggestUserJourneyPersonaItem[];  
+  personas?: SuggestUserJourneyPersonaItem[];
 }
 
 export interface SuggestUserJourneyStepItem {
   title: string;
   description: string;
-  persona_name?: string | null; 
+  persona_name?: string | null;
 }
 
 export interface SuggestUserJourneyResponse {
@@ -120,14 +117,19 @@ export interface SuggestUserTypeDescriptionResponse {
   description: string;
 }
 
-// ============ Helper ============
-
 const getAuthHeaders = (token: string) => ({
   'Content-Type': 'application/json',
   'Authorization': `Bearer ${token}`,
 });
 
-// ============ API ============
+async function parseOrThrow<T>(response: Response, fallback: string): Promise<T> {
+  if (!response.ok) {
+    handleUnauthorized(response.status);
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(formatApiError(errorData, fallback));
+  }
+  return response.json();
+}
 
 export const projectApi = {
   createProject: async (data: ProjectCreate, token: string): Promise<ProjectResponse> => {
@@ -136,20 +138,9 @@ export const projectApi = {
       headers: getAuthHeaders(token),
       body: JSON.stringify(data),
     });
-    if (!response.ok) {
-      handleUnauthorized(response.status);
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(formatApiError(errorData, 'Gagal membuat proyek'));
-    }
-    return response.json();
+    return parseOrThrow(response, 'Gagal membuat proyek');
   },
 
-  /**
-   * PENTING: selalu kirim workspaceId secara eksplisit kalau kamu tahu nilainya
-   * (jangan andalkan fallback localStorage di bawah -- itu cuma jaring pengaman
-   * untuk pemanggilan lama, tapi rawan salah/kosong kalau localStorage belum
-   * sempat keisi di alur tertentu, misal baru selesai wizard).
-   */
   getProjects: async (workspaceIdOrToken?: any, tokenArg?: string): Promise<ProjectResponse[]> => {
     let url = `${API_BASE_URL}/api/projects`;
     let token = '';
@@ -188,12 +179,7 @@ export const projectApi = {
       method: 'GET',
       headers: getAuthHeaders(token),
     });
-    if (!response.ok) {
-      handleUnauthorized(response.status);
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(formatApiError(errorData, 'Proyek tidak ditemukan'));
-    }
-    return response.json();
+    return parseOrThrow(response, 'Proyek tidak ditemukan');
   },
 
   updateProject: async (id: number, data: ProjectUpdate, token: string): Promise<ProjectResponse> => {
@@ -202,12 +188,7 @@ export const projectApi = {
       headers: getAuthHeaders(token),
       body: JSON.stringify(data),
     });
-    if (!response.ok) {
-      handleUnauthorized(response.status);
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(formatApiError(errorData, 'Gagal memperbarui proyek'));
-    }
-    return response.json();
+    return parseOrThrow(response, 'Gagal memperbarui proyek');
   },
 
   deleteProject: async (id: number, token: string) => {
@@ -215,12 +196,7 @@ export const projectApi = {
       method: 'DELETE',
       headers: getAuthHeaders(token),
     });
-    if (!response.ok) {
-      handleUnauthorized(response.status);
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(formatApiError(errorData, 'Gagal menghapus proyek'));
-    }
-    return response.json();
+    return parseOrThrow(response, 'Gagal menghapus proyek');
   },
 
   suggestDescription: async (
@@ -232,12 +208,7 @@ export const projectApi = {
       headers: getAuthHeaders(token),
       body: JSON.stringify(data),
     });
-    if (!response.ok) {
-      handleUnauthorized(response.status);
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(formatApiError(errorData, 'AI gagal memberikan saran deskripsi'));
-    }
-    return response.json();
+    return parseOrThrow(response, 'AI gagal memberikan saran deskripsi');
   },
 
   suggestUserGoals: async (
@@ -249,16 +220,9 @@ export const projectApi = {
       headers: getAuthHeaders(token),
       body: JSON.stringify(data),
     });
-    if (!response.ok) {
-      handleUnauthorized(response.status);
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(formatApiError(errorData, 'AI gagal memberikan saran goals & frustrations'));
-    }
-    return response.json();
+    return parseOrThrow(response, 'AI gagal memberikan saran goals & frustrations');
   },
 
-  // BARU: generate deskripsi untuk SATU user type (tombol Sparkles di step
-  // UserTypes wizard). Lihat SuggestUserTypeDescriptionPayload di atas.
   suggestUserTypeDescription: async (
     data: SuggestUserTypeDescriptionPayload,
     token: string
@@ -268,12 +232,7 @@ export const projectApi = {
       headers: getAuthHeaders(token),
       body: JSON.stringify(data),
     });
-    if (!response.ok) {
-      handleUnauthorized(response.status);
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(formatApiError(errorData, 'AI gagal memberikan saran deskripsi tipe pengguna'));
-    }
-    return response.json();
+    return parseOrThrow(response, 'AI gagal memberikan saran deskripsi tipe pengguna');
   },
 
   suggestUserJourney: async (
@@ -285,26 +244,16 @@ export const projectApi = {
       headers: getAuthHeaders(token),
       body: JSON.stringify(data),
     });
-    if (!response.ok) {
-      handleUnauthorized(response.status);
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(formatApiError(errorData, 'AI gagal memberikan saran user journey'));
-    }
-    return response.json();
+    return parseOrThrow(response, 'AI gagal memberikan saran user journey');
   },
 
-  generateRequirements: async (id: number, token: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/projects/${id}/generate-requirements`, {
-      method: 'POST',
-      headers: getAuthHeaders(token),
-    });
-    if (!response.ok) {
-      handleUnauthorized(response.status);
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(formatApiError(errorData, 'AI gagal memproses data'));
-    }
-    return response.json();
-  },
+  generateRequirements: async (id: number, token: string): Promise<GenerateRequirementsResponse> => {
+  const response = await fetch(`${API_BASE_URL}/api/projects/${id}/generate-requirements`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+  });
+  return parseOrThrow<GenerateRequirementsResponse>(response, 'AI gagal memproses data');
+},
 
   saveRequirements: async (id: number, aiRequirementsData: any, token: string) => {
     const response = await fetch(`${API_BASE_URL}/api/projects/${id}/save-requirements`, {
@@ -312,11 +261,6 @@ export const projectApi = {
       headers: getAuthHeaders(token),
       body: JSON.stringify(aiRequirementsData),
     });
-    if (!response.ok) {
-      handleUnauthorized(response.status);
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(formatApiError(errorData, 'Gagal menyimpan draf kebutuhan'));
-    }
-    return response.json();
-  }
+    return parseOrThrow(response, 'Gagal menyimpan draf kebutuhan');
+  },
 };

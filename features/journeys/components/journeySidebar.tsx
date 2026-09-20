@@ -1,3 +1,5 @@
+//journeySidebar.tsx
+
 'use client';
 
 import { Search, User, Plus } from 'lucide-react';

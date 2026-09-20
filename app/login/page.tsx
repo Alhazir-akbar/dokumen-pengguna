@@ -81,12 +81,6 @@ export default function LoginPage() {
         <h2 className="text-center text-2xl font-bold tracking-tight text-gray-900">
           Masuk ke Akun Anda
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Atau{' '}
-          <Link href="/register" className="font-semibold text-blue-600 hover:text-blue-500 transition-colors">
-            daftar akun baru secara gratis
-          </Link>
-        </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
@@ -122,17 +116,9 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <div className="flex justify-between items-center">
-                <label htmlFor="password" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Password
-                </label>
-                <Link
-                  href="/forgot-password"
-                  className="text-xs font-semibold text-blue-600 hover:text-blue-500 transition-colors"
-                >
-                  Lupa Password?
-                </Link>
-              </div>
+              <label htmlFor="password" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                Password
+              </label>
               <div className="mt-1.5 relative rounded-lg shadow-xs">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-gray-400" />
@@ -161,20 +147,9 @@ export default function LoginPage() {
                   )}
                 </button>
               </div>
-                              <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-hidden cursor-pointer"
-                  title={showPassword ? "Sembunyikan password" : "Lihat password"}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-            <div>
+            </div>
+
+            <div className="space-y-4">
               <button
                 type="submit"
                 disabled={loading}
@@ -183,9 +158,25 @@ export default function LoginPage() {
                 {loading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
-                  'Masuk ke Aplikasi'
+                  'Masuk'
                 )}
               </button>
+
+              <div className="flex flex-col items-center gap-2 pt-1 text-center">
+                <Link
+                  href="/forgot-password"
+                  className="text-xs font-medium text-gray-500 hover:text-blue-600 transition-colors"
+                >
+                  Lupa Password?
+                </Link>
+
+                <p className="text-xs text-gray-500">
+                  Belum punya akun?{' '}
+                  <Link href="/register" className="font-semibold text-blue-600 hover:text-blue-500 transition-colors">
+                    Daftar akun baru
+                  </Link>
+                </p>
+              </div>
             </div>
           </form>
         </div>
