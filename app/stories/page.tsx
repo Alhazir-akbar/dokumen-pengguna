@@ -27,7 +27,7 @@ function StoriesPageContent() {
     setMounted(true);
   }, []);
 
-  // 🚀 SWR Cache: Data langsung tampil seketika (0 detik) saat kembali ke halaman ini
+  // Gunakan SWR untuk fetch data epics dan stories sekaligus, dengan caching dan revalidasi otomatis
   const { data: cacheData, error: swrError, isLoading, mutate } = useSWR(
     mounted && projectId && token ? [`stories-data`, projectId, token] : null,
     async ([, projId, tok]) => {
