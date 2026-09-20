@@ -72,8 +72,12 @@ export default function ProjectMenuDropdown({
       const viewportPadding = 12;
       const estimatedPanelHeight = 340;
 
-      let left = rect.right - panelWidth;
-      left = Math.max(viewportPadding, Math.min(left, window.innerWidth - panelWidth - viewportPadding));
+      // Align with left edge of trigger button by default, adjust if overflowing
+      let left = rect.left;
+      if (left + panelWidth > window.innerWidth - viewportPadding) {
+        left = window.innerWidth - panelWidth - viewportPadding;
+      }
+      left = Math.max(viewportPadding, left);
 
       let top = rect.bottom + 6;
       if (top + estimatedPanelHeight > window.innerHeight - viewportPadding) {

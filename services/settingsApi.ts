@@ -42,6 +42,16 @@ export interface ProviderInfo {
   provider_key: string;
   model: string;
   status: string;
+  daily_limit: number;
+  daily_used: number;
+  daily_remaining: number;
+  daily_percentage: number;
+  monthly_limit: number;
+  monthly_used: number;
+  monthly_remaining: number;
+  monthly_percentage: number;
+  requests_today: number;
+  requests_month: number;
 }
 
 export interface TokenUsageHistoryItem {
@@ -58,6 +68,7 @@ export interface TokenUsageHistoryItem {
 export interface TokenUsageData {
   monthly_quota: number;
   monthly_used: number;
+  daily_used?: number;
   remaining_tokens: number;
   usage_percentage: number;
   usage_by_provider: Record<string, number>;

@@ -2,21 +2,24 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { projectApi } from '@/services/projectsApi';
+import { workspaceApi } from '@/services/workspaceApi';
 import { getAuthToken } from '@/lib/auth';
+import { setStoredProjectId, clearStoredProjectId } from '@/lib/project-context';
 import { useWizardStore } from '@/features/project-setup/store/wizard-store';
 
 /**
  * Logic bersama untuk dropdown "Project Menu" (Create new Project / Project
  * Settings / Change Project). Dipakai di StoriesSidebar dan EmptyDetailPanel
- * supaya perilakunya identik di kedua tempat tanpa duplikat kode.
+ * serta top header di semua halaman dashboard.
  */
 export function useProjectMenu(
   workspaceId?: number | null,
   activeProjectId?: string | number | null
 ) {
   const router = useRouter();
+  const pathname = usePathname();
   const resetStore = useWizardStore((s: any) => s.resetStore);
   const setWizardWorkspaceId = useWizardStore((s: any) => s.setWorkspaceId);
 
@@ -26,13 +29,20 @@ export function useProjectMenu(
 
   useEffect(() => {
     const fetchProjects = async () => {
-      // Tunggu sampai workspaceId diketahui -- jangan fetch dengan workspace_id
-      // yang salah/kosong (penyebab bug 403 sebelumnya).
-      if (!workspaceId) return;
       const token = getAuthToken();
       if (!token) return;
+
       try {
-        const response: any = await projectApi.getProjects(workspaceId, token);
+        let wsId = workspaceId;
+        if (!wsId) {
+          const workspaces = await workspaceApi.getMyWorkspaces(token);
+          if (workspaces && workspaces.length > 0) {
+            wsId = workspaces[0].id;
+          }
+        }
+        if (!wsId) return;
+
+        const response: any = await projectApi.getProjects(wsId, token);
         const list = Array.isArray(response) ? response : response?.data || response?.projects || [];
         setProjects(list);
       } catch (err) {
@@ -58,8 +68,6 @@ export function useProjectMenu(
   const handleCreateNewProject = () => {
     close();
     resetStore();
-    // Workspace sudah pasti ada di titik ini -> isi ke wizard store langsung
-    // supaya TeamName.tsx auto-skip ke step NameProject.
     if (workspaceId) setWizardWorkspaceId(workspaceId);
     router.push('/project-setup');
   };
@@ -71,7 +79,12 @@ export function useProjectMenu(
 
   const openProject = (projectId: number) => {
     close();
-    router.push(`/stories?project_id=${projectId}`);
+    setStoredProjectId(projectId);
+    const targetPath =
+      pathname && pathname !== '/' && !pathname.startsWith('/login') && !pathname.startsWith('/register')
+        ? pathname
+        : '/stories';
+    router.push(`${targetPath}?project_id=${projectId}`);
   };
 
   const deleteProject = async (e: React.MouseEvent, pId: number, pName: string) => {
@@ -88,8 +101,14 @@ export function useProjectMenu(
 
       if (String(pId) === String(activeProjectId)) {
         if (remaining.length > 0) {
-          router.push(`/stories?project_id=${remaining[0].id}`);
+          setStoredProjectId(remaining[0].id);
+          const targetPath =
+            pathname && pathname !== '/' && !pathname.startsWith('/login') && !pathname.startsWith('/register')
+              ? pathname
+              : '/stories';
+          router.push(`${targetPath}?project_id=${remaining[0].id}`);
         } else {
+          clearStoredProjectId();
           router.push('/workspace');
         }
       }

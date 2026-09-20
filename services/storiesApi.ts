@@ -93,3 +93,29 @@ export async function seedExampleStory(projectId: number, token: string) {
 
   return response.json();
 }
+export async function suggestStoryWithAi(
+  params: {
+    as_a?: string;
+    i_want?: string;
+    so_that?: string;
+    epic_name?: string;
+    project_name?: string;
+  },
+  token: string
+) {
+  const response = await fetch(`${API_URL}/stories/ai-suggest`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Gagal generate User Story dengan AI');
+  }
+
+  return response.json();
+}

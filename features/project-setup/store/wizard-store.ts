@@ -117,6 +117,8 @@ interface WizardState {
   addUserType: (item: UserTypeItem) => void;
   removeUserType: (id: string) => void;
   updateUserTypeDescription: (id: string, description: string) => void;
+  // BARU: update name dan/atau description sekaligus (dipakai UserTypes.tsx)
+  updateUserType: (id: string, patch: Partial<Pick<UserTypeItem, 'name' | 'description'>>) => void;
   updateUserGoal: (userTypeName: string, goals: string, frustrations: string) => void;
 
   addEpic: (item: EpicItem) => void;
@@ -252,6 +254,9 @@ export const useWizardStore = create<WizardState>()(
       updateUserTypeDescription: (id, description) => set((state) => ({
         userTypes: state.userTypes.map((ut) => ut.id === id ? { ...ut, description } : ut)
       })),
+      updateUserType: (id, patch) => set((state) => ({
+        userTypes: state.userTypes.map((ut) => (ut.id === id ? { ...ut, ...patch } : ut)),
+      })),
 
       updateUserGoal: (userTypeName, goals, frustrations) => set((state) => {
         const existingIndex = state.userGoals.findIndex((g: any) => g.userTypeName === userTypeName);
@@ -362,9 +367,13 @@ export const useWizardStore = create<WizardState>()(
         try {
           const response = await projectApi.generateRequirements(projectId, activeToken);
 
+          // ID dibuat unik (bukan ut.name / n.category) supaya edit/hapus satu item
+          // tidak ikut mengenai item lain yang namanya kebetulan sama.
+          const stamp = Date.now();
+
           const mappedUserTypes: UserTypeItem[] = (response.user_types || []).map(
             (ut: any, index: number) => ({
-              id: ut.name || `ut-${Date.now()}-${index}`,
+              id: `ut-${stamp}-${index}`,
               name: ut.name,
               description: ut.description,
               personas: (ut.personas || []).map((p: any) => ({
@@ -399,8 +408,8 @@ export const useWizardStore = create<WizardState>()(
           }));
 
           const mappedNonFunctionals: NonFunctionalItem[] = (response.nfrs || []).map(
-            (n: any) => ({
-              id: n.category,
+            (n: any, i: number) => ({
+              id: `nfr-${stamp}-${i}`,
               category: n.category,
               description: n.description,
             })
