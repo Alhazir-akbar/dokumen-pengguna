@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
+import useSWR from 'swr';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { UserStory, Epic } from '@/features/stories/types';
 import StoriesSidebar from '@/features/stories/components/StoriesSidebar';
@@ -19,51 +20,35 @@ function StoriesPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const projectId = searchParams.get('project_id');
-
-  const [rawEpics, setRawEpics] = useState<any[]>([]);
-  const [rawStories, setRawStories] = useState<any[]>([]);
-  const [projectName, setProjectName] = useState('');
-  const [projectWorkspaceId, setProjectWorkspaceId] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
+  const [mounted, setMounted] = useState(false);
+  const token = typeof window !== 'undefined' ? getAuthToken() : null;
 
   useEffect(() => {
-    const loadData = async () => {
-      if (!projectId) {
-        setLoadError('project_id tidak ditemukan di URL.');
-        setIsLoading(false);
-        return;
-      }
+    setMounted(true);
+  }, []);
 
-      const token = getAuthToken();
-      if (!token) {
-        setLoadError('Sesi habis, silakan login kembali.');
-        setIsLoading(false);
-        return;
-      }
+  // 🚀 SWR Cache: Data langsung tampil seketika (0 detik) saat kembali ke halaman ini
+  const { data: cacheData, error: swrError, isLoading, mutate } = useSWR(
+    mounted && projectId && token ? [`stories-data`, projectId, token] : null,
+    async ([, projId, tok]) => {
+      const [epicsData, storiesData, projectData] = await Promise.all([
+        fetchEpics(Number(projId), tok),
+        fetchStories(Number(projId), tok),
+        projectApi.getProjectById(Number(projId), tok),
+      ]);
+      return { epics: epicsData || [], stories: storiesData || [], project: projectData };
+    },
+    {
+      revalidateOnFocus: false, // Jangan fetch ulang setiap kali klik jendela browser
+      dedupingInterval: 10000,  // Cache berlaku selama 10 detik sebelum revalidasi
+    }
+  );
 
-      setIsLoading(true);
-      try {
-        const [epicsData, storiesData, projectData] = await Promise.all([
-          fetchEpics(Number(projectId), token),
-          fetchStories(Number(projectId), token),
-          projectApi.getProjectById(Number(projectId), token),
-        ]);
-
-        setRawEpics(epicsData);
-        setRawStories(storiesData);
-        setProjectName(projectData.name);
-        setProjectWorkspaceId(projectData.workspace_id);
-      } catch (err: any) {
-        console.error('Gagal memuat data stories:', err);
-        setLoadError(err.message || 'Gagal memuat data dari server.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
-  }, [projectId]);
+  const rawEpics = cacheData?.epics || [];
+  const rawStories = cacheData?.stories || [];
+  const projectName = cacheData?.project?.name || '';
+  const projectWorkspaceId = cacheData?.project?.workspace_id || null;
+  const loadError = swrError ? (swrError.message || 'Gagal memuat data dari server.') : '';
 
   const formattedEpics: Epic[] = rawEpics.map((epic: any, index: number) => ({
     id: epic.id,
@@ -146,7 +131,10 @@ function StoriesPageContent() {
       }
 
       const createdStory = await response.json();
-      setRawStories((prev) => [...prev, createdStory]);
+      mutate(
+        (prev: any) => (prev ? { ...prev, stories: [...(prev.stories || []), createdStory] } : prev),
+        false
+      );
       setIsModalOpen(false);
       setNewTitle('');
       setNewAsA('');
@@ -192,8 +180,25 @@ function StoriesPageContent() {
         throw new Error(msg || 'Gagal update story');
       }
 
-      setRawStories((prev) =>
-        prev.map((s) => (s.id === updatedStory.id ? { ...s, ...updatedStory } : s))
+      mutate(
+        (prev: any) =>
+          prev
+            ? {
+                ...prev,
+                stories: (prev.stories || []).map((s: any) =>
+                  s.id === updatedStory.id
+                    ? {
+                        ...s,
+                        ...updatedStory,
+                        acceptance_criteria: (updatedStory.acceptanceCriteria || []).map((desc) => ({ description: desc })),
+                        tech_notes: (updatedStory.techNotes || []).map((content) => ({ content })),
+                        test_cases: (updatedStory.testCases || []).map((desc) => ({ description: desc })),
+                      }
+                    : s
+                ),
+              }
+            : prev,
+        false
       );
       setSelectedStory(updatedStory);
     } catch (err: any) {
@@ -226,7 +231,16 @@ function StoriesPageContent() {
         throw new Error(errorData.detail || 'Gagal menghapus story');
       }
 
-      setRawStories((prev) => prev.filter((s) => s.id !== selectedStory.id));
+      mutate(
+        (prev: any) =>
+          prev
+            ? {
+                ...prev,
+                stories: (prev.stories || []).filter((s: any) => s.id !== selectedStory.id),
+              }
+            : prev,
+        false
+      );
       setSelectedStory(null);
     } catch (err: any) {
       console.error('Gagal hapus story:', err);
@@ -262,7 +276,7 @@ function StoriesPageContent() {
       {/* AppSidebar Selalu Tetap Terpasang di Layar */}
       <AppSidebar activeMenu="stories" projectId={projectId} />
 
-      {isLoading ? (
+      {!mounted || isLoading ? (
         <div className="flex-1 flex items-center justify-center bg-white">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />

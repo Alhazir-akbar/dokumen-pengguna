@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import useSWR from 'swr';
 import { useSearchParams, useRouter } from 'next/navigation';
 import AppSidebar from '@/features/common/components/AppSidebar';
 import AccountMenu from '@/features/common/components/accountMenu';
 import { fetchEpics, fetchStories, fetchNFRs } from '@/services/storiesApi';
 import { projectApi } from '@/services/projectsApi';
 import { getAuthToken } from '@/lib/auth';
+import ProjectMenuDropdown from '@/features/stories/components/ProjectMenuDropdown';
 import {
   ZoomIn,
   ZoomOut,
@@ -21,6 +23,7 @@ import {
   Download,
   MessageSquare,
   ChevronRight,
+  ChevronDown,
   X,
   GripVertical,
 } from 'lucide-react';
@@ -92,9 +95,7 @@ function buildInitialPositions(epics: EpicNode[], stories: StoryNode[], nfrs: Nf
   if (nfrs.length > 0) {
     let col = 0;
     for (let c = 1; c < COLS; c++) if (colY[c] < colY[col]) col = c;
-    const estHeight = 96 + Math.ceil(nfrs.length / 2) * 60;
     positions[NFR_KEY] = { x: START_X + col * (CARD_WIDTH + GAP_X), y: colY[col] };
-    colY[col] += estHeight + GAP_Y;
   }
 
   return positions;
@@ -104,20 +105,17 @@ function GraphPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const projectId = searchParams.get('project_id');
-
-  const [projectName, setProjectName] = useState('');
-  const [projectWorkspaceId, setProjectWorkspaceId] = useState<number | null>(null);
-  const [epics, setEpics] = useState<EpicNode[]>([]);
-  const [stories, setStories] = useState<StoryNode[]>([]);
-  const [nfrs, setNfrs] = useState<NfrNode[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
-
+  const [mounted, setMounted] = useState(false);
+  const token = typeof window !== 'undefined' ? getAuthToken() : null;
   const [zoom, setZoom] = useState(1);
   const [selectedNode, setSelectedNode] = useState<StoryNode | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showNFR, setShowNFR] = useState(true);
   const [showStories, setShowStories] = useState(true);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Free-form positions & measured sizes for every draggable node (hub / epics / nfr cluster)
   const [positions, setPositions] = useState<Record<string, Pos>>({});
@@ -130,49 +128,43 @@ function GraphPageContent() {
   const dragRef = useRef<{ key: string; startX: number; startY: number; origin: Pos } | null>(null);
   const panRef = useRef<{ startX: number; startY: number; scrollLeft: number; scrollTop: number } | null>(null);
 
+  // 🚀 SWR Cache: Data Graph langsung tampil seketika (0 detik)
+  const { data: cacheData, error: swrError, isLoading } = useSWR(
+    mounted && projectId && token ? [`graph-data`, projectId, token] : null,
+    async ([, projId, tok]: [string, string, string]) => {
+      const [epicsData, storiesData, nfrsData, projData] = await Promise.all([
+        fetchEpics(Number(projId), tok).catch(() => []),
+        fetchStories(Number(projId), tok).catch(() => []),
+        fetchNFRs(Number(projId), tok).catch(() => []),
+        projectApi.getProjectById(Number(projId), tok).catch(() => null),
+      ]);
+      return {
+        epics: (epicsData || []) as EpicNode[],
+        stories: (storiesData || []) as StoryNode[],
+        nfrs: (nfrsData || []) as NfrNode[],
+        project: projData,
+      };
+    },
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 10000,
+    }
+  );
+
+  const epics = cacheData?.epics || [];
+  const stories = cacheData?.stories || [];
+  const nfrs = cacheData?.nfrs || [];
+  const projectName = cacheData?.project?.name || 'Project';
+  const projectWorkspaceId = cacheData?.project?.workspace_id || null;
+  const loadError = swrError ? (swrError.message || 'Gagal memuat data diagram graph.') : '';
+
   useEffect(() => {
-    if (!projectId) {
-      setLoadError('project_id tidak ditemukan di URL.');
-      setIsLoading(false);
-      return;
+    if (cacheData) {
+      setPositions((prev) =>
+        Object.keys(prev).length > 0 ? prev : buildInitialPositions(cacheData.epics, cacheData.stories, cacheData.nfrs)
+      );
     }
-    const token = getAuthToken();
-    if (!token) {
-      setLoadError('Sesi habis, silakan login kembali.');
-      setIsLoading(false);
-      return;
-    }
-
-    const loadData = async () => {
-      setIsLoading(true);
-      try {
-        const [epicsData, storiesData, nfrsData, projData] = await Promise.all([
-          fetchEpics(Number(projectId), token).catch(() => []),
-          fetchStories(Number(projectId), token).catch(() => []),
-          fetchNFRs(Number(projectId), token).catch(() => []),
-          projectApi.getProjectById(Number(projectId), token).catch(() => null),
-        ]);
-
-        const es = epicsData || [];
-        const ss = storiesData || [];
-        const ns = nfrsData || [];
-        setEpics(es);
-        setStories(ss);
-        setNfrs(ns);
-        setPositions(buildInitialPositions(es, ss, ns));
-        if (projData) {
-          setProjectName(projData.name || 'Project');
-          setProjectWorkspaceId(projData.workspace_id || null);
-        }
-      } catch (err: any) {
-        setLoadError(err.message || 'Gagal memuat data diagram graph.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
-  }, [projectId]);
+  }, [cacheData]);
 
   // One shared ResizeObserver measures every registered node's real rendered size,
   // so connector lines can be derived purely from state (position + size) instead of re-querying the DOM.
@@ -281,33 +273,6 @@ function GraphPageContent() {
     a.remove();
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-screen w-screen bg-slate-900 text-white items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
-          <p className="text-sm text-slate-300 font-medium">Rendering Software Definition Graph...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <div className="flex h-screen w-screen bg-slate-50 items-center justify-center p-6">
-        <div className="bg-white border border-red-200 rounded-2xl p-6 text-center max-w-md shadow-sm">
-          <p className="text-red-600 text-sm mb-4 font-semibold">{loadError}</p>
-          <button
-            onClick={() => router.push('/workspace')}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl"
-          >
-            Kembali ke Workspace
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   const hasArtifacts = epics.length > 0 || stories.length > 0 || nfrs.length > 0;
   const totalRequirements = stories.length + nfrs.length;
 
@@ -342,12 +307,45 @@ function GraphPageContent() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-950 font-sans">
+      {/* 🚀 AppSidebar SELALU Tampil di Layar Secara Konsisten */}
       <AppSidebar activeMenu="graph" projectId={projectId} />
 
-      <main className="flex-1 flex flex-col overflow-hidden">
+      {!mounted || isLoading ? (
+        <div className="flex-1 flex flex-col items-center justify-center bg-slate-900 text-white">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+          <p className="text-sm text-slate-300 font-medium mt-3">Rendering Software Definition Graph...</p>
+        </div>
+      ) : loadError ? (
+        <div className="flex-1 flex items-center justify-center bg-slate-50 p-6">
+          <div className="bg-white border border-red-200 rounded-2xl p-6 text-center max-w-md shadow-sm">
+            <p className="text-red-600 text-sm mb-4 font-semibold">{loadError}</p>
+            <button
+              onClick={() => router.push('/workspace')}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl"
+            >
+              Kembali ke Workspace
+            </button>
+          </div>
+        </div>
+      ) : (
+        <main className="flex-1 flex flex-col overflow-hidden">
         <header className="h-14 border-b border-gray-200 px-6 flex items-center justify-between bg-white shrink-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-500">{projectName || 'Untitled Project'}</span>
+            <ProjectMenuDropdown
+              workspaceId={projectWorkspaceId}
+              activeProjectId={projectId}
+              renderTrigger={({ onClick, isOpen, triggerRef }) => (
+                <button
+                  ref={triggerRef}
+                  type="button"
+                  onClick={onClick}
+                  className="flex items-center gap-1.5 text-xs font-bold text-gray-800 hover:text-blue-600 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer group"
+                >
+                  <span>{projectName || 'Untitled Project'}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-gray-400 group-hover:text-blue-600 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                </button>
+              )}
+            />
             <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
             <GitGraph className="w-4 h-4 text-gray-500" />
             <span className="text-sm font-semibold text-gray-800">Software Definition Graph</span>
@@ -627,6 +625,7 @@ function GraphPageContent() {
         )}
         </div>
       </main>
+      )}
     </div>
   );
 }

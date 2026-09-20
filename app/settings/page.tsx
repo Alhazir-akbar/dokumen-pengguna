@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect, Suspense, useCallback } from 'react';
+import useSWR from 'swr';
 import { useSearchParams, useRouter } from 'next/navigation';
 import AppSidebar from '@/features/common/components/AppSidebar';
 import AccountMenu from '@/features/common/components/accountMenu';
@@ -17,9 +18,15 @@ import {
   History,
   Bot,
   ChevronRight,
+  ChevronDown,
   Upload,
   Download,
+  Cpu,
+  Calendar,
+  TrendingUp,
+  CheckCircle2,
 } from 'lucide-react';
+import ProjectMenuDropdown from '@/features/stories/components/ProjectMenuDropdown';
 import { projectApi } from '@/services/projectsApi';
 import { settingsApi, AIRule, AIRuleSuggestion, TokenUsageData } from '@/services/settingsApi';
 import { getAuthToken } from '@/lib/auth';
@@ -36,16 +43,16 @@ const TAB_LABELS: Record<'general' | 'ai-rules' | 'token-usage', string> = {
 function SettingsPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const projectIdParam = searchParams.get('project_id');
+  const projectIdParam = searchParams.get('project_id') || getStoredProjectId();
+  const [mounted, setMounted] = useState(false);
+  const token = typeof window !== 'undefined' ? getAuthToken() : null;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [activeTab, setActiveTab] = useState<'general' | 'ai-rules' | 'token-usage'>('general');
-  const [isPageLoading, setIsPageLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
-
-  const [projectName, setProjectName] = useState('');
-  const [projectDesc, setProjectDesc] = useState('');
-  const [projectWorkspaceId, setProjectWorkspaceId] = useState<number | null>(null);
 
   const [aiRules, setAiRules] = useState<AIRule[]>([]);
   const [suggestions, setSuggestions] = useState<AIRuleSuggestion[]>([]);
@@ -60,9 +67,9 @@ function SettingsPageContent() {
   // State untuk Token & AI Usage
   const [tokenData, setTokenData] = useState<TokenUsageData | null>(null);
   const [isLoadingTokens, setIsLoadingTokens] = useState(false);
+  const [providerHistoryFilter, setProviderHistoryFilter] = useState<string>('all');
 
   const loadTokenUsage = async () => {
-    const token = getAuthToken();
     if (!token) return;
     setIsLoadingTokens(true);
     try {
@@ -82,51 +89,36 @@ function SettingsPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
-  useEffect(() => {
-    if (!projectIdParam) {
-      const stored = getStoredProjectId();
-      if (stored) {
-        router.replace(`/settings?project_id=${stored}`);
-        return;
-      }
+  // 🚀 SWR Cache: Data Settings langsung tampil seketika (0 detik)
+  const { data: cacheData, error: swrError, isLoading: isPageLoading, mutate } = useSWR(
+    mounted && projectIdParam && token ? [`settings-data`, projectIdParam, token, reloadToken] : null,
+    async ([, projId, tok]: [string, string, string, number]) => {
+      const [project, rules] = await Promise.all([
+        projectApi.getProjectById(Number(projId), tok),
+        settingsApi.getProjectAIRules(Number(projId), tok),
+      ]);
+      return { project, rules: rules || [] };
+    },
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 10000,
     }
+  );
 
-    const loadData = async () => {
-      if (!projectIdParam) {
-        setLoadError('project_id tidak ditemukan di URL.');
-        setIsPageLoading(false);
-        return;
-      }
-      const token = getAuthToken();
-      if (!token) {
-        setLoadError('Sesi habis, silakan login kembali.');
-        setIsPageLoading(false);
-        return;
-      }
+  const [projectName, setProjectName] = useState('');
+  const [projectDesc, setProjectDesc] = useState('');
 
-      setIsPageLoading(true);
-      setLoadError('');
-      try {
-        const [project, rules] = await Promise.all([
-          projectApi.getProjectById(Number(projectIdParam), token),
-          settingsApi.getProjectAIRules(Number(projectIdParam), token),
-        ]);
-        setProjectName(project.name);
-        setProjectDesc(project.description || '');
-        setProjectWorkspaceId(project.workspace_id);
-        setAiRules(rules);
-        setStoredProjectId(projectIdParam);
-      } catch (err: any) {
-        console.error('Gagal memuat data settings:', err);
-        setLoadError(err.message || 'Gagal memuat data project.');
-      } finally {
-        setIsPageLoading(false);
-      }
-    };
+  useEffect(() => {
+    if (cacheData) {
+      setProjectName(cacheData.project?.name || '');
+      setProjectDesc(cacheData.project?.description || '');
+      setAiRules(cacheData.rules || []);
+      if (projectIdParam) setStoredProjectId(projectIdParam);
+    }
+  }, [cacheData, projectIdParam]);
 
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectIdParam, reloadToken, router]);
+  const projectWorkspaceId = cacheData?.project?.workspace_id || null;
+  const loadError = swrError ? (swrError.message || 'Gagal memuat data dari server.') : '';
 
   const handleRetry = useCallback(() => setReloadToken((n) => n + 1), []);
 
@@ -234,40 +226,48 @@ function SettingsPageContent() {
     }
   };
 
-  if (isPageLoading) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
-        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-      </div>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
-        <div className="text-center max-w-md px-6">
-          <p className="text-red-600 font-medium mb-2">Gagal memuat data</p>
-          <p className="text-sm text-gray-500 mb-4">{loadError}</p>
-          <button
-            onClick={handleRetry}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer"
-          >
-            <RefreshCw className="w-3.5 h-3.5" /> Coba lagi
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-50 font-sans">
+      {/* 🚀 AppSidebar SELALU Tampil di Layar Secara Konsisten */}
       <AppSidebar activeMenu="settings" projectId={projectIdParam} />
 
-      <main className="flex-1 flex flex-col h-full bg-white overflow-hidden">
+      {!mounted || isPageLoading ? (
+        <div className="flex-1 flex items-center justify-center bg-white">
+          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+        </div>
+      ) : loadError ? (
+        <div className="flex-1 flex items-center justify-center bg-white">
+          <div className="text-center max-w-md px-6">
+            <p className="text-red-600 font-medium mb-2">Gagal memuat data</p>
+            <p className="text-sm text-gray-500 mb-4">{loadError}</p>
+            <button
+              onClick={handleRetry}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5" /> Coba lagi
+            </button>
+          </div>
+        </div>
+      ) : (
+        <main className="flex-1 flex flex-col h-full bg-white overflow-hidden">
         {/* Top Navbar -- pola breadcrumb yang sama dengan halaman lain (Journeys, Build, dst) */}
         <div className="h-14 border-b border-gray-200 px-6 flex items-center justify-between bg-white shrink-0">
           <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
-            <span className="text-gray-500">{projectName || 'Untitled Project'}</span>
+            <ProjectMenuDropdown
+              workspaceId={projectWorkspaceId}
+              activeProjectId={projectIdParam}
+              renderTrigger={({ onClick, isOpen, triggerRef }) => (
+                <button
+                  ref={triggerRef}
+                  type="button"
+                  onClick={onClick}
+                  className="flex items-center gap-1.5 text-xs font-bold text-gray-800 hover:text-blue-600 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer group"
+                >
+                  <span>{projectName || 'Untitled Project'}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-gray-400 group-hover:text-blue-600 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                </button>
+              )}
+            />
             <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
             <SettingsIconLucide className="w-3.5 h-3.5 text-gray-400" />
             <span className="text-gray-500">Settings</span>
@@ -590,33 +590,23 @@ function SettingsPageContent() {
                       </div>
                     ) : (
                       <>
+                        {/* 1. Global Overview Metrics */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           <div className="bg-gray-50/70 p-4 rounded-xl border border-gray-100">
-                            <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                              Sisa Kuota Bulanan
+                            <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                              <Calendar className="w-3.5 h-3.5 text-blue-600" /> Token Terpakai Hari Ini
                             </span>
-                            <div className="mt-1.5 flex items-baseline gap-1.5">
-                              <span className="text-xl font-bold text-gray-900">
-                                {tokenData ? tokenData.remaining_tokens.toLocaleString() : '0'}
-                              </span>
-                              <span className="text-[11px] text-gray-500">
-                                / {tokenData?.monthly_quota.toLocaleString()}
-                              </span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2.5 overflow-hidden">
-                              <div
-                                className="bg-blue-600 h-1.5 rounded-full transition-all duration-500"
-                                style={{ width: `${tokenData?.usage_percentage || 0}%` }}
-                              />
+                            <div className="mt-1.5 text-xl font-bold text-gray-900">
+                              {tokenData?.daily_used != null ? tokenData.daily_used.toLocaleString() : '0'}
                             </div>
                             <span className="text-[10px] text-gray-400 mt-1 block">
-                              {tokenData?.usage_percentage || 0}% kuota terpakai
+                              Total seluruh provider hari ini (UTC)
                             </span>
                           </div>
 
                           <div className="bg-gray-50/70 p-4 rounded-xl border border-gray-100">
-                            <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                              Token Terpakai Bulan Ini
+                            <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                              <TrendingUp className="w-3.5 h-3.5 text-blue-600" /> Token Terpakai Bulan Ini
                             </span>
                             <div className="mt-1.5 text-xl font-bold text-blue-600">
                               {tokenData ? tokenData.monthly_used.toLocaleString() : '0'}
@@ -627,12 +617,12 @@ function SettingsPageContent() {
                           </div>
 
                           <div className="bg-gray-50/70 p-4 rounded-xl border border-gray-100">
-                            <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                              Status Multi-AI
+                            <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-green-600" /> Status Multi-AI
                             </span>
                             <div className="mt-1.5">
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-100 text-green-800">
-                                3 Provider Aktif
+                                3 Provider Terhubung
                               </span>
                             </div>
                             <span className="text-[10px] text-gray-400 mt-2 block">
@@ -641,73 +631,222 @@ function SettingsPageContent() {
                           </div>
                         </div>
 
+                        {/* 2. Pelacakan Token Terpisah Per Masing-Masing Provider AI */}
                         <div className="border-t border-gray-100 pt-5">
-                          <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-1.5">
-                            <Zap className="w-4 h-4 text-amber-500" /> Model AI Terhubung
-                          </h3>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            {tokenData?.providers_info.map((p, idx) => (
-                              <div key={idx} className="border border-gray-100 bg-gray-50/70 p-3.5 rounded-xl">
-                                <div className="flex justify-between items-start">
-                                  <span className="font-semibold text-xs text-gray-800">{p.name}</span>
-                                  <span className="text-[10px] font-semibold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">
-                                    {p.status}
-                                  </span>
+                          <div className="flex items-center justify-between mb-3.5">
+                            <div>
+                              <h3 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                                <Zap className="w-4 h-4 text-amber-500" /> Pelacakan Kuota & Limit Per Provider AI
+                              </h3>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                Penggunaan token dan sisa kuota harian/bulanan yang dialokasikan masing-masing AI
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {tokenData?.providers_info.map((p) => {
+                              const isGemini = p.provider_key === 'gemini';
+                              const isOpenRouter = p.provider_key === 'openrouter';
+                              const isGroq = p.provider_key === 'groq';
+
+                              const ProviderIcon = isGemini ? Sparkles : isOpenRouter ? Bot : Cpu;
+                              const iconColor = isGemini ? 'text-blue-600' : isOpenRouter ? 'text-violet-600' : 'text-emerald-600';
+                              const iconBg = isGemini ? 'bg-blue-50 border-blue-200' : isOpenRouter ? 'bg-violet-50 border-violet-200' : 'bg-emerald-50 border-emerald-200';
+                              const progressColor =
+                                p.daily_percentage > 90
+                                  ? 'bg-red-500'
+                                  : p.daily_percentage > 70
+                                  ? 'bg-amber-500'
+                                  : isGemini
+                                  ? 'bg-blue-600'
+                                  : isOpenRouter
+                                  ? 'bg-violet-600'
+                                  : 'bg-emerald-600';
+
+                              return (
+                                <div
+                                  key={p.provider_key}
+                                  className="border border-gray-200 bg-white p-4 rounded-2xl shadow-xs flex flex-col justify-between hover:border-gray-300 transition-all"
+                                >
+                                  <div>
+                                    {/* Header Kartu Provider */}
+                                    <div className="flex items-center justify-between gap-2 mb-2.5">
+                                      <div className="flex items-center gap-2">
+                                        <div className={`w-8 h-8 rounded-xl border flex items-center justify-center shrink-0 ${iconBg}`}>
+                                          <ProviderIcon className={`w-4 h-4 ${iconColor}`} />
+                                        </div>
+                                        <span className="font-bold text-xs text-gray-900">{p.name}</span>
+                                      </div>
+                                      <span
+                                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                          p.status === 'Ready'
+                                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                            : 'bg-gray-100 text-gray-600'
+                                        }`}
+                                      >
+                                        {p.status}
+                                      </span>
+                                    </div>
+
+                                    {/* Model Badge */}
+                                    <div className="bg-gray-50 rounded-lg px-2.5 py-1 text-[11px] font-mono text-gray-600 truncate mb-4 border border-gray-100">
+                                      {p.model}
+                                    </div>
+
+                                    {/* Pelacakan Token Per Hari */}
+                                    <div className="space-y-1.5 p-3 rounded-xl bg-gray-50/60 border border-gray-100 mb-3">
+                                      <div className="flex items-center justify-between text-xs">
+                                        <span className="text-[11px] font-semibold text-gray-600 flex items-center gap-1">
+                                          <Calendar className="w-3 h-3 text-gray-400" /> Limit Harian
+                                        </span>
+                                        <span className="text-[11px] font-bold text-gray-800">
+                                          {p.daily_percentage}%
+                                        </span>
+                                      </div>
+                                      <div className="flex items-baseline justify-between text-xs">
+                                        <span className="font-bold text-gray-900 text-sm">
+                                          {p.daily_used.toLocaleString()}
+                                        </span>
+                                        <span className="text-[11px] text-gray-400 font-medium">
+                                          / {p.daily_limit.toLocaleString()}
+                                        </span>
+                                      </div>
+                                      <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                                        <div
+                                          className={`h-1.5 rounded-full transition-all duration-500 ${progressColor}`}
+                                          style={{ width: `${p.daily_percentage}%` }}
+                                        />
+                                      </div>
+                                      <div className="flex items-center justify-between text-[10px] text-gray-400 pt-0.5">
+                                        <span>{p.daily_remaining.toLocaleString()} sisa token</span>
+                                        <span>{p.requests_today} request hari ini</span>
+                                      </div>
+                                    </div>
+
+                                    {/* Pelacakan Token Per Bulan */}
+                                    <div className="space-y-1.5 p-3 rounded-xl bg-gray-50/60 border border-gray-100">
+                                      <div className="flex items-center justify-between text-xs">
+                                        <span className="text-[11px] font-semibold text-gray-600 flex items-center gap-1">
+                                          <TrendingUp className="w-3 h-3 text-gray-400" /> Total Bulan Ini
+                                        </span>
+                                        <span className="text-[11px] font-bold text-gray-800">
+                                          {p.monthly_percentage}%
+                                        </span>
+                                      </div>
+                                      <div className="flex items-baseline justify-between text-xs">
+                                        <span className="font-bold text-gray-900">
+                                          {p.monthly_used.toLocaleString()}
+                                        </span>
+                                        <span className="text-[11px] text-gray-400 font-medium">
+                                          / {p.monthly_limit.toLocaleString()}
+                                        </span>
+                                      </div>
+                                      <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                                        <div
+                                          className="bg-blue-600 h-1.5 rounded-full transition-all duration-500"
+                                          style={{ width: `${p.monthly_percentage}%` }}
+                                        />
+                                      </div>
+                                      <div className="flex items-center justify-between text-[10px] text-gray-400 pt-0.5">
+                                        <span>{p.monthly_remaining.toLocaleString()} sisa kuota</span>
+                                        <span>{p.requests_month} request bulan ini</span>
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
-                                <p className="text-[11px] text-gray-500 mt-1 font-mono truncate">
-                                  {p.model}
-                                </p>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
 
+                        {/* 3. Riwayat Pemanggilan AI Terakhir dengan Filter Provider */}
                         <div className="border-t border-gray-100 pt-5">
-                          <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-1.5">
-                            <History className="w-4 h-4 text-blue-600" /> Riwayat Pemanggilan AI Terakhir
-                          </h3>
-                          {tokenData?.history && tokenData.history.length > 0 ? (
-                            <div className="overflow-x-auto -mx-1">
-                              <table className="w-full text-left text-xs">
-                                <thead>
-                                  <tr className="border-b border-gray-200 text-gray-500">
-                                    <th className="pb-2.5 font-medium px-1">Fitur</th>
-                                    <th className="pb-2.5 font-medium px-1">Provider</th>
-                                    <th className="pb-2.5 font-medium px-1">Model</th>
-                                    <th className="pb-2.5 font-medium text-right px-1">Prompt</th>
-                                    <th className="pb-2.5 font-medium text-right px-1">Completion</th>
-                                    <th className="pb-2.5 font-medium text-right px-1">Total</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100 text-gray-700">
-                                  {tokenData.history.map((h) => (
-                                    <tr key={h.id} className="hover:bg-gray-50/70">
-                                      <td className="py-2.5 px-1 font-medium text-gray-900">{h.feature}</td>
-                                      <td className="py-2.5 px-1 uppercase font-semibold text-[10px] text-gray-500">
-                                        {h.provider}
-                                      </td>
-                                      <td className="py-2.5 px-1 font-mono text-[10px] text-gray-500">
-                                        {h.model_name}
-                                      </td>
-                                      <td className="py-2.5 px-1 text-right font-mono">
-                                        {h.prompt_tokens.toLocaleString()}
-                                      </td>
-                                      <td className="py-2.5 px-1 text-right font-mono">
-                                        {h.completion_tokens.toLocaleString()}
-                                      </td>
-                                      <td className="py-2.5 px-1 text-right font-mono font-bold text-blue-600">
-                                        {h.total_tokens.toLocaleString()}
-                                      </td>
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3.5">
+                            <div>
+                              <h3 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                                <History className="w-4 h-4 text-blue-600" /> Riwayat Pemanggilan AI Terakhir
+                              </h3>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                Log audit pemakaian prompt dan completion token
+                              </p>
+                            </div>
+
+                            {/* Filter Provider Pills */}
+                            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl text-[11px]">
+                              {[
+                                { key: 'all', label: 'Semua' },
+                                { key: 'gemini', label: 'Gemini' },
+                                { key: 'openrouter', label: 'OpenRouter' },
+                                { key: 'groq', label: 'Groq' },
+                              ].map((f) => (
+                                <button
+                                  key={f.key}
+                                  type="button"
+                                  onClick={() => setProviderHistoryFilter(f.key)}
+                                  className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
+                                    providerHistoryFilter === f.key
+                                      ? 'bg-white text-gray-900 shadow-xs font-semibold'
+                                      : 'text-gray-500 hover:text-gray-800'
+                                  }`}
+                                >
+                                  {f.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {(() => {
+                            const filteredHistory = (tokenData?.history || []).filter((h) => {
+                              if (providerHistoryFilter === 'all') return true;
+                              return h.provider.toLowerCase() === providerHistoryFilter.toLowerCase();
+                            });
+
+                            return filteredHistory.length > 0 ? (
+                              <div className="overflow-x-auto -mx-1 border border-gray-100 rounded-xl">
+                                <table className="w-full text-left text-xs">
+                                  <thead className="bg-gray-50/80">
+                                    <tr className="border-b border-gray-200 text-gray-500">
+                                      <th className="py-2.5 font-medium px-3">Fitur</th>
+                                      <th className="py-2.5 font-medium px-2">Provider</th>
+                                      <th className="py-2.5 font-medium px-2">Model</th>
+                                      <th className="py-2.5 font-medium text-right px-2">Prompt</th>
+                                      <th className="py-2.5 font-medium text-right px-2">Completion</th>
+                                      <th className="py-2.5 font-medium text-right px-3">Total</th>
                                     </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          ) : (
-                            <div className="text-center py-6 text-gray-400 text-xs">
-                              Belum ada riwayat pemanggilan AI yang tercatat.
-                            </div>
-                          )}
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-100 text-gray-700 bg-white">
+                                    {filteredHistory.map((h) => (
+                                      <tr key={h.id} className="hover:bg-gray-50/70">
+                                        <td className="py-2.5 px-3 font-medium text-gray-900">{h.feature}</td>
+                                        <td className="py-2.5 px-2">
+                                          <span className="inline-flex items-center px-2 py-0.5 rounded-md font-semibold text-[10px] bg-gray-100 text-gray-700 uppercase">
+                                            {h.provider}
+                                          </span>
+                                        </td>
+                                        <td className="py-2.5 px-2 font-mono text-[10px] text-gray-500 truncate max-w-[120px]" title={h.model_name}>
+                                          {h.model_name}
+                                        </td>
+                                        <td className="py-2.5 px-2 text-right font-mono text-gray-600">
+                                          {h.prompt_tokens.toLocaleString()}
+                                        </td>
+                                        <td className="py-2.5 px-2 text-right font-mono text-gray-600">
+                                          {h.completion_tokens.toLocaleString()}
+                                        </td>
+                                        <td className="py-2.5 px-3 text-right font-mono font-bold text-blue-600">
+                                          {h.total_tokens.toLocaleString()}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : (
+                              <div className="text-center py-8 text-gray-400 text-xs bg-gray-50/50 rounded-xl border border-gray-100">
+                                Belum ada riwayat pemanggilan AI untuk filter ini.
+                              </div>
+                            );
+                          })()}
                         </div>
                       </>
                     )}
@@ -718,6 +857,7 @@ function SettingsPageContent() {
           </div>
         </div>
       </main>
+      )}
     </div>
   );
 }

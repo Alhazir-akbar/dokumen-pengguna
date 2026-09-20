@@ -1,43 +1,23 @@
 // app/build/page.tsx
 'use client';
-import ProjectMenuDropdown from '@/features/stories/components/ProjectMenuDropdown';
-import { ChevronDown } from 'lucide-react';
 
 import { useState, useEffect, useRef, Suspense, useCallback } from 'react';
+import useSWR from 'swr';
 import { useSearchParams, useRouter } from 'next/navigation';
 import AppSidebar from '@/features/common/components/AppSidebar';
-import AccountMenu from '@/features/common/components/accountMenu'
+import ProjectMenuDropdown from '@/features/stories/components/ProjectMenuDropdown';
+import AccountMenu from '@/features/common/components/accountMenu';
 import {
-  Code,
-  Layers,
-  BookOpen,
-  ClipboardList,
-  MessageSquare,
-  Save,
-  Plus,
-  Trash2,
-  Pencil,
-  CheckCircle2,
-  AlertCircle,
-  X,
-  ChevronRight,
-  Loader2,
-  RefreshCw,
-  Sparkles,
-  Download,
-  Monitor,
-  Cpu,
-  Database,
-  Settings2,
-  FolderTree,
-  ShieldCheck,
-  LayoutGrid,
-  ServerCog,
-  ArrowRight,
-  ArrowLeft,
-  Upload,
+  Code, Layers, ShieldCheck, Database, LayoutGrid, ServerCog,
+  FolderTree, ClipboardList, Plus, Edit3, Trash2, CheckCircle2,
+  AlertCircle, Sparkles, Loader2, Download, Upload, RefreshCw,
+  X, BookOpen, ExternalLink, ChevronDown, ChevronRight, User,
+  Pencil, Monitor, Cpu, Settings2, Save, ArrowLeft, ArrowRight
 } from 'lucide-react';
-import { buildApi, TechStack, CodingGuideline, DevelopmentPlan, EpicOption } from '@/services/buildApi';
+import {
+  buildApi, TechStack, CodingGuideline, DevelopmentPlan,
+  GuidelineCategory, DevPlanStatus, EpicOption
+} from '@/services/buildApi';
 import { projectApi } from '@/services/projectsApi';
 import { getAuthToken } from '@/lib/auth';
 import { getStoredProjectId, setStoredProjectId } from '@/lib/project-context';
@@ -47,12 +27,15 @@ type ActiveTab = 'tech-stack' | 'guidelines' | 'dev-plans';
 function BuildPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const projectIdParam = searchParams.get('project_id');
+  const projectIdParam = searchParams.get('project_id') || getStoredProjectId();
+  const [mounted, setMounted] = useState(false);
+  const token = typeof window !== 'undefined' ? getAuthToken() : null;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('tech-stack');
-  const [project, setProject] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error' | ''; text: string }>({ type: '', text: '' });
   // BUGFIX: menyimpan reference timeout supaya toast yang baru tidak
@@ -90,44 +73,25 @@ function BuildPageContent() {
     downloadAnchor.remove();
   };
 
-  useEffect(() => {
-    if (!projectIdParam) {
-      const stored = getStoredProjectId();
-      if (stored) {
-        router.replace(`/build?project_id=${stored}`);
-        return;
-      }
+  // 🚀 SWR Cache: Data Build Page Project langsung tampil seketika (0 detik)
+  const { data: project, error: swrError, isLoading } = useSWR(
+    mounted && projectIdParam && token ? [`build-project-data`, projectIdParam, token, reloadToken] : null,
+    async ([, projId, tok]) => {
+      return await projectApi.getProjectById(Number(projId), tok);
+    },
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 10000,
     }
+  );
 
-    const loadProject = async () => {
-      if (!projectIdParam) {
-        setLoadError('project_id tidak ditemukan di URL.');
-        setIsLoading(false);
-        return;
-      }
-      const token = getAuthToken();
-      if (!token) {
-        setLoadError('Sesi habis, silakan login kembali.');
-        setIsLoading(false);
-        return;
-      }
+  useEffect(() => {
+    if (projectIdParam) {
+      setStoredProjectId(projectIdParam);
+    }
+  }, [projectIdParam]);
 
-      setIsLoading(true);
-      setLoadError('');
-      try {
-        const proj = await projectApi.getProjectById(Number(projectIdParam), token);
-        setProject(proj);
-        setStoredProjectId(projectIdParam);
-      } catch (err: any) {
-        console.error('Gagal memuat data project:', err);
-        setLoadError(err.message || 'Gagal memuat data project.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadProject();
-  }, [projectIdParam, reloadToken, router]);
+  const loadError = swrError ? (swrError.message || 'Gagal memuat data project.') : '';
 
   // BUGFIX: bersihkan timeout toast saat komponen unmount agar tidak
   // memanggil setState pada komponen yang sudah dilepas.
