@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import LogoUserdoc from '../../../public/logoUserDoc';
 import { useWizardStore } from '../store/wizard-store';
-import { ArrowRight, ArrowLeft, Sparkles, AlertCircle, Loader2, Plus, X, Pencil } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Sparkles, AlertCircle, Loader2, Plus, Trash2, Pencil } from 'lucide-react';
 import { projectApi } from '@/services/projectsApi';
 import { getAuthToken } from '@/lib/auth';
 
@@ -264,7 +264,7 @@ export default function UserTypeGoals() {
                     title="Remove user type"
                     className="text-blue-200 hover:text-red-300 p-1.5 rounded-xl hover:bg-red-500/10 transition-colors cursor-pointer"
                   >
-                    <X className="w-4 h-4" />
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>

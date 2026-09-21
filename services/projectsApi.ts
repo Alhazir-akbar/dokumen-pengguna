@@ -58,6 +58,30 @@ export interface ProjectResponse {
   creator_id: number;
 }
 
+export interface SuggestEpicDraftPayload {
+  project_name: string;
+  project_description?: string;
+  application_type?: string;
+  domain_business?: string;
+  existing_epics?: string[];
+}
+
+export interface SuggestEpicDraftResponse {
+  title: string;
+  description: string;
+}
+
+export interface SuggestEpicRefinePayload {
+  project_name?: string;
+  title: string;
+  description?: string;
+}
+
+export interface SuggestEpicRefineResponse {
+  title: string;
+  description: string;
+}
+
 export interface SuggestDescriptionPayload {
   project_name: string;
   platform_type: string;
@@ -67,6 +91,30 @@ export interface GenerateRequirementsResponse {
   epics?: any[];
   user_stories?: any[];
   nfrs?: any[];
+}
+
+export interface SuggestNFRDraftPayload {
+  project_name: string;
+  project_description?: string;
+  application_type?: string;
+  domain_business?: string;
+  existing_categories?: string[];
+}
+
+export interface SuggestNFRDraftResponse {
+  category: string;
+  description: string;
+}
+
+export interface SuggestNFRRefinePayload {
+  project_name?: string;
+  category: string;
+  description?: string;
+}
+
+export interface SuggestNFRRefineResponse {
+  category: string;
+  description: string;
 }
 
 export interface SuggestDescriptionResponse {
@@ -114,6 +162,19 @@ export interface SuggestUserTypeDescriptionPayload {
 }
 
 export interface SuggestUserTypeDescriptionResponse {
+  description: string;
+}
+
+export interface SuggestUserTypeDraftPayload {
+  project_name: string;
+  project_description?: string;
+  application_type?: string;
+  domain_business?: string;
+  existing_user_types?: string[];
+}
+
+export interface SuggestUserTypeDraftResponse {
+  name: string;
   description: string;
 }
 
@@ -233,6 +294,66 @@ export const projectApi = {
       body: JSON.stringify(data),
     });
     return parseOrThrow(response, 'AI gagal memberikan saran deskripsi tipe pengguna');
+  },
+
+    suggestUserTypeDraft: async (
+    data: SuggestUserTypeDraftPayload,
+    token: string
+  ): Promise<SuggestUserTypeDraftResponse> => {
+    const response = await fetch(`${API_BASE_URL}/api/projects/suggest-user-type-draft`, {
+      method: 'POST',
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(data),
+    });
+    return parseOrThrow(response, 'AI gagal membuat draf tipe pengguna');
+  },
+  
+    suggestEpicDraft: async (
+    data: SuggestEpicDraftPayload,
+    token: string
+  ): Promise<SuggestEpicDraftResponse> => {
+    const response = await fetch(`${API_BASE_URL}/api/projects/suggest-epic-draft`, {
+      method: 'POST',
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(data),
+    });
+    return parseOrThrow(response, 'AI gagal membuat draf epic');
+  },
+
+  suggestEpicRefine: async (
+    data: SuggestEpicRefinePayload,
+    token: string
+  ): Promise<SuggestEpicRefineResponse> => {
+    const response = await fetch(`${API_BASE_URL}/api/projects/suggest-epic-refine`, {
+      method: 'POST',
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(data),
+    });
+    return parseOrThrow(response, 'AI gagal menyempurnakan epic');
+  },
+
+    suggestNFRDraft: async (
+    data: SuggestNFRDraftPayload,
+    token: string
+  ): Promise<SuggestNFRDraftResponse> => {
+    const response = await fetch(`${API_BASE_URL}/api/projects/suggest-nfr-draft`, {
+      method: 'POST',
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(data),
+    });
+    return parseOrThrow(response, 'AI gagal membuat draf NFR');
+  },
+
+  suggestNFRRefine: async (
+    data: SuggestNFRRefinePayload,
+    token: string
+  ): Promise<SuggestNFRRefineResponse> => {
+    const response = await fetch(`${API_BASE_URL}/api/projects/suggest-nfr-refine`, {
+      method: 'POST',
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(data),
+    });
+    return parseOrThrow(response, 'AI gagal menyempurnakan NFR');
   },
 
   suggestUserJourney: async (

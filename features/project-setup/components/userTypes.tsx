@@ -22,10 +22,11 @@ export default function UserTypes() {
   const {
     projectName,
     projectDescription,
+    platformType,
     userTypes,
     addUserType,
     removeUserType,
-    updateUserType, // update name + description sekaligus (ada di wizard-store.ts versi baru)
+    updateUserType,
     nextStep,
     prevStep,
   } = useWizardStore() as any;
@@ -42,6 +43,9 @@ export default function UserTypes() {
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [aiError, setAiError] = useState<{ id: string; message: string } | null>(null);
 
+  const [isDrafting, setIsDrafting] = useState(false);
+  const [draftError, setDraftError] = useState('');
+
   const titleName = projectName?.trim() ? projectName : 'your project';
 
   const handleAddUserType = (e: React.FormEvent) => {
@@ -51,7 +55,7 @@ export default function UserTypes() {
     addUserType({
       id: `ut-${Date.now()}`,
       name: newTypeName.trim(),
-      description: newTypeDesc.trim(), // kosong dibiarkan kosong, placeholder ditampilkan di UI
+      description: newTypeDesc.trim(),
     });
 
     setNewTypeName('');
@@ -60,8 +64,36 @@ export default function UserTypes() {
     if (error) setError(false);
   };
 
-  // Satu fungsi pemanggil AI, dipakai di mode view maupun mode edit.
-  // Mengembalikan teks hasil AI, atau null kalau gagal.
+  // ---- AI DRAFT: dipanggil saat user klik "AI Draft" di form Add ----
+  const handleAiDraft = async () => {
+    const token = getAuthToken();
+    if (!token) {
+      setDraftError('Sesi habis, silakan login kembali.');
+      return;
+    }
+
+    setDraftError('');
+    setIsDrafting(true);
+    try {
+      const result = await projectApi.suggestUserTypeDraft(
+        {
+          project_name: titleName,
+          project_description: projectDescription || '',
+          application_type: platformType || '',
+          existing_user_types: (userTypes || []).map((u: UserTypeItem) => u.name),
+        },
+        token
+      );
+      setNewTypeName(result.name);
+      setNewTypeDesc(result.description);
+    } catch (err: any) {
+      setDraftError(err?.message || 'AI gagal membuat draf tipe pengguna.');
+    } finally {
+      setIsDrafting(false);
+    }
+  };
+
+  // Dipakai HANYA di mode edit — AI Suggest untuk menyempurnakan deskripsi.
   const requestAiDescription = async (id: string, typeName: string): Promise<string | null> => {
     setAiError(null);
     const token = getAuthToken();
@@ -92,13 +124,6 @@ export default function UserTypes() {
     }
   };
 
-  // Mode view: hasil AI langsung disimpan ke store
-  const handleAiGenerateDesc = async (user: UserTypeItem) => {
-    const text = await requestAiDescription(user.id, user.name);
-    if (text) updateUserType(user.id, { description: text });
-  };
-
-  // Mode edit: hasil AI hanya mengisi textarea, baru tersimpan setelah klik Save
   const handleAiGenerateInEdit = async (id: string) => {
     const text = await requestAiDescription(id, editName.trim() || 'Pengguna');
     if (text) setEditDesc(text);
@@ -115,6 +140,11 @@ export default function UserTypes() {
     if (!editingId || !editName.trim()) return;
     updateUserType(editingId, { name: editName.trim(), description: editDesc.trim() });
     setEditingId(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setAiError(null);
   };
 
   const handleNext = () => {
@@ -169,6 +199,9 @@ export default function UserTypes() {
                     disabled={generatingId === user.id}
                     className="w-full bg-white/10 border border-blue-300/40 rounded-xl px-3 py-1.5 text-blue-100 text-xs resize-none focus:outline-none disabled:opacity-60"
                   />
+
+                  {aiError?.id === user.id && <ErrorBox message={aiError.message} />}
+
                   <div className="flex items-center gap-2 justify-between">
                     <button
                       type="button"
@@ -181,12 +214,12 @@ export default function UserTypes() {
                       ) : (
                         <Sparkles className="w-3.5 h-3.5" />
                       )}
-                      Generate with AI
+                      AI Suggest
                     </button>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => setEditingId(null)}
+                        onClick={cancelEdit}
                         className="text-blue-200 hover:text-white text-xs px-2 py-1 cursor-pointer"
                       >
                         Cancel
@@ -210,25 +243,12 @@ export default function UserTypes() {
                       <p className="text-blue-200/90 text-xs sm:text-sm leading-relaxed">{user.description}</p>
                     ) : (
                       <p className="text-blue-300/50 text-xs sm:text-sm italic">
-                        Belum ada deskripsi. Klik ikon ✨ untuk generate dengan AI.
+                        Belum ada deskripsi. Klik ikon edit lalu &quot;AI Suggest&quot; untuk generate dengan AI.
                       </p>
                     )}
                   </div>
 
                   <div className="flex items-center gap-1.5 shrink-0 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => handleAiGenerateDesc(user)}
-                      disabled={generatingId === user.id}
-                      title="Generate description with AI"
-                      className="p-2 text-yellow-300 hover:text-white transition-colors rounded-xl hover:bg-white/10 border border-white/10 cursor-pointer shadow-sm bg-white/5 disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      {generatingId === user.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Sparkles className="w-4 h-4" />
-                      )}
-                    </button>
                     <button
                       type="button"
                       onClick={() => startEditing(user)}
@@ -248,13 +268,6 @@ export default function UserTypes() {
                   </div>
                 </div>
               )}
-
-              {/* Error AI ditampilkan tepat di item yang bermasalah */}
-              {aiError?.id === user.id && (
-                <div className="mt-3">
-                  <ErrorBox message={aiError.message} />
-                </div>
-              )}
             </div>
           ))
         )}
@@ -265,7 +278,25 @@ export default function UserTypes() {
           onSubmit={handleAddUserType}
           className="bg-white/10 border border-blue-300/40 rounded-2xl p-4 w-full mb-4 backdrop-blur-md shadow-xl text-left flex flex-col gap-3"
         >
-          <span className="text-xs font-semibold text-blue-200 uppercase tracking-wider">Add New User Type</span>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-blue-200 uppercase tracking-wider">Add New User Type</span>
+            <button
+              type="button"
+              onClick={handleAiDraft}
+              disabled={isDrafting}
+              className="flex items-center gap-1.5 text-yellow-300 hover:text-white text-xs px-2.5 py-1 rounded-lg border border-white/10 bg-white/5 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isDrafting ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="w-3.5 h-3.5" />
+              )}
+              AI Draft
+            </button>
+          </div>
+
+          {draftError && <ErrorBox message={draftError} />}
+
           <input
             type="text"
             value={newTypeName}
@@ -288,6 +319,7 @@ export default function UserTypes() {
                 setIsAdding(false);
                 setNewTypeName('');
                 setNewTypeDesc('');
+                setDraftError('');
               }}
               className="text-blue-200 hover:text-white text-xs px-3 py-1.5 cursor-pointer"
             >
@@ -310,7 +342,6 @@ export default function UserTypes() {
         </div>
       )}
 
-      {/* Navigasi Bawah */}
       <div className="w-full flex items-center justify-between pt-4 border-t border-white/10">
         <button
           type="button"
