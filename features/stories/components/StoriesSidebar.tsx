@@ -4,8 +4,8 @@
 import { useState, useMemo } from 'react';
 import { Epic, UserStory } from '../types';
 import EpicListItem from './EpicListItem';
-import ProjectMenuDropdown from './ProjectMenuDropdown';
-import { Search, Edit3, ChevronDown } from 'lucide-react';
+import CreateNewDropdown from './createNewDropdown';
+import { Search, Edit3, ChevronDown, FileText, Layers, Boxes } from 'lucide-react';
 
 interface StoriesSidebarProps {
   epics: Epic[];
@@ -13,7 +13,9 @@ interface StoriesSidebarProps {
   currentProjectId?: string | null;
   onSelectStory: (story: UserStory) => void;
   onSelectEpic?: (epic: Epic) => void;
-  onAddNew?: () => void;
+  onAddNew?: () => void; // -> New User story
+  onAddNewEpic?: () => void; // -> New Epic
+  onAddNewNfr?: () => void; // -> New Non-functional requirement
   projectName?: string;
   projectId?: string | null;
   workspaceId?: number | null;
@@ -22,15 +24,13 @@ interface StoriesSidebarProps {
 export default function StoriesSidebar({
   epics,
   selectedStoryId,
-  currentProjectId,
-  projectId,
-  workspaceId,
   onSelectStory,
   onSelectEpic,
   onAddNew,
+  onAddNewEpic,
+  onAddNewNfr,
 }: StoriesSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const activeProjId = currentProjectId || projectId;
 
   const filteredEpics = useMemo(() => {
     if (!searchQuery.trim()) return epics;
@@ -79,21 +79,39 @@ export default function StoriesSidebar({
             />
           </div>
 
-          <ProjectMenuDropdown
-            workspaceId={workspaceId}
-            activeProjectId={activeProjId}
-            extraTopAction={{
-              label: 'Create New User Story',
-              icon: <Edit3 className="w-4 h-4 text-blue-600" />,
-              onClick: () => onAddNew?.(),
-            }}
+          {/* Dropdown "Create New" -- 3 pilihan: New User story,
+              New Non-functional requirement, New Epic (sesuai desain). */}
+          <CreateNewDropdown
+            items={[
+              {
+                label: 'New User story',
+                icon: <FileText className="w-4 h-4 text-blue-600" />,
+                onClick: () => onAddNew?.(),
+              },
+              {
+                label: 'New Non-functional requirement',
+                icon: <Layers className="w-4 h-4 text-blue-600" />,
+                onClick: () =>
+                  onAddNewNfr
+                    ? onAddNewNfr()
+                    : alert('Fitur Create New Non-functional Requirement segera hadir!'),
+              },
+              {
+                label: 'New Epic',
+                icon: <Boxes className="w-4 h-4 text-blue-600" />,
+                onClick: () =>
+                  onAddNewEpic
+                    ? onAddNewEpic()
+                    : alert('Fitur Create New Epic segera hadir!'),
+              },
+            ]}
             renderTrigger={({ onClick, triggerRef }) => (
               <button
                 ref={triggerRef}
                 type="button"
                 onClick={onClick}
                 className="flex items-center bg-blue-600 hover:bg-blue-700 rounded-lg text-white overflow-hidden shadow-sm shrink-0 transition-colors cursor-pointer"
-                title="Project Menu & Options"
+                title="Create New"
               >
                 <span className="p-2 flex items-center justify-center border-r border-blue-500/40">
                   <Edit3 className="w-4 h-4" />

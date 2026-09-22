@@ -1,13 +1,14 @@
 // app/stories/page.tsx
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import useSWR from 'swr';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { UserStory, Epic } from '@/features/stories/types';
 import StoriesSidebar from '@/features/stories/components/StoriesSidebar';
 import EmptyDetailPanel from '@/features/stories/components/EmptyDetailPanel';
 import ManualStoryDetailPanel from '@/features/stories/components/ManualStoryDetailPanel';
+import EpicDetailPanel from '@/features/stories/components/EpicDetailPanel';
 import ProjectMenuDropdown from '@/features/stories/components/ProjectMenuDropdown';
 import AppSidebar from '@/features/common/components/AppSidebar';
 import AccountMenu from '@/features/common/components/accountMenu';
@@ -27,7 +28,6 @@ function StoriesPageContent() {
     setMounted(true);
   }, []);
 
-  // Gunakan SWR untuk fetch data epics dan stories sekaligus, dengan caching dan revalidasi otomatis
   const { data: cacheData, error: swrError, isLoading, mutate } = useSWR(
     mounted && projectId && token ? [`stories-data`, projectId, token] : null,
     async ([, projId, tok]) => {
@@ -39,8 +39,8 @@ function StoriesPageContent() {
       return { epics: epicsData || [], stories: storiesData || [], project: projectData };
     },
     {
-      revalidateOnFocus: false, // Jangan fetch ulang setiap kali klik jendela browser
-      dedupingInterval: 10000,  // Cache berlaku selama 10 detik sebelum revalidasi
+      revalidateOnFocus: false,
+      dedupingInterval: 10000,
     }
   );
 
@@ -50,25 +50,29 @@ function StoriesPageContent() {
   const projectWorkspaceId = cacheData?.project?.workspace_id || null;
   const loadError = swrError ? (swrError.message || 'Gagal memuat data dari server.') : '';
 
-  const formattedEpics: Epic[] = rawEpics.map((epic: any, index: number) => ({
-    id: epic.id,
-    code: `EP-${index + 1}`,
-    name: epic.name,
-    description: epic.description,
-    user_stories: rawStories
-      .filter((story: any) => story.epic_id === epic.id)
-      .map((story: any, sIndex: number) => ({
-        id: story.id,
-        epicId: story.epic_id,
-        code: story.code || `US-${index + 1}.${sIndex + 1}`,
-        as_a: story.as_a || 'User',
-        i_want: story.i_want || 'Melakukan sesuatu',
-        so_that: story.so_that || 'Sistem berjalan dengan baik',
-        acceptanceCriteria: (story.acceptance_criteria || []).map((ac: any) => ac.description),
-        techNotes: (story.tech_notes || []).map((tn: any) => tn.content),
-        testCases: (story.test_cases || []).map((tc: any) => tc.description),
+  const formattedEpics: Epic[] = useMemo(
+    () =>
+      rawEpics.map((epic: any, index: number) => ({
+        id: epic.id,
+        code: `EP-${index + 1}`,
+        name: epic.name,
+        description: epic.description,
+        user_stories: rawStories
+          .filter((story: any) => story.epic_id === epic.id)
+          .map((story: any, sIndex: number) => ({
+            id: story.id,
+            epicId: story.epic_id,
+            code: story.code || `US-${index + 1}.${sIndex + 1}`,
+            as_a: story.as_a || 'User',
+            i_want: story.i_want || 'Melakukan sesuatu',
+            so_that: story.so_that || 'Sistem berjalan dengan baik',
+            acceptanceCriteria: (story.acceptance_criteria || []).map((ac: any) => ac.description),
+            techNotes: (story.tech_notes || []).map((tn: any) => tn.content),
+            testCases: (story.test_cases || []).map((tc: any) => tc.description),
+          })),
       })),
-  }));
+    [rawEpics, rawStories]
+  );
 
   const [selectedStory, setSelectedStory] = useState<UserStory | null>(null);
   const [selectedEpic, setSelectedEpic] = useState<Epic | null>(null);
@@ -84,6 +88,13 @@ function StoriesPageContent() {
       setSelectedEpicId(formattedEpics[0].id);
     }
   }, [formattedEpics, selectedEpicId]);
+
+  useEffect(() => {
+    if (selectedEpic) {
+      const refreshed = formattedEpics.find((e) => e.id === selectedEpic.id);
+      if (refreshed) setSelectedEpic(refreshed);
+    }
+  }, [formattedEpics]);
 
   const handleSaveNewStory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -273,7 +284,6 @@ function StoriesPageContent() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-50 font-sans relative">
-      {/* AppSidebar Selalu Tetap Terpasang di Layar */}
       <AppSidebar activeMenu="stories" projectId={projectId} />
 
       {!mounted || isLoading ? (
@@ -310,7 +320,6 @@ function StoriesPageContent() {
           />
 
           <main className="flex-1 flex flex-col h-full bg-white overflow-hidden">
-            {/* Top Header dengan Dropdown Project */}
             <div className="h-14 border-b border-gray-200 px-6 flex items-center justify-between bg-white shrink-0">
               <div className="flex items-center gap-2">
                 <ProjectMenuDropdown
@@ -331,15 +340,6 @@ function StoriesPageContent() {
               </div>
 
               <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => alert('Fitur Chat to Userdoc Assistant siap digunakan!')}
-                  className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer border border-blue-200 shadow-xs"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-blue-600 fill-blue-500" />
-                  <span>Chat to Userdoc Assistant</span>
-                </button>
-
                 <div className="flex items-center gap-1.5 text-gray-500">
                   <button
                     onClick={handleUpload}
@@ -379,19 +379,14 @@ function StoriesPageContent() {
                     projectId={projectId}
                   />
                 ) : selectedEpic ? (
-                  <div className="flex-1 bg-white p-8 overflow-y-auto">
-                    <h1 className="text-2xl font-bold text-gray-900 mb-2">{selectedEpic.name}</h1>
-                    <p className="text-sm text-gray-600 mb-6">{selectedEpic.description || 'Tidak ada deskripsi epic.'}</p>
-                    <h3 className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-4 border-b pb-2">Daftar Stories dalam Epic Ini</h3>
-                    <ul className="space-y-2">
-                      {selectedEpic.user_stories?.map((st) => (
-                        <li key={st.id} onClick={() => setSelectedStory(st)} className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer flex justify-between items-center text-sm">
-                          <span className="font-medium text-gray-800">{st.i_want}</span>
-                          <span className="text-xs bg-gray-100 px-2 py-0.5 rounded font-mono">{st.code}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                  <EpicDetailPanel
+                    key={String(selectedEpic.id)}
+                    epic={selectedEpic}
+                    onSelectStory={(story: UserStory) => {
+                      setSelectedStory(story);
+                      setSelectedEpic(null);
+                    }}
+                  />
                 ) : (
                   <EmptyDetailPanel
                     onOpenAddModal={() => setIsModalOpen(true)}

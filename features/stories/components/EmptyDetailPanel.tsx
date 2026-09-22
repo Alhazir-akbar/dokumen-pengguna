@@ -1,18 +1,25 @@
 // features/stories/components/EmptyDetailPanel.tsx
 'use client';
 
-import { Pencil, ChevronDown, Sparkles } from 'lucide-react';
-import ProjectMenuDropdown from './ProjectMenuDropdown';
+import { Pencil, ChevronDown, Sparkles, FileText, Layers, Boxes } from 'lucide-react';
+import CreateNewDropdown from './createNewDropdown';
 
 interface EmptyDetailPanelProps {
-  onOpenAddModal?: () => void;
-  // Dibutuhkan supaya dropdown bisa fetch daftar project & tau project mana
-  // yang lagi aktif -- kirim dari app/stories/page.tsx.
+  onOpenAddModal?: () => void; // -> New User story
+  onOpenAddEpicModal?: () => void; // -> New Epic
+  onOpenAddNfrModal?: () => void; // -> New Non-functional requirement
+  // Props ini sekarang tidak dipakai lagi di sini (dropdown "Create New"
+  // tidak lagi jadi Project Menu), tapi tetap diterima biar kompatibel
+  // dengan pemanggil lama (app/stories/page.tsx).
   workspaceId?: number | null;
   projectId?: string | null;
 }
 
-export default function EmptyDetailPanel({ onOpenAddModal, workspaceId, projectId }: EmptyDetailPanelProps) {
+export default function EmptyDetailPanel({
+  onOpenAddModal,
+  onOpenAddEpicModal,
+  onOpenAddNfrModal,
+}: EmptyDetailPanelProps) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-8 bg-white">
       {/* Ilustrasi Placeholder */}
@@ -30,18 +37,32 @@ export default function EmptyDetailPanel({ onOpenAddModal, workspaceId, projectI
         Capture requirements in a language everyone can understand
       </p>
 
-      {/* Satu tombol, satu onClick -- cuma buka dropdown Project Menu (sama
-          kayak StoriesSidebar). Aksi "Create New User Story" sekarang jadi
-          item paling atas DI DALAM dropdown itu sendiri (extraTopAction),
-          bukan aksi terpisah di tombolnya. */}
-      <ProjectMenuDropdown
-        workspaceId={workspaceId}
-        activeProjectId={projectId}
-        extraTopAction={{
-          label: 'Create New User Story',
-          icon: <Pencil className="w-4 h-4 text-blue-600" />,
-          onClick: () => onOpenAddModal?.(),
-        }}
+      {/* Dropdown "Create New" -- 3 pilihan: New User story,
+          New Non-functional requirement, New Epic (sesuai desain). */}
+      <CreateNewDropdown
+        items={[
+          {
+            label: 'New User story',
+            icon: <FileText className="w-4 h-4 text-blue-600" />,
+            onClick: () => onOpenAddModal?.(),
+          },
+          {
+            label: 'New Non-functional requirement',
+            icon: <Layers className="w-4 h-4 text-blue-600" />,
+            onClick: () =>
+              onOpenAddNfrModal
+                ? onOpenAddNfrModal()
+                : alert('Fitur Create New Non-functional Requirement segera hadir!'),
+          },
+          {
+            label: 'New Epic',
+            icon: <Boxes className="w-4 h-4 text-blue-600" />,
+            onClick: () =>
+              onOpenAddEpicModal
+                ? onOpenAddEpicModal()
+                : alert('Fitur Create New Epic segera hadir!'),
+          },
+        ]}
         renderTrigger={({ onClick, triggerRef }) => (
           <button
             ref={triggerRef}

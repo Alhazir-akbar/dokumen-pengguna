@@ -8,6 +8,8 @@ import {
   Code,
   History,
   BookOpen,
+  FileText,
+  Map,
   Trash2,
   Edit3,
   Sparkles,
@@ -24,6 +26,37 @@ interface ManualStoryDetailPanelProps {
   projectId?: string | null;
 }
 
+function SidebarCard({
+  icon: Icon,
+  iconBg,
+  iconColor,
+  title,
+  action,
+  children,
+}: {
+  icon: any;
+  iconBg: string;
+  iconColor: string;
+  title: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="border border-gray-200 rounded-xl p-4 space-y-3 shadow-xs">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
+            <Icon className={`w-3.5 h-3.5 ${iconColor}`} />
+          </div>
+          <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">{title}</span>
+        </div>
+        {action}
+      </div>
+      <div className="border-t border-gray-100 pt-3">{children}</div>
+    </div>
+  );
+}
+
 export default function ManualStoryDetailPanel({
   story,
   onDelete,
@@ -34,7 +67,7 @@ export default function ManualStoryDetailPanel({
   const [activeTab, setActiveTab] = useState<'criteria' | 'notes' | 'tests'>('criteria');
   const [isEditing, setIsEditing] = useState(false);
   const [status, setStatus] = useState<'draft' | 'review' | 'approved'>('draft');
-    const [isRegenerating, setIsRegenerating] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
   const handleAiRegenerate = async () => {
     const token = getAuthToken();
@@ -54,7 +87,6 @@ export default function ManualStoryDetailPanel({
         token
       );
 
-      // Update state form & tabs secara instan
       setAsA(result.as_a);
       setIWant(result.i_want);
       setSoThat(result.so_that);
@@ -85,19 +117,15 @@ export default function ManualStoryDetailPanel({
   const [iWant, setIWant] = useState(story.i_want);
   const [soThat, setSoThat] = useState(story.so_that);
 
-  // State & Handler untuk Acceptance Criteria
   const [criteriaList, setCriteriaList] = useState<string[]>(story.acceptanceCriteria || []);
   const [newCriterion, setNewCriterion] = useState('');
 
-  // State & Handler untuk Tech Notes
   const [techNotesList, setTechNotesList] = useState<string[]>(story.techNotes || []);
   const [newTechNote, setNewTechNote] = useState('');
 
-  // State & Handler untuk Test Cases
   const [testCasesList, setTestCasesList] = useState<string[]>(story.testCases || []);
   const [newTestCase, setNewTestCase] = useState('');
 
-  // Sync state when selected story changes
   useEffect(() => {
     setAsA(story.as_a);
     setIWant(story.i_want);
@@ -179,7 +207,6 @@ export default function ManualStoryDetailPanel({
     }
   };
 
-  // Buka Knowledge Base langsung ke artikel "Memahami Epics dan User Stories"
   const handleOpenStoryHelp = () => {
     const params = new URLSearchParams();
     if (projectId) params.set('project_id', projectId);
@@ -189,13 +216,10 @@ export default function ManualStoryDetailPanel({
 
   return (
     <div className="flex-1 bg-gray-50/50 flex overflow-y-auto">
-      {/* Bagian Utama Kiri */}
       <div className="flex-1 bg-white p-8 overflow-y-auto border-r border-gray-200">
-        {/* Header Title & Action Code */}
         <div className="flex items-start justify-between border-b border-gray-100 pb-6 mb-6">
           <div>
             <div className="flex items-center gap-2 mb-1.5">
-              {/* Dropdown Status Sesuai PRD */}
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as any)}
@@ -216,8 +240,6 @@ export default function ManualStoryDetailPanel({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Tombol AI Regenerate */}
-                       {/* Tombol AI Regenerate */}
             <button
               onClick={handleAiRegenerate}
               disabled={isRegenerating}
@@ -232,12 +254,10 @@ export default function ManualStoryDetailPanel({
               ) : (
                 <>
                   <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-                  <span>AI Regenerate</span>
                 </>
               )}
             </button>
-            
-            {/* Tombol Edit Story */}
+
             <button
               onClick={() => setIsEditing(!isEditing)}
               className="p-1.5 text-gray-400 hover:text-blue-600 rounded-md transition-colors cursor-pointer border border-transparent hover:border-gray-200"
@@ -246,7 +266,6 @@ export default function ManualStoryDetailPanel({
               <Edit3 className="w-4 h-4" />
             </button>
 
-            {/* Tombol Hapus */}
             <button
               onClick={onDelete}
               className="p-1.5 text-gray-400 hover:text-red-600 rounded-md transition-colors cursor-pointer border border-transparent hover:border-red-100"
@@ -257,7 +276,6 @@ export default function ManualStoryDetailPanel({
           </div>
         </div>
 
-        {/* Form Edit atau Tampilan Detail Manual */}
         {isEditing ? (
           <div className="space-y-4 mb-8 bg-blue-50/30 p-4 rounded-xl border border-blue-100">
             <h3 className="text-xs font-bold text-blue-600 uppercase">Edit Manual Story</h3>
@@ -311,7 +329,6 @@ export default function ManualStoryDetailPanel({
           </div>
         )}
 
-        {/* Tab Navigasi Bawah */}
         <div className="border-b border-gray-200 mb-6 flex gap-6 text-xs font-semibold">
           <button
             onClick={() => setActiveTab('criteria')}
@@ -348,7 +365,6 @@ export default function ManualStoryDetailPanel({
           </button>
         </div>
 
-        {/* Tab Acceptance Criteria */}
         {activeTab === 'criteria' && (
           <div className="space-y-4">
             <div className="flex gap-2">
@@ -365,7 +381,6 @@ export default function ManualStoryDetailPanel({
                 className="flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors cursor-pointer shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Tambah</span>
               </button>
             </div>
 
@@ -403,7 +418,6 @@ export default function ManualStoryDetailPanel({
           </div>
         )}
 
-        {/* Tab Tech Notes */}
         {activeTab === 'notes' && (
           <div className="space-y-4">
             <div className="flex gap-2">
@@ -420,7 +434,6 @@ export default function ManualStoryDetailPanel({
                 className="flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors cursor-pointer shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Tambah</span>
               </button>
             </div>
 
@@ -453,7 +466,6 @@ export default function ManualStoryDetailPanel({
           </div>
         )}
 
-        {/* Tab Test Cases */}
         {activeTab === 'tests' && (
           <div className="space-y-4">
             <div className="flex gap-2">
@@ -470,7 +482,6 @@ export default function ManualStoryDetailPanel({
                 className="flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors cursor-pointer shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Tambah</span>
               </button>
             </div>
 
@@ -506,31 +517,77 @@ export default function ManualStoryDetailPanel({
         )}
       </div>
 
-      {/* Sidebar Kanan */}
-      <div className="w-80 bg-white p-6 space-y-5 overflow-y-auto border-l border-gray-200">
-        <div className="border border-gray-200 rounded-xl p-4 space-y-3 shadow-xs">
-          <div className="flex items-center justify-between text-xs font-bold text-gray-500 uppercase tracking-wider">
-            <span className="flex items-center gap-1.5"><History className="w-3.5 h-3.5" /> Version History</span>
-          </div>
+      <div className="w-80 bg-white p-6 space-y-4 overflow-y-auto border-l border-gray-200">
+        <SidebarCard
+          icon={History}
+          iconBg="bg-rose-100"
+          iconColor="text-rose-600"
+          title="Version History"
+          action={
+            <button
+              type="button"
+              disabled
+              title="Fitur riwayat versi lengkap belum tersedia"
+              className="text-[10px] text-gray-300 cursor-not-allowed"
+            >
+              View Versions
+            </button>
+          }
+        >
           <div className="text-xs space-y-1">
             <div className="text-green-600 font-medium flex items-center gap-1.5">
               <span>✓</span> v0.1 - Manual entry
             </div>
           </div>
-        </div>
+        </SidebarCard>
 
-        <div className="border border-gray-200 rounded-xl p-4 space-y-2 shadow-xs">
-          <div className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-            <BookOpen className="w-3.5 h-3.5" /> Resources
-          </div>
+        <SidebarCard
+          icon={BookOpen}
+          iconBg="bg-emerald-100"
+          iconColor="text-emerald-600"
+          title="Stories Linked To"
+        >
+          <p className="text-[11px] text-gray-400 italic">
+            Belum ada story lain yang di-link dari sini.
+          </p>
+        </SidebarCard>
+
+        <SidebarCard
+          icon={FileText}
+          iconBg="bg-blue-100"
+          iconColor="text-blue-600"
+          title="Stories Linked From"
+        >
+          <p className="text-[11px] text-gray-400 italic">
+            Belum ada story lain yang nge-link ke sini.
+          </p>
+        </SidebarCard>
+
+        <SidebarCard
+          icon={Map}
+          iconBg="bg-indigo-100"
+          iconColor="text-indigo-600"
+          title="Journeys Linked From"
+        >
+          <p className="text-[11px] text-gray-400 italic">
+            Belum ada journey yang terhubung ke story ini.
+          </p>
+        </SidebarCard>
+
+        <SidebarCard
+          icon={Sparkles}
+          iconBg="bg-amber-100"
+          iconColor="text-amber-600"
+          title="Resources"
+        >
           <button
             type="button"
             onClick={handleOpenStoryHelp}
             className="text-xs text-blue-600 hover:underline cursor-pointer text-left"
           >
-            User story help
+            Learn about user stories
           </button>
-        </div>
+        </SidebarCard>
       </div>
     </div>
   );
