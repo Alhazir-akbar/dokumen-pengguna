@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWizardStore } from '@/features/project-setup/store/wizard-store';
-import { LogOut, FastForward, Loader2 } from 'lucide-react';
+import { LogOut, FastForward, Loader2, ArrowLeft } from 'lucide-react';
 
 import { projectApi } from '@/services/projectsApi';
 import { workspaceApi } from '@/services/workspaceApi';
@@ -58,6 +58,17 @@ export default function WizardPage() {
     localStorage.removeItem('userdoc-wizard-storage');
     resetStore();
     router.push('/login');
+  };
+
+  // 🔙 Batal dan Kembali ke Dashboard
+  const handleBackToDashboard = () => {
+    resetStore();
+    const activeProj = localStorage.getItem('active_project_id');
+    if (activeProj) {
+      router.push(`/stories?project_id=${activeProj}`);
+    } else {
+      router.push('/stories');
+    }
   };
 
   // ⏩ Fungsi Skip Langsung ke Stories Proyek Akun Sendiri
@@ -307,6 +318,16 @@ export default function WizardPage() {
       )}
 
       <div className="absolute top-6 right-6 flex items-center gap-3 z-40">
+        <button
+          type="button"
+          onClick={handleBackToDashboard}
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-blue-100 hover:text-white text-xs font-medium backdrop-blur-md border border-white/20 transition-all cursor-pointer shadow-sm"
+          title="Batal dan kembali ke dashboard"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Kembali ke Dashboard</span>
+        </button>
+
         <button
           type="button"
           onClick={handleSkip}

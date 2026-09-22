@@ -149,6 +149,19 @@ export const buildApi = {
     return handleJson(response, 'Gagal generate guideline');
   },
 
+  generateCustomGuideline: async (
+    projectId: number,
+    title: string,
+    token: string
+  ): Promise<CodingGuideline> => {
+    const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/guidelines/generate-custom`, {
+      method: 'POST',
+      headers: getAuthHeaders(token),
+      body: JSON.stringify({ title }),
+    });
+    return handleJson(response, 'Gagal generate custom guideline');
+  },
+
   generateAllGuidelines: async (
     projectId: number,
     token: string

@@ -1,16 +1,30 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import LogoUserdoc from '../../../public/logoUserDoc';
 import { useWizardStore } from '../store/wizard-store';
 import { FolderGit2, FileCode2, Eye, ArrowLeft } from 'lucide-react';
 
 export default function ProjectType() {
-  // Pastikan store Anda memiliki tipe 'generate' | 'translate' | 'example' | null
-  const { setProjectType, nextStep, prevStep, projectType } = useWizardStore();
+  const router = useRouter();
+  const { setProjectType, nextStep, prevStep, projectType, workspaceId } = useWizardStore() as any;
 
   const handleSelect = (type: 'generate' | 'translate' | 'example') => {
     setProjectType(type);
     nextStep();
+  };
+
+  const handleBack = () => {
+    const activeProj = typeof window !== 'undefined' ? localStorage.getItem('active_project_id') : null;
+    if (workspaceId || activeProj) {
+      if (activeProj) {
+        router.push(`/stories?project_id=${activeProj}`);
+      } else {
+        router.push('/stories');
+      }
+    } else {
+      prevStep();
+    }
   };
 
   return (
@@ -83,7 +97,7 @@ export default function ProjectType() {
       <div className="w-full flex items-center justify-start pt-4 border-t border-white/10">
         <button
           type="button"
-          onClick={prevStep}
+          onClick={handleBack}
           className="bg-transparent hover:bg-white/10 text-white border border-white/20 px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all flex items-center gap-2 cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" /> Back

@@ -586,6 +586,7 @@ function GuidelinesTab({ projectId, showMessage }: any) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [addForm, setAddForm] = useState({ title: '', content: '' });
   const [savingAdd, setSavingAdd] = useState(false);
+  const [generatingAdd, setGeneratingAdd] = useState(false);
 
   const fetchGuidelines = async () => {
     const token = getAuthToken();
@@ -661,19 +662,55 @@ function GuidelinesTab({ projectId, showMessage }: any) {
   };
 
   const handleModalGenerate = async () => {
-    if (!activeItem?.category) return;
     const token = getAuthToken();
-    if (!token) return;
+    if (!token) {
+      showMessage('error', 'Sesi habis, silakan login kembali.');
+      return;
+    }
     setGeneratingModal(true);
     try {
-      const updated = await buildApi.generateGuideline(projectId, activeItem.category, token);
-      setModalForm({ title: updated.title, content: updated.content });
+      if (activeItem?.category) {
+        const updated = await buildApi.generateGuideline(projectId, activeItem.category, token);
+        setModalForm({ title: updated.title, content: updated.content });
+      } else if (modalForm.title.trim()) {
+        const updated = await buildApi.generateCustomGuideline(projectId, modalForm.title.trim(), token);
+        setModalForm((prev) => ({ ...prev, content: updated.content }));
+      } else {
+        showMessage('error', 'Masukkan judul guideline terlebih dahulu.');
+        return;
+      }
       await fetchGuidelines();
       showMessage('success', 'Guideline berhasil digenerate ulang!');
     } catch (err: any) {
       showMessage('error', err.message || 'Gagal generate guideline.');
     } finally {
       setGeneratingModal(false);
+    }
+  };
+
+  const handleAddGenerate = async () => {
+    if (!addForm.title || !addForm.title.trim()) {
+      showMessage('error', 'Masukkan judul guideline terlebih dahulu (contoh: Penamaan Variabel, Error Handling, Testing).');
+      return;
+    }
+    const token = getAuthToken();
+    if (!token) {
+      showMessage('error', 'Sesi habis, silakan login kembali.');
+      return;
+    }
+    setGeneratingAdd(true);
+    try {
+      const res = await buildApi.generateCustomGuideline(projectId, addForm.title.trim(), token);
+      setAddForm((prev) => ({
+        ...prev,
+        title: res.title || prev.title,
+        content: res.content || '',
+      }));
+      showMessage('success', 'Isi guideline berhasil dibuat otomatis oleh AI!');
+    } catch (err: any) {
+      showMessage('error', err.message || 'Gagal generate guideline.');
+    } finally {
+      setGeneratingAdd(false);
     }
   };
 
@@ -813,12 +850,15 @@ function GuidelinesTab({ projectId, showMessage }: any) {
             <div className="p-4 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900">{activeItem.label}</h3>
               <div className="flex items-center gap-2">
-                {activeItem.category && (
-                  <button onClick={handleModalGenerate} disabled={generatingModal}
-                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-1.5 rounded-lg transition-colors disabled:opacity-50 cursor-pointer">
-                    <Sparkles className="w-3 h-3" /> {generatingModal ? '...' : 'Generate'}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={handleModalGenerate}
+                  disabled={generatingModal}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
+                  title="Generate atau perbarui isi guideline via AI"
+                >
+                  <Sparkles className="w-3 h-3" /> {generatingModal ? 'Generating...' : 'Generate with AI'}
+                </button>
                 <button onClick={() => setActiveItem(null)} className="p-1 hover:bg-gray-100 rounded-lg cursor-pointer"><X className="w-3.5 h-3.5" /></button>
               </div>
             </div>
@@ -830,7 +870,7 @@ function GuidelinesTab({ projectId, showMessage }: any) {
                   value={modalForm.content}
                   onChange={(e) => setModalForm({ ...modalForm, content: e.target.value })}
                   rows={8}
-                  placeholder="Tuliskan aturan atau panduan coding di sini, atau klik Generate untuk membuat draf otomatis via AI..."
+                  placeholder="Tuliskan aturan atau panduan coding di sini, atau klik Generate with AI untuk membuat draf otomatis..."
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-900 focus:outline-none focus:border-blue-500 transition-all resize-none"
                 />
               </div>
@@ -857,7 +897,18 @@ function GuidelinesTab({ projectId, showMessage }: any) {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
             <div className="p-4 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900">Tambah Guideline Baru</h3>
-              <button onClick={() => setShowAddModal(false)} className="p-1 hover:bg-gray-100 rounded-lg cursor-pointer"><X className="w-3.5 h-3.5" /></button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleAddGenerate}
+                  disabled={generatingAdd}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
+                  title="Generate isi guideline otomatis via AI berdasarkan judul"
+                >
+                  <Sparkles className="w-3 h-3" /> {generatingAdd ? 'Generating...' : 'Generate with AI'}
+                </button>
+                <button onClick={() => setShowAddModal(false)} className="p-1 hover:bg-gray-100 rounded-lg cursor-pointer"><X className="w-3.5 h-3.5" /></button>
+              </div>
             </div>
             <form onSubmit={handleAddSave} className="p-4 space-y-3.5">
               <div>

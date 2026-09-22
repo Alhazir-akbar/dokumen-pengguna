@@ -37,7 +37,11 @@ interface EpicNode {
 interface StoryNode {
   id: number;
   epic_id?: number | null;
-  name: string;
+  code?: string;
+  name?: string;
+  as_a?: string;
+  i_want?: string;
+  so_that?: string;
   role?: string;
   action?: string;
   benefit?: string;
@@ -306,17 +310,17 @@ function GraphPageContent() {
   const canvasHeight = Math.max(900, ...allPositions.map((p) => p.y + 300));
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-950 font-sans">
+    <div className="flex h-screen w-screen overflow-hidden bg-gray-50 font-sans">
       {/* 🚀 AppSidebar SELALU Tampil di Layar Secara Konsisten */}
       <AppSidebar activeMenu="graph" projectId={projectId} />
 
       {!mounted || isLoading ? (
-        <div className="flex-1 flex flex-col items-center justify-center bg-slate-900 text-white">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
-          <p className="text-sm text-slate-300 font-medium mt-3">Rendering Software Definition Graph...</p>
+        <div className="flex-1 flex flex-col items-center justify-center bg-white">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <p className="text-xs text-gray-500 font-medium mt-3">Rendering Software Definition Graph...</p>
         </div>
       ) : loadError ? (
-        <div className="flex-1 flex items-center justify-center bg-slate-50 p-6">
+        <div className="flex-1 flex items-center justify-center bg-gray-50 p-6">
           <div className="bg-white border border-red-200 rounded-2xl p-6 text-center max-w-md shadow-sm">
             <p className="text-red-600 text-sm mb-4 font-semibold">{loadError}</p>
             <button
@@ -504,7 +508,7 @@ function GraphPageContent() {
 
                       <div className="px-4 pb-4 flex flex-col gap-3">
                         {epic.description && (
-                          <p className="text-xs text-gray-400 leading-relaxed line-clamp-2">{epic.description}</p>
+                          <p className="text-xs text-gray-600 leading-relaxed line-clamp-2">{epic.description}</p>
                         )}
 
                         {showStories && epicStories.length > 0 && (
@@ -522,9 +526,11 @@ function GraphPageContent() {
                                       : `${palette.bg} ${palette.border} hover:border-gray-300`
                                   }`}
                                 >
-                                  <p className="text-[11px] font-semibold text-gray-800 leading-snug line-clamp-2">{story.name}</p>
+                                  <p className="text-[11px] font-semibold text-gray-800 leading-snug line-clamp-2">
+                                    {story.i_want || story.name || story.code || `Story #${story.id}`}
+                                  </p>
                                   <div className="flex items-center justify-between mt-1.5">
-                                    <span className="text-[9px] font-mono text-gray-400">#{story.id}</span>
+                                    <span className="text-[9px] font-mono text-gray-400">{story.code || `#${story.id}`}</span>
                                     {story.status && (
                                       <span className={`text-[8px] font-semibold px-1.5 py-0.5 rounded-full ${STATUS_PILL[story.status] || 'bg-gray-100 text-gray-500 border border-gray-200'}`}>
                                         {story.status}
@@ -584,32 +590,35 @@ function GraphPageContent() {
             <div className="absolute bottom-6 left-6 right-6 md:left-auto md:right-6 md:w-96 z-40 bg-white border border-gray-200 rounded-2xl p-5 shadow-xl">
               <div className="flex items-start justify-between pb-3 border-b border-gray-100">
                 <div>
-                  <span className="text-[10px] font-mono font-bold text-blue-600">#ST-{selectedNode.id}</span>
-                  <h3 className="text-sm font-bold text-gray-900 mt-0.5">{selectedNode.name}</h3>
+                  <span className="text-[10px] font-mono font-bold text-blue-600">{selectedNode.code || `#ST-${selectedNode.id}`}</span>
+                  <h3 className="text-sm font-bold text-gray-900 mt-0.5">{selectedNode.i_want || selectedNode.name || 'User Story'}</h3>
                 </div>
                 <button onClick={() => setSelectedNode(null)} className="text-gray-400 hover:text-gray-700 p-1 rounded-lg hover:bg-gray-100 cursor-pointer">
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="py-3 space-y-2 text-xs">
-                <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 space-y-1">
-                  <p><span className="text-gray-400 font-semibold">As a:</span> {selectedNode.role || '-'}</p>
-                  <p><span className="text-gray-400 font-semibold">I want:</span> {selectedNode.action || '-'}</p>
-                  <p><span className="text-gray-400 font-semibold">So that:</span> {selectedNode.benefit || '-'}</p>
+              <div className="py-3 space-y-3 text-xs">
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-gray-200 space-y-2 text-gray-800">
+                  <p className="leading-relaxed"><strong className="text-gray-900 font-semibold">As a:</strong> <span className="text-gray-700 font-medium">{selectedNode.as_a || selectedNode.role || '-'}</span></p>
+                  <p className="leading-relaxed"><strong className="text-gray-900 font-semibold">I want:</strong> <span className="text-gray-700 font-medium">{selectedNode.i_want || selectedNode.action || '-'}</span></p>
+                  <p className="leading-relaxed"><strong className="text-gray-900 font-semibold">So that:</strong> <span className="text-gray-700 font-medium">{selectedNode.so_that || selectedNode.benefit || '-'}</span></p>
                 </div>
 
                 {selectedNode.acceptance_criteria && selectedNode.acceptance_criteria.length > 0 && (
                   <div>
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                    <span className="text-[10px] font-bold text-gray-600 uppercase tracking-wider block mb-1.5">
                       Acceptance Criteria ({selectedNode.acceptance_criteria.length})
                     </span>
-                    <ul className="space-y-1">
-                      {selectedNode.acceptance_criteria.slice(0, 3).map((ac: any, i: number) => (
-                        <li key={i} className="text-[11px] text-gray-600 bg-gray-50 p-1.5 rounded-lg border border-gray-100">
-                          • {typeof ac === 'string' ? ac : ac.text || ac.criteria}
-                        </li>
-                      ))}
+                    <ul className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                      {selectedNode.acceptance_criteria.map((ac: any, i: number) => {
+                        const text = typeof ac === 'string' ? ac : ac.description || ac.text || ac.criteria;
+                        return (
+                          <li key={i} className="text-[11px] text-gray-800 bg-gray-50 p-2 rounded-lg border border-gray-200 leading-normal">
+                            • {text || '-'}
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 )}
@@ -617,7 +626,7 @@ function GraphPageContent() {
 
             <button
               onClick={() => router.push(`/stories?project_id=${projectId}`)}
-              className="w-full mt-2 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              className="w-full mt-2 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-sm hover:shadow"
             >
               <ExternalLink className="w-3.5 h-3.5" /> Buka di Stories Editor
             </button>

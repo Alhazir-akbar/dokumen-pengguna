@@ -58,7 +58,7 @@ export default function ProjectMenuDropdown({
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const [panelPos, setPanelPos] = useState<{ top: number; left: number } | null>(null);
+  const [panelPos, setPanelPos] = useState<{ top?: number; bottom?: number; left: number } | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -70,22 +70,24 @@ export default function ProjectMenuDropdown({
       if (!triggerRef.current) return;
       const rect = triggerRef.current.getBoundingClientRect();
       const viewportPadding = 12;
-      const estimatedPanelHeight = 340;
 
-      // Align with left edge of trigger button by default, adjust if overflowing
+      // Align with left edge of trigger button by default, adjust if overflowing right
       let left = rect.left;
       if (left + panelWidth > window.innerWidth - viewportPadding) {
-        left = window.innerWidth - panelWidth - viewportPadding;
+        left = Math.max(viewportPadding, window.innerWidth - panelWidth - viewportPadding);
       }
       left = Math.max(viewportPadding, left);
 
-      let top = rect.bottom + 6;
-      if (top + estimatedPanelHeight > window.innerHeight - viewportPadding) {
-        // Bakal kepotong di bawah layar -> buka ke atas tombol sebagai ganti.
-        top = Math.max(viewportPadding, rect.top - estimatedPanelHeight - 6);
-      }
+      const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
+      const spaceAbove = rect.top - viewportPadding;
 
-      setPanelPos({ top, left });
+      // Prefer downward opening if there's enough space (>= 260px) or if below is larger than above
+      if (spaceBelow >= 260 || spaceBelow >= spaceAbove) {
+        setPanelPos({ top: rect.bottom + 6, left, bottom: undefined });
+      } else {
+        // Open upwards: set fixed bottom relative to trigger top to attach directly above trigger button
+        setPanelPos({ bottom: window.innerHeight - rect.top + 6, left, top: undefined });
+      }
     };
 
     updatePosition();
@@ -120,7 +122,8 @@ export default function ProjectMenuDropdown({
           ref={panelRef}
           style={{
             position: 'fixed',
-            top: panelPos.top,
+            ...(panelPos.top !== undefined ? { top: panelPos.top } : {}),
+            ...(panelPos.bottom !== undefined ? { bottom: panelPos.bottom } : {}),
             left: panelPos.left,
             width: panelWidth,
             zIndex: 9999,
