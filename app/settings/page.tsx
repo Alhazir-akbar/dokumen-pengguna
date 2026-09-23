@@ -25,10 +25,14 @@ import {
   Calendar,
   TrendingUp,
   CheckCircle2,
+  UserPlus,
+  User,
+  Shield,
 } from 'lucide-react';
 import ProjectMenuDropdown from '@/features/stories/components/ProjectMenuDropdown';
 import { projectApi } from '@/services/projectsApi';
 import { settingsApi, AIRule, AIRuleSuggestion, TokenUsageData } from '@/services/settingsApi';
+import { workspaceApi, WorkspaceMemberResponse } from '@/services/workspaceApi';
 import { getAuthToken } from '@/lib/auth';
 import { getStoredProjectId, setStoredProjectId, clearStoredProjectId } from '@/lib/project-context';
 
@@ -60,6 +64,12 @@ function SettingsPageContent() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAddingSuggestion, setIsAddingSuggestion] = useState(false);
   const [isDeletingProject, setIsDeletingProject] = useState(false);
+
+  // State untuk Manage Members
+  const [members, setMembers] = useState<WorkspaceMemberResponse[]>([]);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'editor' | 'viewer'>('viewer');
+  const [isInvitingMember, setIsInvitingMember] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -93,11 +103,14 @@ function SettingsPageContent() {
   const { data: cacheData, error: swrError, isLoading: isPageLoading, mutate } = useSWR(
     mounted && projectIdParam && token ? [`settings-data`, projectIdParam, token, reloadToken] : null,
     async ([, projId, tok]: [string, string, string, number]) => {
-      const [project, rules] = await Promise.all([
-        projectApi.getProjectById(Number(projId), tok),
+      const project = await projectApi.getProjectById(Number(projId), tok);
+      const [rules, wsMembers] = await Promise.all([
         settingsApi.getProjectAIRules(Number(projId), tok),
+        project?.workspace_id
+          ? workspaceApi.getWorkspaceMembers(project.workspace_id, tok).catch(() => [])
+          : Promise.resolve([]),
       ]);
-      return { project, rules: rules || [] };
+      return { project, rules: rules || [], members: wsMembers || [] };
     },
     {
       revalidateOnFocus: false,
@@ -113,6 +126,7 @@ function SettingsPageContent() {
       setProjectName(cacheData.project?.name || '');
       setProjectDesc(cacheData.project?.description || '');
       setAiRules(cacheData.rules || []);
+      setMembers(cacheData.members || []);
       if (projectIdParam) setStoredProjectId(projectIdParam);
     }
   }, [cacheData, projectIdParam]);
@@ -121,6 +135,45 @@ function SettingsPageContent() {
   const loadError = swrError ? (swrError.message || 'Gagal memuat data dari server.') : '';
 
   const handleRetry = useCallback(() => setReloadToken((n) => n + 1), []);
+
+  const handleInviteMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail || !inviteEmail.trim()) {
+      setMessage({ type: 'error', text: 'Masukkan alamat email anggota yang ingin diundang.' });
+      return;
+    }
+    if (!projectWorkspaceId || !token) {
+      setMessage({ type: 'error', text: 'Ruang kerja tidak ditemukan.' });
+      return;
+    }
+
+    setIsInvitingMember(true);
+    setMessage({ type: '', text: '' });
+    try {
+      const res = await workspaceApi.addWorkspaceMember(projectWorkspaceId, inviteEmail.trim(), inviteRole, token);
+      setMessage({ type: 'success', text: res.message || `Berhasil menambahkan ${inviteEmail}` });
+      setInviteEmail('');
+      const updated = await workspaceApi.getWorkspaceMembers(projectWorkspaceId, token);
+      setMembers(updated);
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Gagal mengundang anggota tim.' });
+    } finally {
+      setIsInvitingMember(false);
+    }
+  };
+
+  const handleRemoveMember = async (userId: number, email: string) => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus ${email} dari tim ini?`)) return;
+    if (!projectWorkspaceId || !token) return;
+
+    try {
+      await workspaceApi.removeWorkspaceMember(projectWorkspaceId, userId, token);
+      setMessage({ type: 'success', text: `Berhasil menghapus ${email}` });
+      setMembers((prev) => prev.filter((m) => m.user_id !== userId));
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Gagal menghapus anggota tim.' });
+    }
+  };
 
   const handleSaveGeneral = async () => {
     setLoading(true);
@@ -381,35 +434,93 @@ function SettingsPageContent() {
                       </div>
                     </div>
 
-                    {/* Manage members -- UI mengikuti referensi, BELUM disambungkan ke
-                        backend member/invite karena endpoint-nya belum dibagikan. */}
+                    {/* Manage project members */}
                     <div className="pt-2 border-t border-gray-100">
-                      <label className="block text-sm font-semibold text-gray-800 mb-1">
-                        Manage project members
-                      </label>
-                      <p className="text-xs text-gray-400 mb-3">Add team member</p>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-sm font-semibold text-gray-800">
+                          Manage project members
+                        </label>
+                        <span className="text-xs text-gray-400 font-medium">
+                          {members.length} anggota
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 mb-3">Undang anggota tim baru menggunakan alamat email terdaftar</p>
+                      
+                      <form onSubmit={handleInviteMember} className="flex items-center gap-2 mb-4">
                         <input
                           type="email"
-                          placeholder="Team member's email"
-                          disabled
-                          className="flex-1 px-3.5 py-2.5 border border-gray-200 rounded-xl text-gray-400 bg-gray-50 text-sm cursor-not-allowed"
+                          required
+                          value={inviteEmail}
+                          onChange={(e) => setInviteEmail(e.target.value)}
+                          placeholder="Masukkan email anggota (misal: user@gmail.com)..."
+                          disabled={isInvitingMember}
+                          className="flex-1 px-3.5 py-2.5 border border-gray-200 rounded-xl text-gray-900 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all disabled:opacity-50"
                         />
                         <select
-                          disabled
-                          className="px-3 py-2.5 border border-gray-200 rounded-xl text-gray-400 bg-gray-50 text-sm cursor-not-allowed"
+                          value={inviteRole}
+                          onChange={(e) => setInviteRole(e.target.value as 'editor' | 'viewer')}
+                          disabled={isInvitingMember}
+                          className="px-3 py-2.5 border border-gray-200 rounded-xl text-gray-800 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all cursor-pointer"
                         >
-                          <option>Viewer</option>
+                          <option value="viewer">Viewer</option>
+                          <option value="editor">Editor</option>
                         </select>
                         <button
-                          type="button"
-                          disabled
-                          title="Fitur invite member belum tersedia"
-                          className="px-4 py-2.5 border border-gray-200 text-gray-400 bg-gray-50 rounded-xl text-sm font-medium cursor-not-allowed"
+                          type="submit"
+                          disabled={isInvitingMember || !inviteEmail.trim()}
+                          className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50 shadow-xs whitespace-nowrap"
                         >
-                          + Add
+                          {isInvitingMember ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <UserPlus className="w-4 h-4" />
+                          )}
+                          <span>+ Add</span>
                         </button>
-                      </div>
+                      </form>
+
+                      {/* List Anggota yang Ada */}
+                      {members.length > 0 && (
+                        <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                          {members.map((m) => (
+                            <div
+                              key={m.user_id}
+                              className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50/80 border border-gray-100 text-xs"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0 text-[11px]">
+                                  {m.username?.charAt(0).toUpperCase() || m.email?.charAt(0).toUpperCase() || 'U'}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-gray-900 truncate">{m.username || m.email}</p>
+                                  <p className="text-[10px] text-gray-400 truncate">{m.email}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
+                                  m.role === 'owner'
+                                    ? 'bg-amber-100 text-amber-800'
+                                    : m.role === 'editor'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-gray-200 text-gray-700'
+                                }`}>
+                                  {m.role}
+                                </span>
+                                {m.role !== 'owner' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveMember(m.user_id, m.email)}
+                                    title="Hapus dari ruang kerja"
+                                    className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center justify-between pt-5 border-t border-gray-100">
@@ -424,6 +535,7 @@ function SettingsPageContent() {
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
+                          onClick={() => router.push(projectIdParam ? `/stories?project_id=${projectIdParam}` : '/stories')}
                           className="px-4 py-2 border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl text-sm font-medium transition-colors cursor-pointer"
                         >
                           Cancel
@@ -479,7 +591,7 @@ function SettingsPageContent() {
                           className="flex-1 px-3.5 py-2.5 border border-gray-200 rounded-xl text-gray-800 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all disabled:bg-gray-50 disabled:text-gray-400 cursor-pointer disabled:cursor-not-allowed"
                         >
                           {suggestions.length === 0 ? (
-                            <option value="">Choose a prompt...</option>
+                            <option value="">{isGenerating ? 'Membuat saran template aturan...' : 'Klik tombol "Generate" di samping untuk memuat saran prompt...'}</option>
                           ) : (
                             suggestions.map((s, i) => (
                               <option key={i} value={i}>
@@ -493,7 +605,7 @@ function SettingsPageContent() {
                             type="button"
                             onClick={handleGenerateSuggestions}
                             disabled={isGenerating}
-                            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 font-semibold rounded-xl text-sm transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 font-semibold rounded-xl text-sm transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap shadow-xs"
                           >
                             {isGenerating ? (
                               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -534,9 +646,9 @@ function SettingsPageContent() {
                     {aiRules.length === 0 ? (
                       <div className="text-center py-10 border-t border-gray-100">
                         <Bot className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                        <p className="text-sm font-semibold text-gray-700">No AI rules yet.</p>
+                        <p className="text-sm font-semibold text-gray-700">Belum ada aturan AI</p>
                         <p className="text-xs text-gray-400 mt-0.5">
-                          Select a prompt template above to create your first AI Rule.
+                          Klik tombol &quot;Generate&quot; di atas untuk memilih dan menambahkan aturan AI pertama Anda.
                         </p>
                       </div>
                     ) : (
@@ -566,12 +678,17 @@ function SettingsPageContent() {
                     <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
                       <button
                         type="button"
+                        onClick={() => router.push(projectIdParam ? `/stories?project_id=${projectIdParam}` : '/stories')}
                         className="px-4 py-2 border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl text-sm font-medium transition-colors cursor-pointer"
                       >
                         Cancel
                       </button>
                       <button
                         type="button"
+                        onClick={() => {
+                          setMessage({ type: 'success', text: 'Pengaturan AI Rules sudah aktif dan tersimpan!' });
+                          router.push(projectIdParam ? `/stories?project_id=${projectIdParam}` : '/stories');
+                        }}
                         className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm shadow-xs transition-colors cursor-pointer"
                       >
                         Save
