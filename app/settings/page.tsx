@@ -38,6 +38,34 @@ import { getStoredProjectId, setStoredProjectId, clearStoredProjectId } from '@/
 
 const MAX_DESC_LENGTH = 2000;
 
+// ⚡ Preset Template Bawaan (Langsung muncul seketika / 0 detik tanpa loading)
+const PRESET_AI_RULES: AIRuleSuggestion[] = [
+  {
+    name: 'Format Acceptance Criteria: Given-When-Then (BDD)',
+    content: 'Tulis seluruh Acceptance Criteria menggunakan format terstruktur Given-When-Then (Gherkin format) dengan kondisi awal, aksi pengguna, dan ekspektasi sistem yang dapat diverifikasi dengan jelas.',
+  },
+  {
+    name: 'Gaya Bahasa: Formal, Jelas, & Bahasa Indonesia',
+    content: 'Gunakan Bahasa Indonesia baku yang profesional, jelas, dan ringkas. Hindari istilah ambigu serta gunakan terminologi baku software engineering yang konsisten.',
+  },
+  {
+    name: 'Detail Validasi Input & Skenario Error (Edge Cases)',
+    content: 'Selalu cantumkan aturan validasi input form (tipe data, batasan karakter, format email/telepon) dan skenario penanganan kesalahan (error handling/edge cases) yang deskriptif.',
+  },
+  {
+    name: 'Standar Keamanan & Autentikasi (OWASP)',
+    content: 'Pastikan setiap kebutuhan yang memproses data sensitif atau otentikasi menerapkan prinsip keamanan OWASP: validasi authorization per role, perlindungan CSRF/XSS, dan enkripsi payload.',
+  },
+  {
+    name: 'Spesifikasi Arsitektur API & Database',
+    content: 'Pada Tech Notes, jelaskan usulan endpoint RESTful API (HTTP Method, Route, Status Code), skema tabel database terkait, serta dependensi antarmuka backend yang relevan.',
+  },
+  {
+    name: 'Desain Responsif & Mobile-First UX',
+    content: 'Pastikan spesifikasi user interface mempertimbangkan kenyamanan penggunaan mobile (touch target minimal 44x44px, bottom sheet, serta layout yang adaptif untuk desktop & smartphone).',
+  },
+];
+
 const TAB_LABELS: Record<'general' | 'ai-rules' | 'token-usage', string> = {
   general: 'General',
   'ai-rules': 'AI Rules',
@@ -59,11 +87,17 @@ function SettingsPageContent() {
   const [reloadToken, setReloadToken] = useState(0);
 
   const [aiRules, setAiRules] = useState<AIRule[]>([]);
-  const [suggestions, setSuggestions] = useState<AIRuleSuggestion[]>([]);
-  const [selectedSuggestionIdx, setSelectedSuggestionIdx] = useState<string>('');
+  const [suggestions, setSuggestions] = useState<AIRuleSuggestion[]>(PRESET_AI_RULES);
+  const [selectedSuggestionIdx, setSelectedSuggestionIdx] = useState<string>('0');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAddingSuggestion, setIsAddingSuggestion] = useState(false);
   const [isDeletingProject, setIsDeletingProject] = useState(false);
+
+  // State untuk Custom Manual Rule
+  const [showCustomRuleForm, setShowCustomRuleForm] = useState(false);
+  const [customRuleName, setCustomRuleName] = useState('');
+  const [customRuleContent, setCustomRuleContent] = useState('');
+  const [isSavingCustomRule, setIsSavingCustomRule] = useState(false);
 
   // State untuk Manage Members
   const [members, setMembers] = useState<WorkspaceMemberResponse[]>([]);
@@ -235,7 +269,7 @@ function SettingsPageContent() {
     }
   };
 
-  const handleAddSelectedSuggestion = async () => {
+    const handleAddSelectedSuggestion = async () => {
     if (!projectIdParam || selectedSuggestionIdx === '') return;
     const suggestion = suggestions[Number(selectedSuggestionIdx)];
     if (!suggestion) return;
@@ -248,11 +282,41 @@ function SettingsPageContent() {
       const newRule = await settingsApi.createProjectAIRule(Number(projectIdParam), suggestion, token);
       setAiRules((prev) => [...prev, newRule]);
       setSuggestions((prev) => prev.filter((s) => s.name !== suggestion.name));
-      setSelectedSuggestionIdx('');
+      setSelectedSuggestionIdx('0');
+      setMessage({ type: 'success', text: `Berhasil menambahkan aturan: ${suggestion.name}` });
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Gagal menambahkan aturan.' });
     } finally {
       setIsAddingSuggestion(false);
+    }
+  };
+
+  const handleSaveCustomRule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!projectIdParam || !customRuleName.trim() || !customRuleContent.trim()) {
+      setMessage({ type: 'error', text: 'Nama aturan dan isi instruksi wajib diisi.' });
+      return;
+    }
+    const token = getAuthToken();
+    if (!token) return;
+
+    setIsSavingCustomRule(true);
+    setMessage({ type: '', text: '' });
+    try {
+      const newRule = await settingsApi.createProjectAIRule(
+        Number(projectIdParam),
+        { name: customRuleName.trim(), content: customRuleContent.trim() },
+        token
+      );
+      setAiRules((prev) => [...prev, newRule]);
+      setCustomRuleName('');
+      setCustomRuleContent('');
+      setShowCustomRuleForm(false);
+      setMessage({ type: 'success', text: 'Aturan AI kustom berhasil ditambahkan!' });
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Gagal menambahkan aturan kustom.' });
+    } finally {
+      setIsSavingCustomRule(false);
     }
   };
 
@@ -578,68 +642,117 @@ function SettingsPageContent() {
                       </div>
                     </div>
 
-                    {/* Generate + pilih saran */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-800 mb-1.5">
-                        Select a prompt
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <select
-                          value={selectedSuggestionIdx}
-                          onChange={(e) => setSelectedSuggestionIdx(e.target.value)}
-                          disabled={suggestions.length === 0}
-                          className="flex-1 px-3.5 py-2.5 border border-gray-200 rounded-xl text-gray-800 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all disabled:bg-gray-50 disabled:text-gray-400 cursor-pointer disabled:cursor-not-allowed"
-                        >
-                          {suggestions.length === 0 ? (
-                            <option value="">{isGenerating ? 'Membuat saran template aturan...' : 'Klik tombol "Generate" di samping untuk memuat saran prompt...'}</option>
-                          ) : (
-                            suggestions.map((s, i) => (
-                              <option key={i} value={i}>
-                                {s.name}
-                              </option>
-                            ))
-                          )}
-                        </select>
-                        {suggestions.length === 0 ? (
+                                        {/* Controls: Preset Template & Custom Rule */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-sm font-semibold text-gray-800">
+                          Pilih Template Aturan / Tambah Aturan Baru
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setShowCustomRuleForm(!showCustomRuleForm)}
+                            className="text-xs font-semibold px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg transition-colors cursor-pointer"
+                          >
+                            {showCustomRuleForm ? 'Tutup Form Kustom' : '+ Tulis Aturan Manual'}
+                          </button>
                           <button
                             type="button"
                             onClick={handleGenerateSuggestions}
                             disabled={isGenerating}
-                            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 font-semibold rounded-xl text-sm transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap shadow-xs"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 font-semibold rounded-lg text-xs transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap shadow-xs"
+                            title="Generate ide aturan baru spesifik proyek dari AI"
                           >
                             {isGenerating ? (
                               <Loader2 className="w-3.5 h-3.5 animate-spin" />
                             ) : (
-                              <Sparkles className="w-3.5 h-3.5" />
+                              <Sparkles className="w-3.5 h-3.5 text-purple-600" />
                             )}
-                            {isGenerating ? 'Generating...' : 'Generate'}
+                            {isGenerating ? 'AI Thinking...' : '✨ Generate Saran AI'}
                           </button>
-                        ) : (
+                        </div>
+                      </div>
+
+                      {/* Form Tulis Aturan Manual (Bebas Input) */}
+                      {showCustomRuleForm && (
+                        <form onSubmit={handleSaveCustomRule} className="p-4 bg-blue-50/40 border border-blue-200 rounded-xl space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-blue-800 uppercase tracking-wider">Tambah Aturan AI Kustom</span>
+                            <span className="text-[11px] text-blue-600">Instruksi akan langsung memandu asisten AI</span>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Nama Aturan</label>
+                            <input
+                              type="text"
+                              required
+                              value={customRuleName}
+                              onChange={(e) => setCustomRuleName(e.target.value)}
+                              placeholder="Contoh: Format Penulisan Acceptance Criteria"
+                              className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Isi Instruksi / Prompt Rule</label>
+                            <textarea
+                              required
+                              rows={3}
+                              value={customRuleContent}
+                              onChange={(e) => setCustomRuleContent(e.target.value)}
+                              placeholder="Tuliskan instruksi spesifik untuk memandu AI saat menyusun requirements..."
+                              className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div className="flex justify-end gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => setShowCustomRuleForm(false)}
+                              className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-lg transition-colors cursor-pointer"
+                            >
+                              Batal
+                            </button>
+                            <button
+                              type="submit"
+                              disabled={isSavingCustomRule || !customRuleName.trim() || !customRuleContent.trim()}
+                              className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              {isSavingCustomRule ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                              Simpan Aturan
+                            </button>
+                          </div>
+                        </form>
+                      )}
+
+                      {/* Dropdown Preset Library (0 Detik) */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={selectedSuggestionIdx}
+                            onChange={(e) => setSelectedSuggestionIdx(e.target.value)}
+                            disabled={suggestions.length === 0}
+                            className="flex-1 px-3.5 py-2.5 border border-gray-200 rounded-xl text-gray-800 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all cursor-pointer"
+                          >
+                            {suggestions.map((s, i) => (
+                              <option key={i} value={i}>
+                                ⚡ {s.name}
+                              </option>
+                            ))}
+                          </select>
                           <button
                             type="button"
                             onClick={handleAddSelectedSuggestion}
-                            disabled={isAddingSuggestion || selectedSuggestionIdx === ''}
+                            disabled={isAddingSuggestion || selectedSuggestionIdx === '' || suggestions.length === 0}
                             className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm shadow-xs transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
                           >
-                            {isAddingSuggestion ? 'Adding...' : 'Add'}
+                            {isAddingSuggestion ? 'Adding...' : '+ Add Rule'}
                           </button>
+                        </div>
+                        {suggestions.length > 0 && selectedSuggestionIdx !== '' && (
+                          <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600 leading-relaxed">
+                            <span className="font-semibold text-gray-800 block mb-1">Preview Instruksi:</span>
+                            {suggestions[Number(selectedSuggestionIdx)]?.content}
+                          </div>
                         )}
                       </div>
-                      {suggestions.length > 0 && selectedSuggestionIdx !== '' && (
-                        <p className="text-[11px] text-gray-500 mt-2 leading-relaxed bg-gray-50 border border-gray-100 rounded-lg p-2.5">
-                          {suggestions[Number(selectedSuggestionIdx)]?.content}
-                        </p>
-                      )}
-                      {suggestions.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={handleGenerateSuggestions}
-                          disabled={isGenerating}
-                          className="mt-2 text-[11px] text-blue-600 hover:text-blue-800 font-medium cursor-pointer disabled:opacity-50"
-                        >
-                          {isGenerating ? 'Generating...' : 'Regenerate suggestions'}
-                        </button>
-                      )}
                     </div>
 
                     {/* List rules yang sudah tersimpan */}
