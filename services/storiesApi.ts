@@ -233,3 +233,98 @@ export async function suggestNfrWithAi(
   }
   return response.json();
 }
+
+export async function fetchStoryComments(storyId: number | string, token: string) {
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/stories/${storyId}/comments`,
+    {
+      headers: { 'Authorization': `Bearer ${token}` },
+    }
+  );
+  if (!response.ok) throw new Error('Gagal memuat komentar');
+  return response.json();
+}
+
+export async function createStoryComment(storyId: number | string, content: string, token: string) {
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/stories/${storyId}/comments`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ content }),
+    }
+  );
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Gagal mengirim komentar');
+  }
+  return response.json();
+}
+
+export async function fetchStoryLinks(storyId: number | string, token: string) {
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/stories/${storyId}/links`,
+    {
+      headers: { 'Authorization': `Bearer ${token}` },
+    }
+  );
+  if (!response.ok) throw new Error('Gagal memuat linked stories');
+  return response.json();
+}
+
+export async function createStoryLink(
+  storyId: number | string,
+  targetStoryId: number | string,
+  linkType: 'relates_to' | 'blocked_by',
+  token: string
+) {
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/stories/${storyId}/links`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ target_story_id: targetStoryId, link_type: linkType }),
+    }
+  );
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Gagal menambah link');
+  }
+  return response.json();
+}
+
+export async function deleteStoryLink(linkId: number | string, token: string) {
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/stories/links/${linkId}`,
+    {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` },
+    }
+  );
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Gagal menghapus link');
+  }
+  return response.json();
+}
+
+export async function generateStoryLinksForStory(storyId: number | string, token: string) {
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/stories/${storyId}/links/generate`,
+    {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+    }
+  );
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Gagal generate links dengan AI');
+  }
+  return response.json();
+}

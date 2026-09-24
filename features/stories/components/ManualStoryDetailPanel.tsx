@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { UserStory, TestCase, StoryImage } from '../types';
+import { UserStory, TestCase, StoryImage, Comment, LinkedStory } from '../types';
 import {
   Code,
   History,
@@ -18,8 +18,19 @@ import {
   X,
   Upload,
   Link as LinkIcon,
+  MessageSquare,
+  Send,
+  Tag,
 } from 'lucide-react';
-import { suggestStoryWithAi } from '@/services/storiesApi';
+import {
+  suggestStoryWithAi,
+  fetchStoryComments,
+  createStoryComment,
+  fetchStoryLinks,
+  createStoryLink,
+  deleteStoryLink,
+  generateStoryLinksForStory,
+} from '@/services/storiesApi';
 import { getAuthToken } from '@/lib/auth';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -33,6 +44,7 @@ interface ManualStoryDetailPanelProps {
   onDelete?: () => void;
   onUpdate?: (updated: UserStory) => void;
   onImagesUpdated?: (storyId: number | string, rawImages: any[]) => void;
+  allStories?: UserStory[];
   projectId?: string | null;
 }
 
@@ -49,6 +61,42 @@ function toRawImage(img: StoryImage) {
 
 function fromRawImage(raw: any): StoryImage {
   return { id: raw.id, url: raw.url, caption: raw.caption, createdAt: raw.created_at };
+}
+
+function formatRelativeTime(isoString: string): string {
+  const hasTz = /Z$|[+-]\d{2}:\d{2}$/.test(isoString);
+  const date = new Date(hasTz ? isoString : `${isoString}Z`);
+
+  const diffMs = Date.now() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  if (diffSec < 60) return 'Baru saja';
+  if (diffMin < 60) return `${diffMin} menit lalu`;
+  if (diffHour < 24) return `${diffHour} jam lalu`;
+  if (diffDay < 7) return `${diffDay} hari lalu`;
+  return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function getInitial(name: string): string {
+  return name.trim().charAt(0).toUpperCase() || '?';
+}
+
+const linkTypeLabel: Record<string, string> = {
+  relates_to: 'Relates to',
+  blocked_by: 'Blocked by',
+};
+
+function mapRawLink(raw: any): LinkedStory {
+  return {
+    linkId: raw.link_id,
+    storyId: raw.story_id,
+    code: raw.code,
+    iWant: raw.i_want,
+    linkType: raw.link_type,
+  };
 }
 
 function SidebarCard({
@@ -87,10 +135,11 @@ export default function ManualStoryDetailPanel({
   onDelete,
   onUpdate,
   onImagesUpdated,
+  allStories,
   projectId,
 }: ManualStoryDetailPanelProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'criteria' | 'notes' | 'tests' | 'images'>('criteria');
+  const [activeTab, setActiveTab] = useState<'criteria' | 'notes' | 'tests' | 'images' | 'comments'>('criteria');
   const [isEditing, setIsEditing] = useState(false);
   const [status, setStatus] = useState<'draft' | 'review' | 'approved'>('draft');
   const [isRegenerating, setIsRegenerating] = useState(false);
@@ -118,6 +167,26 @@ export default function ManualStoryDetailPanel({
   const [lightboxImage, setLightboxImage] = useState<StoryImage | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [commentsList, setCommentsList] = useState<Comment[]>([]);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [newCommentText, setNewCommentText] = useState('');
+  const [isSendingComment, setIsSendingComment] = useState(false);
+
+  // ===== Labels =====
+  const [labelsList, setLabelsList] = useState<string[]>(story.labels || []);
+  const [isAddingLabel, setIsAddingLabel] = useState(false);
+  const [newLabelInput, setNewLabelInput] = useState('');
+
+  // ===== Linked Stories =====
+  const [linkedTo, setLinkedTo] = useState<LinkedStory[]>([]);
+  const [linkedFrom, setLinkedFrom] = useState<LinkedStory[]>([]);
+  const [isLoadingLinks, setIsLoadingLinks] = useState(false);
+  const [isAddingLink, setIsAddingLink] = useState(false);
+  const [linkTargetId, setLinkTargetId] = useState<string>('');
+  const [linkType, setLinkType] = useState<'relates_to' | 'blocked_by'>('relates_to');
+  const [isSavingLink, setIsSavingLink] = useState(false);
+  const [isGeneratingLinks, setIsGeneratingLinks] = useState(false);
+
   useEffect(() => {
     setAsA(story.as_a);
     setIWant(story.i_want);
@@ -126,7 +195,59 @@ export default function ManualStoryDetailPanel({
     setTechNotesList(story.techNotes || []);
     setTestCasesList(story.testCases || []);
     setImagesList(story.images || []);
+    setLabelsList(story.labels || []);
   }, [story]);
+
+  useEffect(() => {
+    if (activeTab !== 'comments') return;
+
+    const token = getAuthToken();
+    if (!token) return;
+
+    setIsLoadingComments(true);
+    fetchStoryComments(story.id, token)
+      .then((raw: any[]) => {
+        setCommentsList(
+          raw.map((c) => ({
+            id: c.id,
+            content: c.content,
+            createdAt: c.created_at,
+            user: {
+              id: c.user.id,
+              username: c.user.username,
+              fullName: c.user.full_name,
+              avatarUrl: c.user.avatar_url,
+            },
+          }))
+        );
+      })
+      .catch((err) => {
+        console.error('Gagal memuat komentar:', err);
+      })
+      .finally(() => setIsLoadingComments(false));
+  }, [activeTab, story.id]);
+
+  // Fetch linked stories tiap kali pindah story.
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) return;
+
+    setIsLoadingLinks(true);
+    fetchStoryLinks(story.id, token)
+      .then((raw: any) => {
+        setLinkedTo((raw.linked_to || []).map(mapRawLink));
+        setLinkedFrom((raw.linked_from || []).map(mapRawLink));
+      })
+      .catch((err) => {
+        console.error('Gagal memuat linked stories:', err);
+      })
+      .finally(() => setIsLoadingLinks(false));
+
+    // Reset form nambah link tiap ganti story.
+    setIsAddingLink(false);
+    setLinkTargetId('');
+    setLinkType('relates_to');
+  }, [story.id]);
 
   const handleAiRegenerate = async () => {
     const token = getAuthToken();
@@ -389,6 +510,141 @@ export default function ManualStoryDetailPanel({
     }
   };
 
+  const handleSendComment = async () => {
+    if (!newCommentText.trim()) return;
+
+    const token = getAuthToken();
+    if (!token) {
+      alert('Sesi habis, silakan login kembali.');
+      return;
+    }
+
+    setIsSendingComment(true);
+    try {
+      const created = await createStoryComment(story.id, newCommentText.trim(), token);
+      setCommentsList([
+        ...commentsList,
+        {
+          id: created.id,
+          content: created.content,
+          createdAt: created.created_at,
+          user: {
+            id: created.user.id,
+            username: created.user.username,
+            fullName: created.user.full_name,
+            avatarUrl: created.user.avatar_url,
+          },
+        },
+      ]);
+      setNewCommentText('');
+    } catch (err: any) {
+      console.error('Gagal mengirim komentar:', err);
+      alert(err.message || 'Gagal mengirim komentar.');
+    } finally {
+      setIsSendingComment(false);
+    }
+  };
+
+  // ===== Labels handlers =====
+  const handleAddLabel = () => {
+    const trimmed = newLabelInput.trim();
+    if (!trimmed) {
+      setIsAddingLabel(false);
+      return;
+    }
+    if (labelsList.includes(trimmed)) {
+      setNewLabelInput('');
+      setIsAddingLabel(false);
+      return;
+    }
+    const updated = [...labelsList, trimmed];
+    setLabelsList(updated);
+    setNewLabelInput('');
+    setIsAddingLabel(false);
+    if (onUpdate) {
+      onUpdate({ ...story, labels: updated });
+    }
+  };
+
+  const handleRemoveLabel = (indexToRemove: number) => {
+    const updated = labelsList.filter((_, idx) => idx !== indexToRemove);
+    setLabelsList(updated);
+    if (onUpdate) {
+      onUpdate({ ...story, labels: updated });
+    }
+  };
+
+  // ===== Linked stories handlers =====
+  const linkableStories = (allStories || []).filter(
+    (s) => s.id !== story.id && !linkedTo.some((l) => String(l.storyId) === String(s.id))
+  );
+
+  const handleAddLink = async () => {
+    if (!linkTargetId) return;
+
+    const token = getAuthToken();
+    if (!token) {
+      alert('Sesi habis, silakan login kembali.');
+      return;
+    }
+
+    setIsSavingLink(true);
+    try {
+      const created = await createStoryLink(story.id, linkTargetId, linkType, token);
+      setLinkedTo([...linkedTo, mapRawLink(created)]);
+      setLinkTargetId('');
+      setLinkType('relates_to');
+      setIsAddingLink(false);
+    } catch (err: any) {
+      console.error('Gagal menambah link:', err);
+      alert(err.message || 'Gagal menambah link.');
+    } finally {
+      setIsSavingLink(false);
+    }
+  };
+
+  const handleGenerateLinksAi = async () => {
+  const token = getAuthToken();
+  if (!token) {
+    alert('Sesi habis, silakan login kembali.');
+    return;
+  }
+
+  setIsGeneratingLinks(true);
+  try {
+    const raw = await generateStoryLinksForStory(story.id, token);
+    setLinkedTo((raw.linked_to || []).map(mapRawLink));
+    setLinkedFrom((raw.linked_from || []).map(mapRawLink));
+  } catch (err: any) {
+    console.error('Gagal generate links AI:', err);
+    alert(err.message || 'Gagal generate links dengan AI.');
+  } finally {
+    setIsGeneratingLinks(false);
+  }
+};
+
+  const handleDeleteLink = async (linkId: number | string, direction: 'to' | 'from') => {
+    if (!confirm('Hapus link ini?')) return;
+
+    const token = getAuthToken();
+    if (!token) {
+      alert('Sesi habis, silakan login kembali.');
+      return;
+    }
+
+    try {
+      await deleteStoryLink(linkId, token);
+      if (direction === 'to') {
+        setLinkedTo(linkedTo.filter((l) => l.linkId !== linkId));
+      } else {
+        setLinkedFrom(linkedFrom.filter((l) => l.linkId !== linkId));
+      }
+    } catch (err: any) {
+      console.error('Gagal menghapus link:', err);
+      alert(err.message || 'Gagal menghapus link.');
+    }
+  };
+
   const handleOpenStoryHelp = () => {
     const params = new URLSearchParams();
     if (projectId) params.set('project_id', projectId);
@@ -400,7 +656,7 @@ export default function ManualStoryDetailPanel({
     <div className="flex-1 bg-gray-50/50 flex overflow-y-auto">
       <div className="flex-1 bg-white p-8 overflow-y-auto border-r border-gray-200">
         <div className="flex items-start justify-between border-b border-gray-100 pb-6 mb-6">
-          <div>
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1.5">
               <select
                 value={status}
@@ -419,9 +675,54 @@ export default function ManualStoryDetailPanel({
             <h1 className="text-2xl font-bold text-gray-900">
               {story.i_want ? `I want ${story.i_want}` : 'User Story'}
             </h1>
+
+            <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+              {labelsList.map((label, index) => (
+                <span
+                  key={index}
+                  className="group/label flex items-center gap-1 pl-2 pr-1 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-[10px] font-semibold"
+                >
+                  {label}
+                  <button
+                    onClick={() => handleRemoveLabel(index)}
+                    className="p-0.5 opacity-0 group-hover/label:opacity-100 hover:text-red-600 transition-opacity cursor-pointer"
+                    title="Hapus label"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </span>
+              ))}
+
+              {isAddingLabel ? (
+                <input
+                  autoFocus
+                  type="text"
+                  value={newLabelInput}
+                  onChange={(e) => setNewLabelInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleAddLabel();
+                    if (e.key === 'Escape') {
+                      setIsAddingLabel(false);
+                      setNewLabelInput('');
+                    }
+                  }}
+                  onBlur={handleAddLabel}
+                  placeholder="Nama label..."
+                  className="px-2 py-0.5 text-[10px] bg-white border border-blue-300 rounded-full outline-none w-24 text-gray-700"
+                />
+              ) : (
+                <button
+                  onClick={() => setIsAddingLabel(true)}
+                  className="flex items-center gap-0.5 px-2 py-0.5 border border-dashed border-gray-300 text-gray-400 hover:text-blue-600 hover:border-blue-300 rounded-full text-[10px] font-semibold transition-colors cursor-pointer"
+                >
+                  <Tag className="w-2.5 h-2.5" />
+                  Label
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleAiRegenerate}
               disabled={isRegenerating}
@@ -554,6 +855,17 @@ export default function ManualStoryDetailPanel({
             IMAGES
             {imagesList.length > 0 && (
               <span className="ml-1.5 text-[10px] text-gray-400 font-normal">({imagesList.length})</span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('comments')}
+            className={`pb-3 transition-colors relative cursor-pointer ${
+              activeTab === 'comments' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600'
+            }`}
+          >
+            COMMENTS
+            {commentsList.length > 0 && (
+              <span className="ml-1.5 text-[10px] text-gray-400 font-normal">({commentsList.length})</span>
             )}
           </button>
         </div>
@@ -860,6 +1172,75 @@ export default function ManualStoryDetailPanel({
             )}
           </div>
         )}
+
+        {activeTab === 'comments' && (
+          <div className="space-y-4">
+            {isLoadingComments ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+              </div>
+            ) : commentsList.length > 0 ? (
+              <ul className="space-y-3">
+                {commentsList.map((c) => (
+                  <li key={c.id} className="flex items-start gap-3">
+                    {c.user.avatarUrl ? (
+                      <img
+                        src={c.user.avatarUrl}
+                        alt={c.user.fullName || c.user.username}
+                        className="w-8 h-8 rounded-full object-cover shrink-0"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold shrink-0">
+                        {getInitial(c.user.fullName || c.user.username)}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-xs font-semibold text-gray-800">
+                          {c.user.fullName || c.user.username}
+                        </span>
+                        <span className="text-[10px] text-gray-400">{formatRelativeTime(c.createdAt)}</span>
+                      </div>
+                      <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">{c.content}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="p-4 bg-gray-50 rounded-lg border border-dashed border-gray-200 text-center">
+                <MessageSquare className="w-6 h-6 text-gray-300 mx-auto mb-1" />
+                <p className="text-xs text-gray-500">Belum ada komentar. Mulai diskusi di bawah.</p>
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-2 border-t border-gray-100">
+              <textarea
+                placeholder="Tulis komentar..."
+                value={newCommentText}
+                onChange={(e) => setNewCommentText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendComment();
+                  }
+                }}
+                rows={2}
+                className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+              />
+              <button
+                onClick={handleSendComment}
+                disabled={isSendingComment || !newCommentText.trim()}
+                className="flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0 self-end"
+              >
+                {isSendingComment ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Send className="w-3.5 h-3.5" />
+                )}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="w-80 bg-white p-6 space-y-4 overflow-y-auto border-l border-gray-200">
@@ -891,10 +1272,110 @@ export default function ManualStoryDetailPanel({
           iconBg="bg-emerald-100"
           iconColor="text-emerald-600"
           title="Stories Linked To"
+          action={
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handleGenerateLinksAi}
+                disabled={isGeneratingLinks}
+                className="p-1 text-purple-500 hover:text-purple-700 rounded-md transition-colors cursor-pointer disabled:opacity-50"
+                title="Generate links otomatis dengan AI"
+              >
+                {isGeneratingLinks ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsAddingLink((prev) => !prev)}
+                className="p-1 text-gray-400 hover:text-blue-600 rounded-md transition-colors cursor-pointer"
+                title="Tambah link manual"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          }
         >
-          <p className="text-[11px] text-gray-400 italic">
-            Belum ada story lain yang di-link dari sini.
-          </p>
+          <div className="space-y-2.5">
+            {isAddingLink && (
+              <div className="space-y-2 p-2.5 bg-gray-50 border border-gray-100 rounded-lg">
+                <select
+                  value={linkTargetId}
+                  onChange={(e) => setLinkTargetId(e.target.value)}
+                  className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-[11px] text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">Pilih story tujuan...</option>
+                  {linkableStories.map((s) => (
+                    <option key={String(s.id)} value={String(s.id)}>
+                      {s.code} — {s.i_want}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={linkType}
+                  onChange={(e) => setLinkType(e.target.value as 'relates_to' | 'blocked_by')}
+                  className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-[11px] text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="relates_to">Relates to</option>
+                  <option value="blocked_by">Blocked by</option>
+                </select>
+                <div className="flex justify-end gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAddingLink(false);
+                      setLinkTargetId('');
+                    }}
+                    className="px-2.5 py-1 bg-gray-200 text-gray-700 rounded-md text-[10px] font-semibold hover:bg-gray-300 transition-colors cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddLink}
+                    disabled={!linkTargetId || isSavingLink}
+                    className="flex items-center gap-1 px-2.5 py-1 bg-blue-600 text-white rounded-md text-[10px] font-semibold hover:bg-blue-700 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSavingLink ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Simpan'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {isLoadingLinks ? (
+              <div className="flex justify-center py-2">
+                <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+              </div>
+            ) : linkedTo.length > 0 ? (
+              <ul className="space-y-2">
+                {linkedTo.map((l) => (
+                  <li key={l.linkId} className="flex items-start justify-between gap-2 group">
+                    <div className="min-w-0">
+                      <p className="text-[11px] text-gray-700 truncate">
+                        <span className="font-mono font-semibold text-gray-500">{l.code}</span> {l.iWant}
+                      </p>
+                      <span className="text-[9px] text-gray-400 uppercase font-semibold">
+                        {linkTypeLabel[l.linkType] || l.linkType}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteLink(l.linkId, 'to')}
+                      className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-red-600 transition-opacity cursor-pointer shrink-0"
+                      title="Hapus link"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : !isAddingLink ? (
+              <p className="text-[11px] text-gray-400 italic">
+                Belum ada story lain yang di-link dari sini.
+              </p>
+            ) : null}
+          </div>
         </SidebarCard>
 
         <SidebarCard
@@ -903,9 +1384,37 @@ export default function ManualStoryDetailPanel({
           iconColor="text-blue-600"
           title="Stories Linked From"
         >
-          <p className="text-[11px] text-gray-400 italic">
-            Belum ada story lain yang nge-link ke sini.
-          </p>
+          {isLoadingLinks ? (
+            <div className="flex justify-center py-2">
+              <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+            </div>
+          ) : linkedFrom.length > 0 ? (
+            <ul className="space-y-2">
+              {linkedFrom.map((l) => (
+                <li key={l.linkId} className="flex items-start justify-between gap-2 group">
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-gray-700 truncate">
+                      <span className="font-mono font-semibold text-gray-500">{l.code}</span> {l.iWant}
+                    </p>
+                    <span className="text-[9px] text-gray-400 uppercase font-semibold">
+                      {linkTypeLabel[l.linkType] || l.linkType}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteLink(l.linkId, 'from')}
+                    className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-red-600 transition-opacity cursor-pointer shrink-0"
+                    title="Hapus link"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[11px] text-gray-400 italic">
+              Belum ada story lain yang nge-link ke sini.
+            </p>
+          )}
         </SidebarCard>
 
         <SidebarCard

@@ -94,9 +94,15 @@ function StoriesPageContent() {
               caption: img.caption,
               createdAt: img.created_at,
             })),
+            labels: story.labels || [],
           })),
       })),
     [rawEpics, rawStories]
+  );
+
+  const allStories: UserStory[] = useMemo(
+    () => formattedEpics.flatMap((epic) => epic.user_stories),
+    [formattedEpics]
   );
 
   const [selectedStory, setSelectedStory] = useState<UserStory | null>(null);
@@ -212,7 +218,7 @@ function StoriesPageContent() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
           },
-          body: JSON.stringify({
+            body: JSON.stringify({
             as_a: updatedStory.as_a,
             i_want: updatedStory.i_want,
             so_that: updatedStory.so_that,
@@ -222,6 +228,7 @@ function StoriesPageContent() {
               action: tc.action,
               expected_result: tc.expectedResult,
             })),
+            labels: updatedStory.labels,
           }),
         }
       );
@@ -241,7 +248,7 @@ function StoriesPageContent() {
                 ...prev,
                 stories: (prev.stories || []).map((s: any) =>
                   s.id === updatedStory.id
-                    ? {
+                                        ? {
                         ...s,
                         ...updatedStory,
                         acceptance_criteria: (updatedStory.acceptanceCriteria || []).map((desc) => ({ description: desc })),
@@ -251,6 +258,7 @@ function StoriesPageContent() {
                           action: tc.action,
                           expected_result: tc.expectedResult,
                         })),
+                        labels: updatedStory.labels || [],
                       }
                     : s
                 ),
@@ -328,6 +336,8 @@ function StoriesPageContent() {
     downloadAnchor.click();
     downloadAnchor.remove();
   };
+
+  const [isGeneratingLinks, setIsGeneratingLinks] = useState(false);
 
   const handleEpicCreated = (newEpic: any) => {
     mutate((prev: any) => (prev ? { ...prev, epics: [...(prev.epics || []), newEpic] } : prev), false);
@@ -501,8 +511,10 @@ function StoriesPageContent() {
                     onDelete={handleDeleteStory}
                     onUpdate={handleUpdateStory}
                     onImagesUpdated={handleStoryImagesUpdated}
+                    allStories={allStories}
                     projectId={projectId}
                   />
+
                 ) : selectedEpic ? (
                   <EpicDetailPanel
                     key={String(selectedEpic.id)}

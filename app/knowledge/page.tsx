@@ -1,7 +1,7 @@
 // app/knowledge/page.tsx
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import AppSidebar from '@/features/common/components/AppSidebar';
 import AccountMenu from '@/features/common/components/accountMenu';
@@ -109,13 +109,21 @@ function KnowledgeBaseContent() {
   const searchParams = useSearchParams();
   const projectIdParam = searchParams.get('project_id');
   const articleParam = searchParams.get('article');
-  
   const [query, setQuery] = useState('');
-  const [expandedId, setExpandedId] = useState<string | null>(
-    articleParam && ARTICLES.some((a) => a.id === articleParam)
-      ? articleParam
-      : 'getting-started'
-  );
+  const [expandedId, setExpandedId] = useState<string | null>('getting-started');
+  const articleRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    if (articleParam && ARTICLES.some((a) => a.id === articleParam)) {
+      setExpandedId(articleParam);
+      requestAnimationFrame(() => {
+        articleRefs.current[articleParam]?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      });
+    }
+  }, [articleParam]);
 
   const filteredArticles = ARTICLES.filter(
     (a) =>
@@ -187,7 +195,11 @@ function KnowledgeBaseContent() {
                   const Icon = article.icon;
                   const isExpanded = expandedId === article.id;
                   return (
-                    <div key={article.id} className="border border-gray-200 rounded-xl overflow-hidden">
+                    <div
+                      key={article.id}
+                      ref={(el) => { articleRefs.current[article.id] = el; }}
+                      className="border border-gray-200 rounded-xl overflow-hidden"
+                    >
                       <button
                         onClick={() => setExpandedId(isExpanded ? null : article.id)}
                         className="w-full flex items-center justify-between gap-3 px-5 py-4 hover:bg-gray-50/50 transition-colors cursor-pointer text-left"

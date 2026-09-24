@@ -69,7 +69,7 @@ export default function AppSidebar({ activeMenu, projectId }: AppSidebarProps) {
         </Link>
 
         {/* Knowledge Base */}
-        <Link href={withProject('/knowledge-base')} className={getButtonStyle('knowledge')}>
+        <Link href={withProject('/knowledge')} className={getButtonStyle('knowledge')}>
           <HelpCircle className="w-5 h-5 mb-1" />
           <span className="text-[9px] font-medium leading-tight text-center">Knowledge Base</span>
         </Link>

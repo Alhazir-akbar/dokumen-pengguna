@@ -11,6 +11,28 @@ export interface StoryImage {
   createdAt?: string;
 }
 
+export interface CommentUser {
+  id: number | string;
+  username: string;
+  fullName?: string | null;
+  avatarUrl?: string | null;
+}
+
+export interface Comment {
+  id: number | string;
+  content: string;
+  createdAt: string;
+  user: CommentUser;
+}
+
+export interface LinkedStory {
+  linkId: number | string;
+  storyId: number | string;
+  code?: string | null;
+  iWant: string;
+  linkType: 'relates_to' | 'blocked_by';
+}
+
 export interface UserStory {
   id: number | string;
   epicId?: number | string;
@@ -22,6 +44,7 @@ export interface UserStory {
   techNotes?: string[];
   testCases?: TestCase[];
   images?: StoryImage[];
+  labels?: string[];
 }
 
 export interface Epic {
