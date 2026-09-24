@@ -119,3 +119,117 @@ export async function suggestStoryWithAi(
 
   return response.json();
 }
+
+export async function createEpic(
+  payload: { name: string; description?: string; project_id: number },
+  token: string
+) {
+  const response = await fetch(`${API_URL}/stories/epics`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Gagal membuat Epic baru');
+  }
+  return response.json();
+}
+
+export async function suggestEpicWithAi(
+  payload: {
+    project_name: string;
+    project_description?: string;
+    application_type?: string;
+    domain_business?: string;
+    existing_epics?: string[];
+  },
+  token: string
+) {
+  const response = await fetch(`${API_URL}/stories/epics/ai-suggest`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Gagal generate draf Epic dengan AI');
+  }
+  return response.json();
+}
+
+export async function fetchNfrs(projectId: number, token: string) {
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/nfrs?project_id=${projectId}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) throw new Error('Gagal memuat data NFR.');
+  return res.json();
+}
+
+export async function createNFR(
+  payload: { category: string; description: string; project_id: number },
+  token: string
+) {
+  const response = await fetch(`${API_URL}/stories/nfrs`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Gagal membuat NFR baru');
+  }
+  return response.json();
+}
+
+export async function updateNFR(
+  id: number,
+  payload: { category: string; description: string; project_id: number },
+  token: string
+) {
+  const response = await fetch(`${API_URL}/stories/nfrs/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Gagal update NFR');
+  }
+  return response.json();
+}
+
+export async function deleteNFR(id: number, token: string) {
+  const response = await fetch(`${API_URL}/stories/nfrs/${id}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Gagal menghapus NFR');
+  }
+  return response.json();
+}
+
+export async function suggestNfrWithAi(
+  payload: {
+    project_name: string;
+    project_description?: string;
+    application_type?: string;
+    domain_business?: string;
+    existing_categories?: string[];
+  },
+  token: string
+) {
+  const response = await fetch(`${API_URL}/stories/nfrs/ai-suggest`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Gagal generate draf NFR dengan AI');
+  }
+  return response.json();
+}

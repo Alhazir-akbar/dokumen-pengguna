@@ -4,16 +4,19 @@
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import useSWR from 'swr';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { UserStory, Epic } from '@/features/stories/types';
+import { UserStory, Epic, NFR } from '@/features/stories/types';
 import StoriesSidebar from '@/features/stories/components/StoriesSidebar';
 import EmptyDetailPanel from '@/features/stories/components/EmptyDetailPanel';
 import ManualStoryDetailPanel from '@/features/stories/components/ManualStoryDetailPanel';
 import EpicDetailPanel from '@/features/stories/components/EpicDetailPanel';
+import NfrCategoryDetailPanel from '@/features/stories/components/NfrCategoryDetailPanel';
 import ProjectMenuDropdown from '@/features/stories/components/ProjectMenuDropdown';
 import AppSidebar from '@/features/common/components/AppSidebar';
 import AccountMenu from '@/features/common/components/accountMenu';
+import CreateEpicModal from '@/features/stories/components/CreateEpicModal';
+import CreateNfrModal from '@/features/stories/components/CreateNfrModal';
 import { MessageSquare, Upload, Download, X, Lightbulb, Loader2, ChevronDown, Sparkles } from 'lucide-react';
-import { fetchEpics, fetchStories } from '@/services/storiesApi';
+import { fetchEpics, fetchStories, fetchNfrs } from '@/services/storiesApi';
 import { projectApi } from '@/services/projectsApi';
 import { getAuthToken } from '@/lib/auth';
 
@@ -31,12 +34,18 @@ function StoriesPageContent() {
   const { data: cacheData, error: swrError, isLoading, mutate } = useSWR(
     mounted && projectId && token ? [`stories-data`, projectId, token] : null,
     async ([, projId, tok]) => {
-      const [epicsData, storiesData, projectData] = await Promise.all([
+      const [epicsData, storiesData, projectData, nfrsData] = await Promise.all([
         fetchEpics(Number(projId), tok),
         fetchStories(Number(projId), tok),
         projectApi.getProjectById(Number(projId), tok),
+        fetchNfrs(Number(projId), tok),
       ]);
-      return { epics: epicsData || [], stories: storiesData || [], project: projectData };
+      return {
+        epics: epicsData || [],
+        stories: storiesData || [],
+        project: projectData,
+        nfrs: nfrsData || [],
+      };
     },
     {
       revalidateOnFocus: false,
@@ -46,11 +55,17 @@ function StoriesPageContent() {
 
   const rawEpics = cacheData?.epics || [];
   const rawStories = cacheData?.stories || [];
+  const rawNfrs: NFR[] = cacheData?.nfrs || [];
   const projectName = cacheData?.project?.name || '';
   const projectWorkspaceId = cacheData?.project?.workspace_id || null;
   const loadError = swrError ? (swrError.message || 'Gagal memuat data dari server.') : '';
 
-  const formattedEpics: Epic[] = useMemo(
+  const existingNfrCategories = useMemo(
+    () => Array.from(new Set(rawNfrs.map((n) => n.category).filter(Boolean))),
+    [rawNfrs]
+  );
+
+    const formattedEpics: Epic[] = useMemo(
     () =>
       rawEpics.map((epic: any, index: number) => ({
         id: epic.id,
@@ -68,7 +83,17 @@ function StoriesPageContent() {
             so_that: story.so_that || 'Sistem berjalan dengan baik',
             acceptanceCriteria: (story.acceptance_criteria || []).map((ac: any) => ac.description),
             techNotes: (story.tech_notes || []).map((tn: any) => tn.content),
-            testCases: (story.test_cases || []).map((tc: any) => tc.description),
+            testCases: (story.test_cases || []).map((tc: any) => ({
+              id: tc.id,
+              action: tc.action,
+              expectedResult: tc.expected_result,
+            })),
+            images: (story.images || []).map((img: any) => ({
+              id: img.id,
+              url: img.url,
+              caption: img.caption,
+              createdAt: img.created_at,
+            })),
           })),
       })),
     [rawEpics, rawStories]
@@ -76,8 +101,11 @@ function StoriesPageContent() {
 
   const [selectedStory, setSelectedStory] = useState<UserStory | null>(null);
   const [selectedEpic, setSelectedEpic] = useState<Epic | null>(null);
+  const [selectedNfrCategory, setSelectedNfrCategory] = useState<string | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEpicModalOpen, setIsEpicModalOpen] = useState(false);
+  const [isNfrModalOpen, setIsNfrModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newAsA, setNewAsA] = useState('');
   const [newSoThat, setNewSoThat] = useState('');
@@ -95,6 +123,18 @@ function StoriesPageContent() {
       if (refreshed) setSelectedEpic(refreshed);
     }
   }, [formattedEpics]);
+
+  // Kalau NFR terakhir di category yang lagi dibuka ke-hapus, tutup panelnya.
+  useEffect(() => {
+    if (selectedNfrCategory && !rawNfrs.some((n) => n.category === selectedNfrCategory)) {
+      setSelectedNfrCategory(null);
+    }
+  }, [rawNfrs, selectedNfrCategory]);
+
+  const selectedNfrItems = useMemo(
+    () => rawNfrs.filter((n) => n.category === selectedNfrCategory),
+    [rawNfrs, selectedNfrCategory]
+  );
 
   const handleSaveNewStory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,7 +196,7 @@ function StoriesPageContent() {
     }
   };
 
-  const handleUpdateStory = async (updatedStory: UserStory) => {
+    const handleUpdateStory = async (updatedStory: UserStory) => {
     const token = getAuthToken();
     if (!token) {
       alert('Sesi habis, silakan login kembali.');
@@ -178,7 +218,10 @@ function StoriesPageContent() {
             so_that: updatedStory.so_that,
             acceptance_criteria: updatedStory.acceptanceCriteria,
             tech_notes: updatedStory.techNotes,
-            test_cases: updatedStory.testCases,
+            test_cases: (updatedStory.testCases || []).map((tc) => ({
+              action: tc.action,
+              expected_result: tc.expectedResult,
+            })),
           }),
         }
       );
@@ -203,7 +246,11 @@ function StoriesPageContent() {
                         ...updatedStory,
                         acceptance_criteria: (updatedStory.acceptanceCriteria || []).map((desc) => ({ description: desc })),
                         tech_notes: (updatedStory.techNotes || []).map((content) => ({ content })),
-                        test_cases: (updatedStory.testCases || []).map((desc) => ({ description: desc })),
+                        test_cases: (updatedStory.testCases || []).map((tc) => ({
+                          id: tc.id,
+                          action: tc.action,
+                          expected_result: tc.expectedResult,
+                        })),
                       }
                     : s
                 ),
@@ -282,6 +329,72 @@ function StoriesPageContent() {
     downloadAnchor.remove();
   };
 
+  const handleEpicCreated = (newEpic: any) => {
+    mutate((prev: any) => (prev ? { ...prev, epics: [...(prev.epics || []), newEpic] } : prev), false);
+    setIsEpicModalOpen(false);
+  };
+
+  const handleNfrCreated = (newNfr: NFR) => {
+    mutate((prev: any) => (prev ? { ...prev, nfrs: [...(prev.nfrs || []), newNfr] } : prev), false);
+    setIsNfrModalOpen(false);
+    setSelectedNfrCategory(newNfr.category);
+    setSelectedStory(null);
+    setSelectedEpic(null);
+  };
+
+  // Dipakai NfrCategoryDetailPanel: tambah NFR baru langsung di category yang lagi dibuka.
+  const handleNfrCreatedInPanel = (newNfr: NFR) => {
+    mutate((prev: any) => (prev ? { ...prev, nfrs: [...(prev.nfrs || []), newNfr] } : prev), false);
+  };
+
+    // Dipakai ManualStoryDetailPanel: sync cache setelah upload/hapus gambar,
+  // tanpa perlu kirim PUT ke endpoint update story (images punya endpoint sendiri).
+  const handleStoryImagesUpdated = (storyId: number | string, rawImages: any[]) => {
+    mutate(
+      (prev: any) =>
+        prev
+          ? {
+              ...prev,
+              stories: (prev.stories || []).map((s: any) =>
+                s.id === storyId ? { ...s, images: rawImages } : s
+              ),
+            }
+          : prev,
+      false
+    );
+    setSelectedStory((prev) =>
+      prev && prev.id === storyId
+        ? {
+            ...prev,
+            images: rawImages.map((img: any) => ({
+              id: img.id,
+              url: img.url,
+              caption: img.caption,
+              createdAt: img.created_at,
+            })),
+          }
+        : prev
+    );
+  };
+
+  const handleNfrUpdated = (updatedNfr: NFR) => {
+    mutate(
+      (prev: any) =>
+        prev
+          ? { ...prev, nfrs: (prev.nfrs || []).map((n: any) => (n.id === updatedNfr.id ? updatedNfr : n)) }
+          : prev,
+      false
+    );
+  };
+
+  const handleNfrDeleted = (nfrId: string | number) => {
+    mutate(
+      (prev: any) =>
+        prev ? { ...prev, nfrs: (prev.nfrs || []).filter((n: any) => n.id !== nfrId) } : prev,
+      false
+    );
+  };
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-50 font-sans relative">
       <AppSidebar activeMenu="stories" projectId={projectId} />
@@ -304,17 +417,28 @@ function StoriesPageContent() {
         <>
           <StoriesSidebar
             epics={formattedEpics}
+            nfrs={rawNfrs}
             selectedStoryId={selectedStory?.id as string}
+            selectedNfrCategory={selectedNfrCategory}
             workspaceId={projectWorkspaceId}
-            onSelectStory={(story: UserStory) => {
+            onSelectStory={(story) => {
               setSelectedStory(story);
               setSelectedEpic(null);
+              setSelectedNfrCategory(null);
             }}
-            onSelectEpic={(epic: Epic) => {
+            onSelectEpic={(epic) => {
               setSelectedEpic(epic);
               setSelectedStory(null);
+              setSelectedNfrCategory(null);
+            }}
+            onSelectNfrCategory={(category) => {
+              setSelectedNfrCategory(category);
+              setSelectedStory(null);
+              setSelectedEpic(null);
             }}
             onAddNew={() => setIsModalOpen(true)}
+            onAddNewEpic={() => setIsEpicModalOpen(true)}
+            onAddNewNfr={() => setIsNfrModalOpen(true)}
             projectName={projectName}
             projectId={projectId}
           />
@@ -376,6 +500,7 @@ function StoriesPageContent() {
                     story={selectedStory}
                     onDelete={handleDeleteStory}
                     onUpdate={handleUpdateStory}
+                    onImagesUpdated={handleStoryImagesUpdated}
                     projectId={projectId}
                   />
                 ) : selectedEpic ? (
@@ -387,9 +512,22 @@ function StoriesPageContent() {
                       setSelectedEpic(null);
                     }}
                   />
+                ) : selectedNfrCategory ? (
+                  <NfrCategoryDetailPanel
+                    key={selectedNfrCategory}
+                    category={selectedNfrCategory}
+                    items={selectedNfrItems}
+                    projectId={projectId}
+                    projectName={projectName}
+                    onUpdated={handleNfrUpdated}
+                    onDeleted={handleNfrDeleted}
+                    onCreated={handleNfrCreatedInPanel}
+                  />
                 ) : (
                   <EmptyDetailPanel
                     onOpenAddModal={() => setIsModalOpen(true)}
+                    onOpenAddEpicModal={() => setIsEpicModalOpen(true)}
+                    onOpenAddNfrModal={() => setIsNfrModalOpen(true)}
                     workspaceId={projectWorkspaceId}
                     projectId={projectId}
                   />
@@ -477,6 +615,22 @@ function StoriesPageContent() {
           </div>
         </div>
       )}
+
+      <CreateEpicModal
+        isOpen={isEpicModalOpen}
+        onClose={() => setIsEpicModalOpen(false)}
+        onCreated={handleEpicCreated}
+        projectId={projectId}
+      />
+
+      <CreateNfrModal
+        isOpen={isNfrModalOpen}
+        onClose={() => setIsNfrModalOpen(false)}
+        onCreated={handleNfrCreated}
+        projectId={projectId}
+        projectName={projectName}
+        existingCategories={existingNfrCategories}
+      />
     </div>
   );
 }

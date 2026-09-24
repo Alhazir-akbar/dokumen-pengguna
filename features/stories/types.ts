@@ -1,3 +1,16 @@
+export interface TestCase {
+  id: number | string;
+  action: string;
+  expectedResult: string;
+}
+
+export interface StoryImage {
+  id: number | string;
+  url: string;
+  caption?: string | null;
+  createdAt?: string;
+}
+
 export interface UserStory {
   id: number | string;
   epicId?: number | string;
@@ -7,7 +20,8 @@ export interface UserStory {
   so_that: string;
   acceptanceCriteria?: string[];
   techNotes?: string[];
-  testCases?: string[];
+  testCases?: TestCase[];
+  images?: StoryImage[];
 }
 
 export interface Epic {
@@ -16,4 +30,11 @@ export interface Epic {
   name: string;
   description: string;
   user_stories: UserStory[];
+}
+
+export interface NFR {
+  id: number | string;
+  category: string;
+  description: string;
+  project_id?: number;
 }

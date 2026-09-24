@@ -1,9 +1,8 @@
-// features/stories/components/ManualStoryDetailPanel.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { UserStory } from '../types';
+import { UserStory, TestCase, StoryImage } from '../types';
 import {
   Code,
   History,
@@ -15,15 +14,41 @@ import {
   Sparkles,
   Plus,
   Loader2,
+  Image as ImageIcon,
+  X,
+  Upload,
+  Link as LinkIcon,
 } from 'lucide-react';
 import { suggestStoryWithAi } from '@/services/storiesApi';
 import { getAuthToken } from '@/lib/auth';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+function resolveImageUrl(url: string) {
+  return url.startsWith('http') ? url : `${API_BASE}${url}`;
+}
 
 interface ManualStoryDetailPanelProps {
   story: UserStory;
   onDelete?: () => void;
   onUpdate?: (updated: UserStory) => void;
+  onImagesUpdated?: (storyId: number | string, rawImages: any[]) => void;
   projectId?: string | null;
+}
+
+// Helper: bikin id sementara di client sebelum backend kasih id asli.
+function makeTempId() {
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function toRawImage(img: StoryImage) {
+  return { id: img.id, url: img.url, caption: img.caption, created_at: img.createdAt };
+}
+
+function fromRawImage(raw: any): StoryImage {
+  return { id: raw.id, url: raw.url, caption: raw.caption, createdAt: raw.created_at };
 }
 
 function SidebarCard({
@@ -61,13 +86,47 @@ export default function ManualStoryDetailPanel({
   story,
   onDelete,
   onUpdate,
+  onImagesUpdated,
   projectId,
 }: ManualStoryDetailPanelProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'criteria' | 'notes' | 'tests'>('criteria');
+  const [activeTab, setActiveTab] = useState<'criteria' | 'notes' | 'tests' | 'images'>('criteria');
   const [isEditing, setIsEditing] = useState(false);
   const [status, setStatus] = useState<'draft' | 'review' | 'approved'>('draft');
   const [isRegenerating, setIsRegenerating] = useState(false);
+
+  const [asA, setAsA] = useState(story.as_a);
+  const [iWant, setIWant] = useState(story.i_want);
+  const [soThat, setSoThat] = useState(story.so_that);
+
+  const [criteriaList, setCriteriaList] = useState<string[]>(story.acceptanceCriteria || []);
+  const [newCriterion, setNewCriterion] = useState('');
+
+  const [techNotesList, setTechNotesList] = useState<string[]>(story.techNotes || []);
+  const [newTechNote, setNewTechNote] = useState('');
+
+  const [testCasesList, setTestCasesList] = useState<TestCase[]>(story.testCases || []);
+  const [newTestAction, setNewTestAction] = useState('');
+  const [newTestExpected, setNewTestExpected] = useState('');
+  const [isAddingTestCase, setIsAddingTestCase] = useState(false);
+
+  const [imagesList, setImagesList] = useState<StoryImage[]>(story.images || []);
+  const [newImageUrl, setNewImageUrl] = useState('');
+  const [newImageCaption, setNewImageCaption] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isAddingImageUrl, setIsAddingImageUrl] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<StoryImage | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setAsA(story.as_a);
+    setIWant(story.i_want);
+    setSoThat(story.so_that);
+    setCriteriaList(story.acceptanceCriteria || []);
+    setTechNotesList(story.techNotes || []);
+    setTestCasesList(story.testCases || []);
+    setImagesList(story.images || []);
+  }, [story]);
 
   const handleAiRegenerate = async () => {
     const token = getAuthToken();
@@ -92,7 +151,17 @@ export default function ManualStoryDetailPanel({
       setSoThat(result.so_that);
       setCriteriaList(result.acceptance_criteria || []);
       setTechNotesList(result.tech_notes || []);
-      setTestCasesList(result.test_cases || []);
+
+      const normalizedTestCases: TestCase[] = (result.test_cases || []).map((tc: any) =>
+        typeof tc === 'string'
+          ? { id: makeTempId(), action: tc, expectedResult: '' }
+          : {
+              id: tc.id ?? makeTempId(),
+              action: tc.action ?? '',
+              expectedResult: tc.expectedResult ?? tc.expected_result ?? '',
+            }
+      );
+      setTestCasesList(normalizedTestCases);
 
       if (onUpdate) {
         onUpdate({
@@ -102,7 +171,7 @@ export default function ManualStoryDetailPanel({
           so_that: result.so_that,
           acceptanceCriteria: result.acceptance_criteria,
           techNotes: result.tech_notes,
-          testCases: result.test_cases,
+          testCases: normalizedTestCases,
         });
       }
     } catch (err: any) {
@@ -112,28 +181,6 @@ export default function ManualStoryDetailPanel({
       setIsRegenerating(false);
     }
   };
-
-  const [asA, setAsA] = useState(story.as_a);
-  const [iWant, setIWant] = useState(story.i_want);
-  const [soThat, setSoThat] = useState(story.so_that);
-
-  const [criteriaList, setCriteriaList] = useState<string[]>(story.acceptanceCriteria || []);
-  const [newCriterion, setNewCriterion] = useState('');
-
-  const [techNotesList, setTechNotesList] = useState<string[]>(story.techNotes || []);
-  const [newTechNote, setNewTechNote] = useState('');
-
-  const [testCasesList, setTestCasesList] = useState<string[]>(story.testCases || []);
-  const [newTestCase, setNewTestCase] = useState('');
-
-  useEffect(() => {
-    setAsA(story.as_a);
-    setIWant(story.i_want);
-    setSoThat(story.so_that);
-    setCriteriaList(story.acceptanceCriteria || []);
-    setTechNotesList(story.techNotes || []);
-    setTestCasesList(story.testCases || []);
-  }, [story]);
 
   const statusConfig = {
     draft: { label: 'Draft', bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-200' },
@@ -190,13 +237,28 @@ export default function ManualStoryDetailPanel({
   };
 
   const handleAddTestCase = () => {
-    if (!newTestCase.trim()) return;
-    const updated = [...testCasesList, newTestCase.trim()];
+    if (!newTestAction.trim() && !newTestExpected.trim()) return;
+    const updated: TestCase[] = [
+      ...testCasesList,
+      {
+        id: makeTempId(),
+        action: newTestAction.trim(),
+        expectedResult: newTestExpected.trim(),
+      },
+    ];
     setTestCasesList(updated);
-    setNewTestCase('');
+    setNewTestAction('');
+    setNewTestExpected('');
+    setIsAddingTestCase(false);
     if (onUpdate) {
       onUpdate({ ...story, testCases: updated });
     }
+  };
+
+  const handleCancelAddTestCase = () => {
+    setNewTestAction('');
+    setNewTestExpected('');
+    setIsAddingTestCase(false);
   };
 
   const handleDeleteTestCase = (indexToRemove: number) => {
@@ -204,6 +266,126 @@ export default function ManualStoryDetailPanel({
     setTestCasesList(updated);
     if (onUpdate) {
       onUpdate({ ...story, testCases: updated });
+    }
+  };
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const token = getAuthToken();
+    if (!token) {
+      alert('Sesi habis, silakan login kembali.');
+      return;
+    }
+
+    setIsUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (newImageCaption.trim()) formData.append('caption', newImageCaption.trim());
+
+      const response = await fetch(
+        `${API_BASE}/api/stories/${story.id}/images/upload`,
+        {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Gagal upload gambar');
+      }
+
+      const created = await response.json();
+      const updatedRaw = [...imagesList.map(toRawImage), created];
+      setImagesList(updatedRaw.map(fromRawImage));
+      setNewImageCaption('');
+      if (onImagesUpdated) onImagesUpdated(story.id, updatedRaw);
+    } catch (err: any) {
+      console.error('Gagal upload gambar:', err);
+      alert(err.message || 'Gagal upload gambar.');
+    } finally {
+      setIsUploadingImage(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleAddImageUrl = async () => {
+    if (!newImageUrl.trim()) return;
+
+    const token = getAuthToken();
+    if (!token) {
+      alert('Sesi habis, silakan login kembali.');
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/stories/${story.id}/images`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            url: newImageUrl.trim(),
+            caption: newImageCaption.trim() || null,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Gagal menambah gambar');
+      }
+
+      const created = await response.json();
+      const updatedRaw = [...imagesList.map(toRawImage), created];
+      setImagesList(updatedRaw.map(fromRawImage));
+      setNewImageUrl('');
+      setNewImageCaption('');
+      setIsAddingImageUrl(false);
+      if (onImagesUpdated) onImagesUpdated(story.id, updatedRaw);
+    } catch (err: any) {
+      console.error('Gagal menambah gambar:', err);
+      alert(err.message || 'Gagal menambah gambar.');
+    }
+  };
+
+  const handleDeleteImage = async (image: StoryImage) => {
+    if (!confirm('Hapus gambar ini?')) return;
+
+    const token = getAuthToken();
+    if (!token) {
+      alert('Sesi habis, silakan login kembali.');
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/stories/images/${image.id}`,
+        {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Gagal menghapus gambar');
+      }
+
+      const updatedRaw = imagesList.filter((img) => img.id !== image.id).map(toRawImage);
+      setImagesList(updatedRaw.map(fromRawImage));
+      if (lightboxImage?.id === image.id) setLightboxImage(null);
+      if (onImagesUpdated) onImagesUpdated(story.id, updatedRaw);
+    } catch (err: any) {
+      console.error('Gagal menghapus gambar:', err);
+      alert(err.message || 'Gagal menghapus gambar.');
     }
   };
 
@@ -363,6 +545,17 @@ export default function ManualStoryDetailPanel({
               <span className="ml-1.5 text-[10px] text-gray-400 font-normal">({testCasesList.length})</span>
             )}
           </button>
+          <button
+            onClick={() => setActiveTab('images')}
+            className={`pb-3 transition-colors relative cursor-pointer ${
+              activeTab === 'images' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600'
+            }`}
+          >
+            IMAGES
+            {imagesList.length > 0 && (
+              <span className="ml-1.5 text-[10px] text-gray-400 font-normal">({imagesList.length})</span>
+            )}
+          </button>
         </div>
 
         {activeTab === 'criteria' && (
@@ -468,39 +661,80 @@ export default function ManualStoryDetailPanel({
 
         {activeTab === 'tests' && (
           <div className="space-y-4">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Contoh: Verifikasi sistem menampilkan pesan error jika email duplikat..."
-                value={newTestCase}
-                onChange={(e) => setNewTestCase(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddTestCase()}
-                className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
+            {isAddingTestCase ? (
+              <div className="space-y-2 p-3 bg-gray-50/70 border border-gray-100 rounded-lg">
+                <div>
+                  <label className="block text-[10px] font-semibold text-gray-500 uppercase mb-1">Action / Step</label>
+                  <textarea
+                    autoFocus
+                    placeholder="Contoh: User membuka halaman login lalu mengisi email yang sudah terdaftar"
+                    value={newTestAction}
+                    onChange={(e) => setNewTestAction(e.target.value)}
+                    rows={2}
+                    className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-gray-500 uppercase mb-1">Expected Result</label>
+                  <textarea
+                    placeholder="Contoh: Sistem menampilkan pesan error 'Email sudah terdaftar'"
+                    value={newTestExpected}
+                    onChange={(e) => setNewTestExpected(e.target.value)}
+                    rows={2}
+                    className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={handleCancelAddTestCase}
+                    className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-300 transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleAddTestCase}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Save
+                  </button>
+                </div>
+              </div>
+            ) : (
               <button
-                onClick={handleAddTestCase}
-                className="flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors cursor-pointer shrink-0"
+                onClick={() => setIsAddingTestCase(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
+                Add Test Case
               </button>
-            </div>
+            )}
 
             {testCasesList.length > 0 ? (
               <ul className="space-y-2.5">
                 {testCasesList.map((tc, index) => (
                   <li
-                    key={index}
+                    key={tc.id ?? index}
                     className="flex items-start justify-between gap-2.5 p-3 bg-gray-50 border border-gray-200 rounded-lg group hover:border-gray-300 transition-colors"
                   >
-                    <div className="flex items-start gap-2.5">
+                    <div className="flex items-start gap-2.5 flex-1 min-w-0">
                       <span className="text-[10px] font-mono font-bold text-gray-500 bg-gray-200/70 px-1.5 py-0.5 rounded shrink-0 mt-0.5">
                         TC-{index + 1}
                       </span>
-                      <span className="text-xs text-gray-700 leading-relaxed">{tc}</span>
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <p className="text-xs text-gray-700 leading-relaxed">
+                          <span className="font-semibold text-gray-500">Action: </span>
+                          {tc.action || <span className="italic text-gray-400">(kosong)</span>}
+                        </p>
+                        <p className="text-xs text-gray-700 leading-relaxed">
+                          <span className="font-semibold text-gray-500">Expected: </span>
+                          {tc.expectedResult || <span className="italic text-gray-400">(kosong)</span>}
+                        </p>
+                      </div>
                     </div>
                     <button
                       onClick={() => handleDeleteTestCase(index)}
-                      className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 transition-opacity cursor-pointer"
+                      className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 transition-opacity cursor-pointer shrink-0"
                       title="Hapus test case"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -510,7 +744,118 @@ export default function ManualStoryDetailPanel({
               </ul>
             ) : (
               <div className="p-4 bg-gray-50 rounded-lg border border-dashed border-gray-200 text-center">
-                <p className="text-xs text-gray-500">Belum ada test cases. Tulis skenario pengujian di atas lalu klik Tambah.</p>
+                <p className="text-xs text-gray-500">Belum ada test cases. Isi Action dan Expected Result di atas lalu klik Tambah.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'images' && (
+          <div className="space-y-4">
+            <div className="space-y-2 p-3 bg-gray-50/70 border border-gray-100 rounded-lg">
+              <div>
+                <label className="block text-[10px] font-semibold text-gray-500 uppercase mb-1">
+                  Caption (opsional, berlaku untuk gambar berikutnya yang ditambahkan)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Wireframe halaman login versi 2"
+                  value={newImageCaption}
+                  onChange={(e) => setNewImageCaption(e.target.value)}
+                  className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelected}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingImage}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isUploadingImage ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Mengupload...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-3.5 h-3.5" />
+                      Upload File
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setIsAddingImageUrl(!isAddingImageUrl)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-100 transition-colors cursor-pointer"
+                >
+                  <LinkIcon className="w-3.5 h-3.5" />
+                  Tambah dari URL
+                </button>
+              </div>
+
+              {isAddingImageUrl && (
+                <div className="flex gap-2 pt-1">
+                  <input
+                    type="text"
+                    placeholder="https://contoh.com/gambar.png"
+                    value={newImageUrl}
+                    onChange={(e) => setNewImageUrl(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddImageUrl()}
+                    className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={handleAddImageUrl}
+                    className="flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {imagesList.length > 0 ? (
+              <div className="grid grid-cols-3 gap-3">
+                {imagesList.map((img) => (
+                  <div
+                    key={img.id}
+                    className="group relative border border-gray-200 rounded-lg overflow-hidden bg-gray-50 aspect-square cursor-pointer"
+                    onClick={() => setLightboxImage(img)}
+                  >
+                    <img
+                      src={resolveImageUrl(img.url)}
+                      alt={img.caption || 'Story image'}
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteImage(img);
+                      }}
+                      className="absolute top-1.5 right-1.5 p-1 bg-white/90 rounded-md text-gray-500 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                      title="Hapus gambar"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                    {img.caption && (
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] px-2 py-1 truncate">
+                        {img.caption}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 bg-gray-50 rounded-lg border border-dashed border-gray-200 text-center">
+                <ImageIcon className="w-6 h-6 text-gray-300 mx-auto mb-1" />
+                <p className="text-xs text-gray-500">Belum ada gambar/wireframe. Upload file atau tambahkan lewat URL di atas.</p>
               </div>
             )}
           </div>
@@ -589,6 +934,44 @@ export default function ManualStoryDetailPanel({
           </button>
         </SidebarCard>
       </div>
+
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          onClick={() => setLightboxImage(null)}
+        >
+          <div
+            className="max-w-3xl w-full bg-white rounded-xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100">
+              <span className="text-xs font-semibold text-gray-700 truncate">
+                {lightboxImage.caption || 'Gambar'}
+              </span>
+              <button
+                onClick={() => setLightboxImage(null)}
+                className="p-1 text-gray-400 hover:text-gray-600 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <img
+              src={resolveImageUrl(lightboxImage.url)}
+              alt={lightboxImage.caption || 'Story image'}
+              className="w-full max-h-[75vh] object-contain bg-gray-50"
+            />
+            <div className="flex justify-end px-4 py-2 border-t border-gray-100">
+              <button
+                onClick={() => handleDeleteImage(lightboxImage)}
+                className="flex items-center gap-1 px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Hapus Gambar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

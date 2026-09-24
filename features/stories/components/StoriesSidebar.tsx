@@ -2,13 +2,17 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Epic, UserStory } from '../types';
+import { Epic, UserStory, NFR } from '../types';
 import EpicListItem from './EpicListItem';
+import NfrEpicItem from './NfrEpicItem';
 import CreateNewDropdown from './createNewDropdown';
 import { Search, Edit3, ChevronDown, FileText, Layers, Boxes } from 'lucide-react';
 
 interface StoriesSidebarProps {
   epics: Epic[];
+  nfrs?: NFR[];
+  selectedNfrCategory?: string | null;
+  onSelectNfrCategory?: (category: string, items: NFR[]) => void;
   selectedStoryId?: string;
   currentProjectId?: string | null;
   onSelectStory: (story: UserStory) => void;
@@ -23,6 +27,9 @@ interface StoriesSidebarProps {
 
 export default function StoriesSidebar({
   epics,
+  nfrs,
+  selectedNfrCategory,
+  onSelectNfrCategory,
   selectedStoryId,
   onSelectStory,
   onSelectEpic,
@@ -58,9 +65,22 @@ export default function StoriesSidebar({
       .filter(Boolean) as Epic[];
   }, [epics, searchQuery]);
 
+  const filteredNfrs = useMemo(() => {
+    if (!nfrs || nfrs.length === 0) return [];
+    if (!searchQuery.trim()) return nfrs;
+    const query = searchQuery.toLowerCase();
+    return nfrs.filter(
+      (nfr) =>
+        nfr.category?.toLowerCase().includes(query) ||
+        nfr.description?.toLowerCase().includes(query)
+    );
+  }, [nfrs, searchQuery]);
+
   const totalStories = useMemo(() => {
     return epics.reduce((acc, epic) => acc + (epic.user_stories?.length || 0), 0);
   }, [epics]);
+
+  const isEmpty = filteredEpics.length === 0 && filteredNfrs.length === 0;
 
   return (
     <aside className="w-80 border-r border-gray-200 bg-white h-full flex flex-col relative select-none">
@@ -126,24 +146,35 @@ export default function StoriesSidebar({
 
         <div className="text-[11px] text-gray-400 font-medium px-0.5">
           Showing {totalStories} stories, {epics.length} epics
+          {nfrs && nfrs.length > 0 ? `, ${nfrs.length} NFRs` : ''}
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3">
-        {filteredEpics.length === 0 ? (
+        {isEmpty ? (
           <div className="py-8 text-center text-gray-400 text-xs italic">
             No stories or epics found.
           </div>
         ) : (
-          filteredEpics.map((epic) => (
-            <EpicListItem
-              key={epic.id}
-              epic={epic}
-              selectedStoryId={selectedStoryId}
-              onSelectStory={onSelectStory}
-              onSelectEpic={onSelectEpic}
+          <>
+            {filteredEpics.map((epic) => (
+              <EpicListItem
+                key={epic.id}
+                epic={epic}
+                selectedStoryId={selectedStoryId}
+                onSelectStory={onSelectStory}
+                onSelectEpic={onSelectEpic}
+              />
+            ))}
+
+            {/* NFR ditampilkan sebagai satu entri "epic" biasa di list yang sama,
+                bukan section terpisah -- expand-nya berisi daftar category. */}
+            <NfrEpicItem
+              nfrs={filteredNfrs}
+              selectedCategory={selectedNfrCategory}
+              onSelectCategory={onSelectNfrCategory}
             />
-          ))
+          </>
         )}
       </div>
     </aside>
