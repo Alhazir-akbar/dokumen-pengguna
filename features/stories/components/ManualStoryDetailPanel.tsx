@@ -30,6 +30,7 @@ import {
   createStoryLink,
   deleteStoryLink,
   generateStoryLinksForStory,
+  getJourneysLinkedFromStory, 
 } from '@/services/storiesApi';
 import { getAuthToken } from '@/lib/auth';
 
@@ -187,6 +188,11 @@ export default function ManualStoryDetailPanel({
   const [isSavingLink, setIsSavingLink] = useState(false);
   const [isGeneratingLinks, setIsGeneratingLinks] = useState(false);
 
+  const [linkedJourneys, setLinkedJourneys] = useState<
+    { journey_id: number; journey_title: string; step_id: number; step_title: string }[]
+  >([]);
+  const [isLoadingJourneys, setIsLoadingJourneys] = useState(false);
+
   useEffect(() => {
     setAsA(story.as_a);
     setIWant(story.i_want);
@@ -247,6 +253,21 @@ export default function ManualStoryDetailPanel({
     setIsAddingLink(false);
     setLinkTargetId('');
     setLinkType('relates_to');
+  }, [story.id]);
+
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) return;
+
+    setIsLoadingJourneys(true);
+    getJourneysLinkedFromStory(story.id, token)
+      .then((raw: any[]) => {
+        setLinkedJourneys(raw || []);
+      })
+      .catch((err) => {
+        console.error('Gagal memuat journeys yang terhubung:', err);
+      })
+      .finally(() => setIsLoadingJourneys(false));
   }, [story.id]);
 
   const handleAiRegenerate = async () => {
@@ -1423,9 +1444,28 @@ export default function ManualStoryDetailPanel({
           iconColor="text-indigo-600"
           title="Journeys Linked From"
         >
-          <p className="text-[11px] text-gray-400 italic">
-            Belum ada journey yang terhubung ke story ini.
-          </p>
+          {isLoadingJourneys ? (
+            <div className="flex justify-center py-2">
+              <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+            </div>
+          ) : linkedJourneys.length > 0 ? (
+            <ul className="space-y-2">
+              {linkedJourneys.map((j) => (
+                <li key={j.step_id} className="min-w-0">
+                  <p className="text-[11px] font-semibold text-gray-700 truncate">
+                    {j.journey_title}
+                  </p>
+                  <p className="text-[10px] text-gray-400 truncate">
+                    Step: {j.step_title}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[11px] text-gray-400 italic">
+              Belum ada journey yang terhubung ke story ini.
+            </p>
+          )}
         </SidebarCard>
 
         <SidebarCard

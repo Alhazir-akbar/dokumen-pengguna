@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Boxes, Loader2 } from 'lucide-react';
+import { X, Boxes, Loader2, Sparkles } from 'lucide-react';
 import { getAuthToken } from '@/lib/auth';
 
 interface CreatedEpic {
@@ -17,17 +17,24 @@ interface CreateEpicModalProps {
   onClose: () => void;
   onCreated: (epic: CreatedEpic) => void;
   projectId?: string | null;
+  projectName?: string;
+  existingEpics?: string[];
 }
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export default function CreateEpicModal({
   isOpen,
   onClose,
   onCreated,
   projectId,
+  projectName,
+  existingEpics,
 }: CreateEpicModalProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -37,7 +44,49 @@ export default function CreateEpicModal({
     setDescription('');
     setError(null);
     setLoading(false);
+    setAiLoading(false);
     onClose();
+  };
+
+  const handleGenerateDraft = async () => {
+    const token = getAuthToken();
+    if (!token) {
+      setError('Sesi habis, silakan login kembali.');
+      return;
+    }
+
+    setAiLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/stories/epics/ai-suggest`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          project_name: projectName || '',
+          existing_epics: existingEpics || [],
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.detail || 'Gagal generate saran AI.');
+      }
+
+      const suggestion = await res.json();
+      // Backend (schemas.SuggestEpicDraftResponse) mengembalikan field "title",
+      // bukan "name" -- sebelumnya salah baca field ini sehingga nama epic
+      // selalu kosong walau description berhasil terisi.
+      setName(suggestion.title || '');
+      setDescription(suggestion.description || '');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Terjadi kesalahan tak terduga.');
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -67,21 +116,18 @@ export default function CreateEpicModal({
     setError(null);
 
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/stories/epics`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            name: trimmedName,
-            description: description.trim() || null,
-            project_id: Number(projectId),
-          }),
-        }
-      );
+      const res = await fetch(`${API_BASE}/api/stories/epics`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: trimmedName,
+          description: description.trim() || null,
+          project_id: Number(projectId),
+        }),
+      });
 
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -121,6 +167,16 @@ export default function CreateEpicModal({
         </div>
 
         <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4">
+          <button
+            type="button"
+            onClick={handleGenerateDraft}
+            disabled={aiLoading}
+            className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-purple-600 border border-purple-200 hover:bg-purple-50 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+            {aiLoading ? 'Generating...' : 'Generate with AI'}
+          </button>
+
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Name <span className="text-red-500">*</span>

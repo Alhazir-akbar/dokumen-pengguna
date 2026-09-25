@@ -125,7 +125,7 @@ export const journeysApi = {
     }
     return response.json();
   },
-
+  
   // Mengganti seluruh steps sebuah journey (dipakai saat user edit steps
   // secara manual lewat JourneyDetailPanel). Cocok dengan endpoint backend
   // PUT /api/journeys/{id}/steps.
@@ -172,4 +172,24 @@ export const journeysApi = {
     }
     return response.json();
   },
+
+  linkStoryToStep: async (stepId: number, storyId: number, token: string) => {
+  const res = await fetch(`${API_BASE_URL}/api/journeys/steps/${stepId}/link-story`, {  // ✅
+    method: 'POST',
+    headers: getAuthHeaders(token),  // sekalian pakai helper yang sudah ada
+    body: JSON.stringify({ story_id: storyId }),
+  });
+  if (!res.ok) throw new Error('Gagal menghubungkan story ke step');
+  return res.json();
+},
+
+unlinkStoryFromStep: async (stepId: number, storyId: number, token: string) => {
+  const res = await fetch(`${API_BASE_URL}/api/journeys/steps/${stepId}/link-story/${storyId}`, {  // ✅
+    method: 'DELETE',
+    headers: getAuthHeaders(token),
+  });
+  if (!res.ok) throw new Error('Gagal melepas story dari step');
+  return res.json();
+},
 };
+

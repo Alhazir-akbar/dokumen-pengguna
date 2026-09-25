@@ -15,8 +15,8 @@ import AppSidebar from '@/features/common/components/AppSidebar';
 import AccountMenu from '@/features/common/components/accountMenu';
 import CreateEpicModal from '@/features/stories/components/CreateEpicModal';
 import CreateNfrModal from '@/features/stories/components/CreateNfrModal';
-import { MessageSquare, Upload, Download, X, Lightbulb, Loader2, ChevronDown, Sparkles } from 'lucide-react';
-import { fetchEpics, fetchStories, fetchNfrs } from '@/services/storiesApi';
+import { MessageSquare, Upload, Download, X, Lightbulb, Loader2, ChevronDown, Sparkles, FileText } from 'lucide-react';
+import { fetchEpics, fetchStories, fetchNfrs, suggestStoryWithAi } from '@/services/storiesApi';
 import { projectApi } from '@/services/projectsApi';
 import { getAuthToken } from '@/lib/auth';
 
@@ -116,6 +116,8 @@ function StoriesPageContent() {
   const [newAsA, setNewAsA] = useState('');
   const [newSoThat, setNewSoThat] = useState('');
   const [selectedEpicId, setSelectedEpicId] = useState<number | string | ''>('');
+  const [newStoryAiLoading, setNewStoryAiLoading] = useState(false);
+  const [newStoryAiError, setNewStoryAiError] = useState<string | null>(null);
 
   useEffect(() => {
     if (formattedEpics.length > 0 && selectedEpicId === '') {
@@ -141,6 +143,39 @@ function StoriesPageContent() {
     () => rawNfrs.filter((n) => n.category === selectedNfrCategory),
     [rawNfrs, selectedNfrCategory]
   );
+
+  const handleGenerateStoryDraft = async () => {
+  const token = getAuthToken();
+  if (!token) {
+    setNewStoryAiError('Sesi habis, silakan login kembali.');
+    return;
+  }
+
+  setNewStoryAiLoading(true);
+  setNewStoryAiError(null);
+
+  try {
+    const currentEpic = formattedEpics.find((e) => e.id === selectedEpicId);
+    const suggestion = await suggestStoryWithAi(
+      {
+        as_a: newAsA || undefined,
+        i_want: newTitle || undefined,
+        so_that: newSoThat || undefined,
+        epic_name: currentEpic?.name,
+        project_name: projectName,
+      },
+      token
+    );
+
+    setNewAsA(suggestion.as_a || newAsA);
+    setNewTitle(suggestion.i_want || newTitle);
+    setNewSoThat(suggestion.so_that || newSoThat);
+  } catch (err) {
+    setNewStoryAiError(err instanceof Error ? err.message : 'Terjadi kesalahan tak terduga.');
+  } finally {
+    setNewStoryAiLoading(false);
+  }
+};
 
   const handleSaveNewStory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -344,6 +379,24 @@ function StoriesPageContent() {
     setIsEpicModalOpen(false);
   };
 
+  const handleEpicUpdated = (updatedEpic: Epic) => {
+  mutate(
+    (prev: any) =>
+      prev
+        ? {
+            ...prev,
+            epics: (prev.epics || []).map((e: any) =>
+              e.id === updatedEpic.id
+                ? { ...e, name: updatedEpic.name, description: updatedEpic.description }
+                : e
+            ),
+          }
+        : prev,
+    false
+  );
+  setSelectedEpic((prev) => (prev && prev.id === updatedEpic.id ? updatedEpic : prev));
+};
+
   const handleNfrCreated = (newNfr: NFR) => {
     mutate((prev: any) => (prev ? { ...prev, nfrs: [...(prev.nfrs || []), newNfr] } : prev), false);
     setIsNfrModalOpen(false);
@@ -523,6 +576,7 @@ function StoriesPageContent() {
                       setSelectedStory(story);
                       setSelectedEpic(null);
                     }}
+                    onUpdated={handleEpicUpdated}
                   />
                 ) : selectedNfrCategory ? (
                   <NfrCategoryDetailPanel
@@ -551,76 +605,119 @@ function StoriesPageContent() {
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl overflow-hidden border border-gray-100 animate-in fade-in zoom-in duration-200">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h3 className="font-bold text-gray-800 text-base">Create New User Story</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <span className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                  <FileText className="w-4 h-4 text-blue-600" />
+                </span>
+                <h2 className="text-sm font-semibold text-gray-800">New User Story</h2>
+              </div>
               <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg transition-colors cursor-pointer"
+                type="button"
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setNewStoryAiError(null);
+                }}
+                className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveNewStory} className="p-6 space-y-4">
+            <form onSubmit={handleSaveNewStory} className="px-5 py-4 space-y-4">
+              <button
+                type="button"
+                onClick={handleGenerateStoryDraft}
+                disabled={newStoryAiLoading}
+                className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-purple-600 border border-purple-200 hover:bg-purple-50 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {newStoryAiLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5" />
+                )}
+                {newStoryAiLoading ? 'Generating...' : 'Generate with AI'}
+              </button>
+
               <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Pilih Epic</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Epic</label>
                 <select
                   value={selectedEpicId}
                   onChange={(e) => setSelectedEpicId(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500">
-                  {formattedEpics.map((ep) => (<option key={ep.id} value={ep.id}>{ep.name}</option>))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500 transition-colors bg-white"
+                >
+                  {formattedEpics.map((ep) => (
+                    <option key={ep.id} value={ep.id}>
+                      {ep.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Sebagai (As a)</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  As a <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
-                  placeholder="Contoh: Admin, Guest, Registered User"
+                  placeholder="e.g. Admin, Guest, Registered User"
                   value={newAsA}
                   onChange={(e) => setNewAsA(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Saya ingin (I want to)</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  I want to <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
-                  placeholder="Contoh: melakukan login ke dalam sistem"
+                  placeholder="e.g. log in to the system"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   required
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Sehingga (So that)</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  So that <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
                 <textarea
-                  placeholder="Contoh: saya dapat mengakses dashboard utama"
+                  placeholder="e.g. I can access the main dashboard"
                   value={newSoThat}
                   onChange={(e) => setNewSoThat(e.target.value)}
                   rows={3}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors resize-none"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
+              {newStoryAiError && (
+                <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                  {newStoryAiError}
+                </p>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setNewStoryAiError(null);
+                  }}
+                  className="px-3.5 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  Batal
+                  Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm cursor-pointer"
+                  className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
                 >
-                  Simpan Story
+                  Create Story
                 </button>
               </div>
             </form>
@@ -633,6 +730,8 @@ function StoriesPageContent() {
         onClose={() => setIsEpicModalOpen(false)}
         onCreated={handleEpicCreated}
         projectId={projectId}
+        projectName={projectName}
+        existingEpics={formattedEpics.map((e) => e.name)}
       />
 
       <CreateNfrModal

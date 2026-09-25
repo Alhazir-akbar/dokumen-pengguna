@@ -76,10 +76,6 @@ export async function submitWizardBatch(
   return response.json();
 }
 
-// TAMBAHAN: dipanggil saat user memilih "No, not at this stage" di step AiChoice.
-// Membuat 1 Epic + 1 User Story contoh (lengkap acceptance criteria) untuk
-// project_id ini, supaya dashboard Stories tidak kosong total.
-// Idempotent di sisi backend -- aman dipanggil berkali-kali untuk project yang sama.
 export async function seedExampleStory(projectId: number, token: string) {
   const response = await fetch(`${API_URL}/stories/seed-example?project_id=${projectId}`, {
     method: 'POST',
@@ -132,6 +128,23 @@ export async function createEpic(
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.detail || 'Gagal membuat Epic baru');
+  }
+  return response.json();
+}
+
+export async function updateEpic(
+  id: number | string,
+  payload: { name?: string; description?: string },
+  token: string
+) {
+  const response = await fetch(`${API_URL}/stories/epics/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Gagal update Epic');
   }
   return response.json();
 }
@@ -325,6 +338,20 @@ export async function generateStoryLinksForStory(storyId: number | string, token
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.detail || 'Gagal generate links dengan AI');
+  }
+  return response.json();
+}
+
+export async function getJourneysLinkedFromStory(storyId: number | string, token: string) {
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/stories/${storyId}/journeys`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Gagal memuat journeys yang terhubung');
   }
   return response.json();
 }
