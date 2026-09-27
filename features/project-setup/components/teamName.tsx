@@ -5,14 +5,19 @@ import LogoUserdoc from '../../../public/logoUserDoc';
 import { useWizardStore } from '../store/wizard-store';
 import { ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { getAuthToken } from '@/lib/auth';
 
 export default function TeamName() {
+  const searchParams = useSearchParams();
+  const wsParam = searchParams.get('workspace_id');
+
   const {
     teamName,
     workspaceId,
     updateTeamName,
     setStep,
+    setWorkspaceId,
     nextStep,
     createWorkspaceIfNeeded,
     isCreatingWorkspace,
@@ -21,23 +26,20 @@ export default function TeamName() {
   const [error, setError] = useState(false);
   const [actionError, setActionError] = useState('');
 
-  // Kalau workspace SUDAH ada (mis. user datang dari tombol "Create New Project"
-  // di /workspace, yang sudah nge-set workspaceId sebelum masuk sini), langsung
-  // arahkan ke step NameProject (step 2).
-  //
-  // PENTING: pakai setStep(2) yang deterministik, BUKAN nextStep() (step + 1).
-  // Next.js App Router jalan di React Strict Mode saat development, yang
-  // sengaja me-mount & menjalankan useEffect dua kali. Kalau pakai nextStep(),
-  // efek yang terpanggil dua kali bikin step lompat dari 1 -> 2 -> 3, sehingga
-  // step 2 (NameProject) langsung terlewat ke step 3 (ProjectType). Dengan
-  // setStep(2), berapa kali pun efek ini terpanggil ulang, hasilnya tetap
-  // konsisten di step 2.
   useEffect(() => {
+    if (wsParam) {
+      const parsedId = Number(wsParam);
+      if (parsedId) {
+        setWorkspaceId(parsedId);
+      }
+      setStep(2);
+      return;
+    }
     if (workspaceId) {
       setStep(2);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [wsParam, workspaceId]);
 
   const handleNext = async () => {
     if (!teamName || teamName.trim() === "") {
@@ -75,7 +77,7 @@ export default function TeamName() {
     }
   };
 
-  if (workspaceId) {
+  if (workspaceId || wsParam) {
     return (
       <div className="flex items-center justify-center w-full h-64">
         <Loader2 className="w-6 h-6 text-white animate-spin" />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWizardStore } from '@/features/project-setup/store/wizard-store';
 import { LogOut, FastForward, Loader2, ArrowLeft } from 'lucide-react';
@@ -48,6 +48,14 @@ export default function WizardPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
   const [isSeedingExample, setIsSeedingExample] = useState(false);
+
+  // 🔒 Auth Guard: Pastikan user sudah login
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) {
+      router.replace('/login');
+    }
+  }, [router]);
 
   // 🚪 Fungsi Logout
   const handleLogout = () => {
@@ -354,7 +362,11 @@ export default function WizardPage() {
         </button>
       </div>
 
-      {step === 1 && <TeamName />}
+      {step === 1 && (
+        <Suspense fallback={<div className="flex items-center justify-center w-full h-64"><Loader2 className="w-6 h-6 text-white animate-spin" /></div>}>
+          <TeamName />
+        </Suspense>
+      )}
       {step === 2 && <ProjectType />}
 
       {projectType === 'generate' && (

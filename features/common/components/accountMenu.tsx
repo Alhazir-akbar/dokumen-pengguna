@@ -8,6 +8,7 @@ import { profileApi, UserProfile } from '@/services/profileApi';
 import { workspaceApi, WorkspaceResponse } from '@/services/workspaceApi';
 import { projectApi } from '@/services/projectsApi';
 import { getAuthToken, clearAuthToken } from '@/lib/auth';
+import { useWizardStore } from '@/features/project-setup/store/wizard-store';
 
 interface AccountMenuProps {
   // Opsional: kirim ini dari halaman yang sudah tahu workspace_id project aktif
@@ -80,24 +81,10 @@ export default function AccountMenu({ currentWorkspaceId: currentWorkspaceIdProp
     router.push('/login');
   };
 
-  const handleCreateWorkspace = async () => {
-    const name = prompt('Masukkan nama tim / workspace baru:');
-    if (!name || !name.trim()) return;
-
-    const token = getAuthToken();
-    if (!token) return;
-
-    try {
-      const newWs = await workspaceApi.createWorkspace({ name: name.trim() }, token);
-      const updatedWorkspaces = await workspaceApi.getMyWorkspaces(token);
-      setWorkspaces(updatedWorkspaces);
-      setIsOpen(false);
-      // Workspace baru pasti belum punya project, arahkan langsung ke pembuatan project pertama
-      router.push(`/project-setup?workspace_id=${newWs.id}`);
-    } catch (err: any) {
-      console.error('Gagal membuat workspace:', err);
-      alert(err.message || 'Gagal membuat workspace baru.');
-    }
+  const handleCreateWorkspace = () => {
+    useWizardStore.getState().resetStore();
+    setIsOpen(false);
+    router.push('/project-setup');
   };
 
   const handleDeleteWorkspace = async (e: React.MouseEvent, ws: WorkspaceResponse) => {
@@ -149,6 +136,7 @@ export default function AccountMenu({ currentWorkspaceId: currentWorkspaceIdProp
       if (projects && projects.length > 0) {
         router.push(`/stories?project_id=${projects[0].id}`);
       } else {
+        useWizardStore.getState().resetStore();
         router.push(`/project-setup?workspace_id=${ws.id}`);
       }
       setIsOpen(false);

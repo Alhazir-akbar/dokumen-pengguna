@@ -15,7 +15,7 @@ import AppSidebar from '@/features/common/components/AppSidebar';
 import AccountMenu from '@/features/common/components/accountMenu';
 import CreateEpicModal from '@/features/stories/components/CreateEpicModal';
 import CreateNfrModal from '@/features/stories/components/CreateNfrModal';
-import { MessageSquare, Upload, Download, X, Lightbulb, Loader2, ChevronDown, Sparkles, FileText } from 'lucide-react';
+import { MessageSquare, Upload, Download, X, Lightbulb, Loader2, ChevronDown, Sparkles, FileText, Plus } from 'lucide-react';
 import { fetchEpics, fetchStories, fetchNfrs, suggestStoryWithAi } from '@/services/storiesApi';
 import { projectApi } from '@/services/projectsApi';
 import { getAuthToken } from '@/lib/auth';
@@ -115,15 +115,15 @@ function StoriesPageContent() {
   const [newTitle, setNewTitle] = useState('');
   const [newAsA, setNewAsA] = useState('');
   const [newSoThat, setNewSoThat] = useState('');
-  const [selectedEpicId, setSelectedEpicId] = useState<number | string | ''>('');
+  const [epicInput, setEpicInput] = useState('');
   const [newStoryAiLoading, setNewStoryAiLoading] = useState(false);
   const [newStoryAiError, setNewStoryAiError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (formattedEpics.length > 0 && selectedEpicId === '') {
-      setSelectedEpicId(formattedEpics[0].id);
+    if (formattedEpics.length > 0 && !epicInput) {
+      setEpicInput(formattedEpics[0].name);
     }
-  }, [formattedEpics, selectedEpicId]);
+  }, [formattedEpics, isModalOpen]);
 
   useEffect(() => {
     if (selectedEpic) {
@@ -145,37 +145,36 @@ function StoriesPageContent() {
   );
 
   const handleGenerateStoryDraft = async () => {
-  const token = getAuthToken();
-  if (!token) {
-    setNewStoryAiError('Sesi habis, silakan login kembali.');
-    return;
-  }
+    const token = getAuthToken();
+    if (!token) {
+      setNewStoryAiError('Sesi habis, silakan login kembali.');
+      return;
+    }
 
-  setNewStoryAiLoading(true);
-  setNewStoryAiError(null);
+    setNewStoryAiLoading(true);
+    setNewStoryAiError(null);
 
-  try {
-    const currentEpic = formattedEpics.find((e) => e.id === selectedEpicId);
-    const suggestion = await suggestStoryWithAi(
-      {
-        as_a: newAsA || undefined,
-        i_want: newTitle || undefined,
-        so_that: newSoThat || undefined,
-        epic_name: currentEpic?.name,
-        project_name: projectName,
-      },
-      token
-    );
+    try {
+      const suggestion = await suggestStoryWithAi(
+        {
+          as_a: newAsA || undefined,
+          i_want: newTitle || undefined,
+          so_that: newSoThat || undefined,
+          epic_name: epicInput.trim() || undefined,
+          project_name: projectName,
+        },
+        token
+      );
 
-    setNewAsA(suggestion.as_a || newAsA);
-    setNewTitle(suggestion.i_want || newTitle);
-    setNewSoThat(suggestion.so_that || newSoThat);
-  } catch (err) {
-    setNewStoryAiError(err instanceof Error ? err.message : 'Terjadi kesalahan tak terduga.');
-  } finally {
-    setNewStoryAiLoading(false);
-  }
-};
+      setNewAsA(suggestion.as_a || newAsA);
+      setNewTitle(suggestion.i_want || newTitle);
+      setNewSoThat(suggestion.so_that || newSoThat);
+    } catch (err) {
+      setNewStoryAiError(err instanceof Error ? err.message : 'Terjadi kesalahan tak terduga.');
+    } finally {
+      setNewStoryAiLoading(false);
+    }
+  };
 
   const handleSaveNewStory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -188,14 +187,38 @@ function StoriesPageContent() {
     }
 
     try {
-      let epicIdToUse = selectedEpicId;
-      if (!epicIdToUse && formattedEpics.length > 0) {
-        epicIdToUse = formattedEpics[0].id;
-      }
+      const trimmedEpicName = epicInput.trim() || 'General';
+      let epicIdToUse: number | null = null;
+      let newlyCreatedEpic: any = null;
 
-      if (!epicIdToUse) {
-        alert('Harap buat atau pilih Epic terlebih dahulu!');
-        return;
+      // Cari apakah nama Epic yang diketik sudah ada di daftar Epic
+      const existing = formattedEpics.find(
+        (ep) => ep.name.toLowerCase() === trimmedEpicName.toLowerCase()
+      );
+
+      if (existing) {
+        epicIdToUse = Number(existing.id);
+      } else {
+        // Jika belum ada, buatkan Epic baru secara otomatis
+        const createEpicRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/stories/epics`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name: trimmedEpicName,
+            project_id: Number(projectId),
+          }),
+        });
+
+        if (!createEpicRes.ok) {
+          const err = await createEpicRes.json().catch(() => ({}));
+          throw new Error(err.detail || 'Gagal membuat epic baru.');
+        }
+
+        newlyCreatedEpic = await createEpicRes.json();
+        epicIdToUse = Number(newlyCreatedEpic.id);
       }
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/stories`, {
@@ -206,7 +229,7 @@ function StoriesPageContent() {
         },
         body: JSON.stringify({
           project_id: Number(projectId),
-          epic_id: Number(epicIdToUse),
+          epic_id: epicIdToUse,
           i_want: newTitle,
           as_a: newAsA || 'User',
           so_that: newSoThat || 'Sistem berjalan dengan baik',
@@ -224,13 +247,21 @@ function StoriesPageContent() {
 
       const createdStory = await response.json();
       mutate(
-        (prev: any) => (prev ? { ...prev, stories: [...(prev.stories || []), createdStory] } : prev),
+        (prev: any) => {
+          if (!prev) return prev;
+          const updatedEpics = newlyCreatedEpic
+            ? [...(prev.epics || []), newlyCreatedEpic]
+            : (prev.epics || []);
+          const updatedStories = [...(prev.stories || []), createdStory];
+          return { ...prev, epics: updatedEpics, stories: updatedStories };
+        },
         false
       );
       setIsModalOpen(false);
       setNewTitle('');
       setNewAsA('');
       setNewSoThat('');
+      setEpicInput('');
     } catch (err: any) {
       console.error('Gagal membuat story:', err);
       alert(err.message || 'Gagal membuat story.');
@@ -377,6 +408,9 @@ function StoriesPageContent() {
   const handleEpicCreated = (newEpic: any) => {
     mutate((prev: any) => (prev ? { ...prev, epics: [...(prev.epics || []), newEpic] } : prev), false);
     setIsEpicModalOpen(false);
+    if (newEpic?.name) {
+      setEpicInput(newEpic.name);
+    }
   };
 
   const handleEpicUpdated = (updatedEpic: Epic) => {
@@ -642,14 +676,28 @@ function StoriesPageContent() {
               </button>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Epic</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-medium text-gray-700">
+                    Epic <span className="text-red-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsEpicModalOpen(true)}
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Tambah Epic Baru</span>
+                  </button>
+                </div>
                 <select
-                  value={selectedEpicId}
-                  onChange={(e) => setSelectedEpicId(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500 transition-colors bg-white"
+                  value={epicInput}
+                  onChange={(e) => setEpicInput(e.target.value)}
+                  required
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500 transition-colors bg-white cursor-pointer"
                 >
+                  <option value="">-- Pilih Epic --</option>
                   {formattedEpics.map((ep) => (
-                    <option key={ep.id} value={ep.id}>
+                    <option key={ep.id} value={ep.name}>
                       {ep.name}
                     </option>
                   ))}
