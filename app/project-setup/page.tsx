@@ -48,14 +48,25 @@ export default function WizardPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
   const [isSeedingExample, setIsSeedingExample] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  // 🔒 Auth Guard: Pastikan user sudah login
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // 🔒 Auth Guard & State Sync
   useEffect(() => {
     const token = getAuthToken();
     if (!token) {
       router.replace('/login');
     }
   }, [router]);
+
+  useEffect(() => {
+    if (mounted && step > 2 && !projectType) {
+      useWizardStore.getState().setStep(2);
+    }
+  }, [mounted, step, projectType]);
 
   // 🚪 Fungsi Logout
   const handleLogout = () => {
@@ -362,43 +373,52 @@ export default function WizardPage() {
         </button>
       </div>
 
-      {step === 1 && (
-        <Suspense fallback={<div className="flex items-center justify-center w-full h-64"><Loader2 className="w-6 h-6 text-white animate-spin" /></div>}>
-          <TeamName />
-        </Suspense>
-      )}
-      {step === 2 && <ProjectType />}
-
-      {projectType === 'generate' && (
+      {!mounted ? (
+        <div className="flex items-center justify-center w-full h-64">
+          <Loader2 className="w-8 h-8 text-white animate-spin" />
+        </div>
+      ) : (
         <>
-          {step === 3 && <AiIntro />}
-          {step === 4 && <NameProject />}
-          {step === 5 && <DescribeProject />}
-          {step === 6 && <UserTypes />}
-          {step === 7 && <AiChoice onManualSetup={handleManualSetup} />}
-          {step === 8 && <EpicsList />}
-          {step === 9 && <NonFunctionalList />}
-          {step === 10 && <UserStoriesList />}
-          {step === 11 && <UserTypeGoals />}
-          {step === 12 && <UserJourney onFinishProject={handleFinishWizard} />}
-        </>
-      )}
+          {step === 1 && (
+            <Suspense fallback={<div className="flex items-center justify-center w-full h-64"><Loader2 className="w-6 h-6 text-white animate-spin" /></div>}>
+              <TeamName />
+            </Suspense>
+          )}
 
-      {projectType === 'translate' && (
-        <>
-          {step === 3 && <SoftwareIntro />}
-          {step === 4 && <SoftwareName />}
-          {step === 5 && <SoftwareOverview />}
-          {step === 6 && <SoftwareScale />}
-          {step === 7 && <SoftwareDetails />}
-          {step === 8 && <SoftwareTechnologies />}
-          {step === 9 && <UserJourney onFinishProject={handleFinishWizard} />}
-        </>
-      )}
+          {(step === 2 || (step > 2 && !projectType)) && <ProjectType />}
 
-      {projectType === 'example' && (
-        <>
-          {step === 4 && <UserJourney onFinishProject={handleFinishWizard} />}
+          {projectType === 'generate' && (
+            <>
+              {step === 3 && <AiIntro />}
+              {step === 4 && <NameProject />}
+              {step === 5 && <DescribeProject />}
+              {step === 6 && <UserTypes />}
+              {step === 7 && <AiChoice onManualSetup={handleManualSetup} />}
+              {step === 8 && <EpicsList />}
+              {step === 9 && <NonFunctionalList />}
+              {step === 10 && <UserStoriesList />}
+              {step === 11 && <UserTypeGoals />}
+              {step === 12 && <UserJourney onFinishProject={handleFinishWizard} />}
+            </>
+          )}
+
+          {projectType === 'translate' && (
+            <>
+              {step === 3 && <SoftwareIntro />}
+              {step === 4 && <SoftwareName />}
+              {step === 5 && <SoftwareOverview />}
+              {step === 6 && <SoftwareScale />}
+              {step === 7 && <SoftwareDetails />}
+              {step === 8 && <SoftwareTechnologies />}
+              {step === 9 && <UserJourney onFinishProject={handleFinishWizard} />}
+            </>
+          )}
+
+          {projectType === 'example' && (
+            <>
+              {step === 4 && <UserJourney onFinishProject={handleFinishWizard} />}
+            </>
+          )}
         </>
       )}
     </main>
