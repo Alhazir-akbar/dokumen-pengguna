@@ -311,6 +311,7 @@ export default function WizardPage() {
         }
       }
 
+      localStorage.setItem('active_project_id', String(projectId));
       resetStore();
       router.push(`/stories?project_id=${projectId}`);
 

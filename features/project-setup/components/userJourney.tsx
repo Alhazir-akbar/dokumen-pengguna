@@ -102,24 +102,28 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
         return;
       }
 
-    await journeysApi.createJourney(
-        {
-          name: `${titleName} — Main User Journey`,
-          description: journeyText,
-          project_id: activeProjId,
-          steps: journeySteps.map((step, index) => ({
-            step_order: index + 1,
-            title: step.title,
-            description: step.description,
-          })),
-        },
-        token
-      );
+      try {
+        await journeysApi.createJourney(
+          {
+            name: `${titleName} — Main User Journey`,
+            description: journeyText,
+            project_id: activeProjId,
+            steps: journeySteps.map((step, index) => ({
+              step_order: index + 1,
+              title: step.title,
+              description: step.description,
+            })),
+          },
+          token
+        );
+      } catch (journeyErr) {
+        console.warn('Gagal menyimpan journey secara terpisah, lanjut menyimpan spesifikasi proyek:', journeyErr);
+      }
 
-    await onFinishProject();
+      await onFinishProject();
     } catch (err: any) {
       console.error('Gagal menyelesaikan project:', err);
-      setActionError(err.message || 'Gagal menyimpan user journey ke server.');
+      setActionError(err.message || 'Gagal menyimpan proyek ke server.');
     } finally {
       setIsSubmitting(false);
     }
