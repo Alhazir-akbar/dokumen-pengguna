@@ -1,16 +1,16 @@
 // features/project-setup/components/UserJourney.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import LogoUserdoc from '../../../public/logoUserDoc';
 import { useWizardStore } from '../store/wizard-store';
-import { Sparkles, Loader2, AlertCircle, ArrowLeft, User } from 'lucide-react';
+import { Sparkles, Loader2, AlertCircle, ArrowLeft, ArrowRight, User } from 'lucide-react';
 import { projectApi } from '@/services/projectsApi';
 import { journeysApi } from '@/services/journeysApi';
 import { getAuthToken } from '@/lib/auth';
 
 interface UserJourneyProps {
-  onFinishProject: () => Promise<void> | void;
+  onFinishProject?: () => Promise<void> | void;
 }
 
 interface JourneyStepDraft {
@@ -20,16 +20,48 @@ interface JourneyStepDraft {
 }
 
 export default function UserJourney({ onFinishProject }: UserJourneyProps) {
-  const { projectName, projectDescription, projectId, userTypes, prevStep, createProjectIfNeeded } = useWizardStore() as any;
+  const {
+    projectName,
+    projectDescription,
+    projectId,
+    userTypes,
+    nextStep,
+    prevStep,
+    createProjectIfNeeded,
+    userJourney,
+    userJourneySteps,
+    setUserJourney,
+  } = useWizardStore() as any;
   
-  const [journeyText, setJourneyText] = useState('');
-  const [journeySteps, setJourneySteps] = useState<JourneyStepDraft[]>([]);
+  const [journeyText, setJourneyText] = useState(userJourney || '');
+  const [journeySteps, setJourneySteps] = useState<JourneyStepDraft[]>(userJourneySteps || []);
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(false);
   const [actionError, setActionError] = useState('');
 
   const titleName = projectName?.trim() ? projectName : 'your project';
+
+  // 🚀 Sinkronkan dengan store jika sudah terisi dari step 5
+  useEffect(() => {
+    if (userJourney && (!journeyText || journeyText.trim() === '')) {
+      setJourneyText(userJourney);
+    }
+  }, [userJourney, journeyText]);
+
+  useEffect(() => {
+    if (userJourneySteps && userJourneySteps.length > 0 && journeySteps.length === 0) {
+      setJourneySteps(userJourneySteps);
+    }
+  }, [userJourneySteps, journeySteps]);
+
+  // Hanya auto-generate User Journey jika benar-benar belum pernah terisi
+  useEffect(() => {
+    if ((!userJourney || userJourney.trim() === '') && (!journeyText || journeyText.trim() === '')) {
+      handleAiSuggest();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleAiSuggest = async () => {
     setActionError('');
@@ -58,13 +90,15 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
         token
       );
       setJourneyText(result.journey);
-      setJourneySteps(
-        (result.steps || []).map((s: any) => ({
-          title: s.title,
-          description: s.description,
-          persona_name: s.persona_name ?? null,
-        }))
-      );
+      const steps = (result.steps || []).map((s: any) => ({
+        title: s.title,
+        description: s.description,
+        persona_name: s.persona_name ?? null,
+      }));
+      setJourneySteps(steps);
+      if (typeof setUserJourney === 'function') {
+        setUserJourney(result.journey, steps);
+      }
       if (error) setError(false);
     } catch (err: any) {
       console.error('Gagal mendapatkan saran AI:', err);
@@ -82,7 +116,7 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
     setError(false);
     setActionError('');
 
-        const token = getAuthToken();
+    const token = getAuthToken();
     if (!token) {
       setActionError('Sesi habis, silakan login kembali.');
       return;
@@ -99,6 +133,11 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
       if (!activeProjId) {
         setActionError('Gagal membuat project di database. Silakan coba lagi.');
         setIsSubmitting(false);
+        return;
+      }
+
+      if (onFinishProject) {
+        await onFinishProject();
         return;
       }
 
@@ -119,15 +158,30 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
       } catch (journeyErr) {
         console.warn('Gagal menyimpan journey secara terpisah, lanjut menyimpan spesifikasi proyek:', journeyErr);
       }
-
-      await onFinishProject();
     } catch (err: any) {
       console.error('Gagal menyelesaikan project:', err);
-      setActionError(err.message || 'Gagal menyimpan proyek ke server.');
+      const errMsg = err?.message || '';
+      if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError') || errMsg.includes('Load failed')) {
+        setActionError('Gagal terhubung ke backend server (Failed to fetch). Pastikan backend Render sudah aktif dan environment variable Vercel (NEXT_PUBLIC_API_URL) telah terpasang.');
+      } else {
+        setActionError(errMsg || 'Gagal menyimpan proyek ke server.');
+      }
     } finally {
       setIsSubmitting(false);
     }
-    };
+  };
+
+  const handleNextStep = () => {
+    if (!journeyText || journeyText.trim() === '') {
+      setError(true);
+      return;
+    }
+    setError(false);
+    if (typeof setUserJourney === 'function') {
+      setUserJourney(journeyText, journeySteps);
+    }
+    nextStep();
+  };
 
   if (isSubmitting) {
     return (
@@ -194,6 +248,9 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
           value={journeyText}
           onChange={(e) => {
             setJourneyText(e.target.value);
+            if (typeof setUserJourney === 'function') {
+              setUserJourney(e.target.value, journeySteps);
+            }
             if (error) setError(false);
           }}
           disabled={isSuggesting}
@@ -270,14 +327,32 @@ export default function UserJourney({ onFinishProject }: UserJourneyProps) {
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
         
-        <button
-          type="button"
-          onClick={handleFinish}
-          disabled={isSuggesting}
-          className="bg-white hover:bg-blue-50 text-blue-700 px-6 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 shadow-lg text-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          Finished, Create my Project
-        </button>
+        {onFinishProject ? (
+          <button
+            type="button"
+            onClick={handleFinish}
+            disabled={isSuggesting || isSubmitting}
+            className="bg-white hover:bg-blue-50 text-blue-700 px-6 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-lg text-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-blue-700" />
+                <span>Building Your Project...</span>
+              </>
+            ) : (
+              <span>Finished, Create my Project</span>
+            )}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleNextStep}
+            disabled={isSuggesting}
+            className="bg-white hover:bg-blue-50 text-blue-700 px-6 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-lg text-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <span>Next</span> <ArrowRight className="w-4 h-4" />
+          </button>
+        )}
       </div>
     </div>
     </div>

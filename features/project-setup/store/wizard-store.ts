@@ -53,6 +53,12 @@ export interface UserStoryItem {
   testCases?: string[];
 }
 
+export interface JourneyStepItem {
+  title: string;
+  description: string;
+  persona_name?: string | null;
+}
+
 export type ProjectTypeEnum = 'generate' | 'translate' | 'example' | null;
 
 interface WizardState {
@@ -68,10 +74,13 @@ interface WizardState {
   epics: EpicItem[];
   nonFunctionals: NonFunctionalItem[];
   userStories: UserStoryItem[];
+  userJourney: string;
+  userJourneySteps: JourneyStepItem[];
   projectId: number | null;
   isCreatingProject: boolean;
   workspaceId: number | null;
   isCreatingWorkspace: boolean;
+  aiGenerationError: string | null;
 
   // ---- Jalur "Translate" (reverse engineer existing software) ----
   softwareName: string;
@@ -99,6 +108,7 @@ interface WizardState {
   setProjectType: (type: ProjectTypeEnum) => void;
   setProjectDescription: (desc: string) => void;
   setPlatformType: (platform: string) => void;
+  setUserJourney: (journey: string, steps?: JourneyStepItem[]) => void;
 
   setSoftwareName: (name: string) => void;
   setSoftwareOverview: (overview: string) => void;
@@ -205,10 +215,13 @@ export const useWizardStore = create<WizardState>()(
       epics: [],
       nonFunctionals: [],
       userStories: [],
+      userJourney: '',
+      userJourneySteps: [],
       projectId: null,
       isCreatingProject: false,
       workspaceId: null,
       isCreatingWorkspace: false,
+      aiGenerationError: null,
 
       softwareName: '',
       softwareOverview: '',
@@ -234,6 +247,7 @@ export const useWizardStore = create<WizardState>()(
       setProjectType: (type) => set({ projectType: type }),
       setProjectDescription: (desc) => set({ projectDescription: desc }),
       setPlatformType: (platform) => set({ platformType: platform }),
+      setUserJourney: (journey, steps = []) => set({ userJourney: journey, userJourneySteps: steps }),
 
       setSoftwareName: (name) => set({ softwareName: name }),
       setSoftwareOverview: (overview) => set({ softwareOverview: overview }),
@@ -407,7 +421,28 @@ export const useWizardStore = create<WizardState>()(
             testCases: s.test_cases || [],
           }));
 
-          const mappedNonFunctionals: NonFunctionalItem[] = (response.nfrs || []).map(
+          const rawNfrs = (response.nfrs && response.nfrs.length > 0)
+            ? response.nfrs
+            : [
+                {
+                  category: 'Performance',
+                  description: 'Waktu respons sistem untuk pemuatan data dan API utama rata-rata di bawah 1.5 detik pada koneksi internet standar, serta mampu menangani hingga 500 permintaan bersamaan.',
+                },
+                {
+                  category: 'Security',
+                  description: 'Seluruh komunikasi data wajib menggunakan HTTPS (TLS 1.3), enkripsi kata sandi menggunakan hashing standar industri, dan token otentikasi dilengkapi pembatasan hak akses.',
+                },
+                {
+                  category: 'Reliability',
+                  description: 'Tingkat ketersediaan layanan (uptime) sistem ditargetkan minimal 99.5% per bulan dengan pencadangan basis data berkala otomatis.',
+                },
+                {
+                  category: 'Usability',
+                  description: 'Antarmuka pengguna dirancang responsif di seluruh perangkat (desktop & mobile) dengan navigasi yang intuitif dan waktu adaptasi pengguna baru yang singkat.',
+                },
+              ];
+
+          const mappedNonFunctionals: NonFunctionalItem[] = rawNfrs.map(
             (n: any, i: number) => ({
               id: `nfr-${stamp}-${i}`,
               category: n.category,
@@ -415,15 +450,40 @@ export const useWizardStore = create<WizardState>()(
             })
           );
 
+          const mappedUserGoals: UserGoalItem[] = mappedUserTypes.map((ut: any, index: number) => {
+            const persona = ut.personas && ut.personas[0];
+            return {
+              id: `ug-${stamp}-${index}`,
+              userTypeName: ut.name,
+              goals: persona?.goals?.trim() || `• Mempermudah pengelolaan dan pencapaian target kerja sebagai ${ut.name}\n• Mempercepat akses informasi dan alur kerja utama`,
+              frustrations: persona?.frustrations?.trim() || `• Sistem yang rumit dan lambat saat mengakses data penting\n• Kurangnya transparansi status dan notifikasi`,
+            };
+          });
+
+          const mappedJourneyNarrative = response.user_journey?.narrative || '';
+          const mappedJourneySteps: JourneyStepItem[] = (response.user_journey?.steps || []).map((step: any) => ({
+            title: step.title || '',
+            description: step.description || '',
+            persona_name: step.persona_name || null,
+          }));
+
           set({
             epics: mappedEpics,
             userStories: mappedStories,
             userTypes: mappedUserTypes,
-            nonFunctionals: mappedNonFunctionals
+            userGoals: mappedUserGoals,
+            nonFunctionals: mappedNonFunctionals,
+            userJourney: mappedJourneyNarrative,
+            userJourneySteps: mappedJourneySteps,
+            aiGenerationError: null,
           });
           return true;
-        } catch (error) {
+        } catch (error: any) {
           console.error('AI Gen Error:', error);
+          const errorMsg =
+            error?.message ||
+            'AI gagal menghasilkan rekomendasi. Periksa koneksi internet Anda atau coba beberapa saat lagi.';
+          set({ aiGenerationError: errorMsg });
           return false;
         }
       },
@@ -438,8 +498,11 @@ export const useWizardStore = create<WizardState>()(
         epics: [],
         nonFunctionals: [],
         userStories: [],
+        userJourney: '',
+        userJourneySteps: [],
         projectId: null,
         workspaceId: null,
+        aiGenerationError: null,
         softwareName: '',
         softwareOverview: '',
         softwareTechnologies: [],
